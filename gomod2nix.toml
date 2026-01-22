@@ -1,3 +1,54 @@
 schema = 3
 
 [mod]
+  [mod."github.com/BurntSushi/toml"]
+    version = "v1.5.0"
+    hash = "sha256-wX8bEVo7swuuAlm0awTIiV1KNCAXnm7Epzwl+wzyqhw="
+  [mod."github.com/Masterminds/semver/v3"]
+    version = "v3.4.0"
+    hash = "sha256-75kRraVwYVjYLWZvuSlts4Iu28Eh3SpiF0GHc7vCYHI="
+  [mod."github.com/go-task/slim-sprig/v3"]
+    version = "v3.0.0"
+    hash = "sha256-vCCw4MXVBm33VNLXcOBccVDD1CSnzDvDdWB6w5FN1cA="
+  [mod."github.com/google/pprof"]
+    version = "v0.0.0-20260115054156-294ebfa9ad83"
+    hash = "sha256-fhalKl/thSt1gdsHZmFyNGF1Gwxb0YLXV0pBv65EZjE="
+  [mod."github.com/inconshreveable/mousetrap"]
+    version = "v1.1.0"
+    hash = "sha256-XWlYH0c8IcxAwQTnIi6WYqq44nOKUylSWxWO/vi+8pE="
+  [mod."github.com/nix-community/go-nix"]
+    version = "v0.0.0-20220612195009-5f5614f7ca47"
+    hash = "sha256-eBPzib8STUZnDpLFpWZz+F00thbp1P/98oiEE/XWE+M="
+  [mod."github.com/nix-community/gomod2nix"]
+    version = "v1.7.0"
+    hash = "sha256-KSsBTMpggbVO4AmI0JaXbALrXeygr2sT+IuoVAfkNqw="
+  [mod."github.com/onsi/ginkgo/v2"]
+    version = "v2.27.5"
+    hash = "sha256-4YtMCQDR+odfRReIah0jHLXFdG8UyX+EOaDT00XpMr0="
+  [mod."github.com/sirupsen/logrus"]
+    version = "v1.9.3"
+    hash = "sha256-EnxsWdEUPYid+aZ9H4/iMTs1XMvCLbXZRDyvj89Ebms="
+  [mod."github.com/spf13/cobra"]
+    version = "v1.9.1"
+    hash = "sha256-dzEqquABE3UqZmJuj99244QjvfojS8cFlsPr/MXQGj0="
+  [mod."github.com/spf13/pflag"]
+    version = "v1.0.6"
+    hash = "sha256-NjrK0FZPIfO/p2xtL1J7fOBQNTZAPZOC6Cb4aMMvhxI="
+  [mod."github.com/unmango/go"]
+    version = "v0.12.1"
+    hash = "sha256-3pTPYU5xtrof76hUbN4qaaAZxQtIVoYpxMLkGAfRve4="
+  [mod."golang.org/x/mod"]
+    version = "v0.32.0"
+    hash = "sha256-4gbgIqTOo0vcYV3l4MIwmT/h8H9PXmcfrJ3z4B26Zl0="
+  [mod."golang.org/x/sync"]
+    version = "v0.19.0"
+    hash = "sha256-RbRZ+sKZUurOczGhhzOoY/sojTlta3H9XjL4PXX/cno="
+  [mod."golang.org/x/sys"]
+    version = "v0.40.0"
+    hash = "sha256-KDe+wMr7dfMFwKMJEljzk+f82pQWFFPoFHivjD7qJGg="
+  [mod."golang.org/x/tools"]
+    version = "v0.41.0"
+    hash = "sha256-/Plnksa1jSr4jYJc2oCH9fcjGbWocM7EYposMP0tScQ="
+  [mod."golang.org/x/tools/go/vcs"]
+    version = "v0.1.0-deprecated"
+    hash = "sha256-57YB10tiRsVSRvJqKYST+iON6yZYGL7eRSzrFcImC8Y="

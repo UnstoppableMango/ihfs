@@ -9,6 +9,7 @@ import (
 type (
 	FS       = fs.FS
 	Glob     = fs.GlobFS
+	Os       = os.Fs
 	ReadDir  = fs.ReadDirFS
 	ReadFile = fs.ReadFileFS
 	ReadLink = fs.ReadLinkFS
@@ -19,8 +20,26 @@ type (
 	DirEntry = fs.DirEntry
 )
 
-type Os interface {
-	os.Fs
+// Ensure interface compliance.
+var _ FS = (Os)(nil)
+
+// ReadDirNames reads the named directory and returns a list of names sorted by filename.
+func ReadDirNames(f FS, name string) ([]string, error) {
+	entries, err := dirEntries(f, name)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name()
+	}
+	return names, nil
 }
 
-var _ FS = (Os)(nil)
+func dirEntries(f FS, name string) ([]DirEntry, error) {
+	if dirfs, ok := f.(ReadDir); ok {
+		return dirfs.ReadDir(name)
+	}
+	return fs.ReadDir(f, name)
+}

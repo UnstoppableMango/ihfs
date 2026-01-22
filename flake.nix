@@ -26,15 +26,14 @@
     inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
-
-      imports = [
-        inputs.treefmt-nix.flakeModule
-      ];
+      imports = [ inputs.treefmt-nix.flakeModule ];
 
       perSystem =
         { inputs', pkgs, ... }:
         let
-          inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix;
+          inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
+
+          goEnv = mkGoEnv { pwd = ./.; };
         in
         {
           packages.default = buildGoApplication {
@@ -44,17 +43,24 @@
             modules = ./gomod2nix.toml;
           };
 
-          devShells.default = pkgs.mkShell {
+          devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
+              ginkgo
               go
+              goEnv
               gomod2nix
-              nix
               nixfmt
             ];
+
+            GINKGO = "${pkgs.ginkgo}/bin/ginkgo";
+            GO = "${pkgs.go}/bin/go";
+            GOMOD2NIX = "${gomod2nix}/bin/gomod2nix";
+            NIXFMT = "${pkgs.nixfmt}/bin/nixfmt";
           };
 
-          treefmt = {
-            programs.nixfmt.enable = true;
+          treefmt.programs = {
+            nixfmt.enable = true;
+            gofmt.enable = true;
           };
         };
     };
