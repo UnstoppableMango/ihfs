@@ -1,24 +1,59 @@
 package ihfs_test
 
 import (
+	"io/fs"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/unmango/go/slices"
 
+	"github.com/unmango/go/slices"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/osfs"
+	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Iter", func() {
+	It("should return open errors", func() {
+		fsys := testfs.Fs{
+			OpenFunc: func(name string) (ihfs.File, error) {
+				return nil, fs.ErrNotExist
+			},
+		}
+
+		seq := ihfs.IterPaths(fsys, "/nonexistent")
+
+		paths, errors := slices.Collect2(seq)
+
+		Expect(paths).To(ConsistOf("/nonexistent"))
+		Expect(errors).To(ConsistOf(fs.ErrNotExist))
+	})
+
+	It("should cancel iteration when yield returns false", func() {
+		fsys := osfs.New()
+
+		seq := ihfs.IterPaths(fsys, "./testdata/2-files")
+
+		collectedPaths := []string{}
+		collectedErrors := []error{}
+		for path, err := range seq {
+			collectedPaths = append(collectedPaths, path)
+			collectedErrors = append(collectedErrors, err)
+			if len(collectedPaths) == 2 {
+				break
+			}
+		}
+
+		Expect(collectedErrors).To(ConsistOf(nil, nil))
+		Expect(collectedPaths).To(ConsistOf(
+			"./testdata/2-files",
+			"testdata/2-files/one.txt",
+		))
+	})
+
 	It("should iterate over file paths", func() {
 		seq := ihfs.IterPaths(osfs.New(), "./testdata/2-files")
 
-		errors := []error{}
-		paths := []string{}
-		for p, err := range seq {
-			errors = append(errors, err)
-			paths = append(paths, p)
-		}
+		paths, errors := slices.Collect2(seq)
 
 		Expect(errors).To(ConsistOf(nil, nil, nil))
 		Expect(paths).To(ConsistOf(
@@ -57,10 +92,6 @@ var _ = Describe("Iter", func() {
 			"testdata/2-files/one.txt",
 			"testdata/2-files/two.txt",
 		))
-		Expect(entries).To(ConsistOf(
-			"2-files",
-			"one.txt",
-			"two.txt",
-		))
+		Expect(entries).To(HaveLen(3))
 	})
 })

@@ -16,6 +16,7 @@ type (
 	Stat     = fs.StatFS
 	Sub      = fs.SubFS
 
+	File     = fs.File
 	FileInfo = fs.FileInfo
 	DirEntry = fs.DirEntry
 )
