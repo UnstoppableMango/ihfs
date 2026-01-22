@@ -22,25 +22,40 @@
     };
   };
 
-  outputs = inputs@{ flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
-    systems = import inputs.systems;
+  outputs =
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = import inputs.systems;
 
-    imports = [
-      inputs.treefmt-nix.flakeModule
-    ];
+      imports = [
+        inputs.treefmt-nix.flakeModule
+      ];
 
-    perSystem = { pkgs, ... }: {
-      devShells.default = pkgs.mkShell {
-        packages = with pkgs; [
-          go
-          nix
-          nixfmt
-        ];
-      };
+      perSystem =
+        { inputs', pkgs, ... }:
+        let
+          inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix;
+        in
+        {
+          packages.default = buildGoApplication {
+            pname = "ihfs";
+            version = "0.0.1";
+            src = ./.;
+            modules = ./gomod2nix.toml;
+          };
 
-      treefmt = {
-        programs.nixfmt.enable = true;
-      };
+          devShells.default = pkgs.mkShell {
+            packages = with pkgs; [
+              go
+              gomod2nix
+              nix
+              nixfmt
+            ];
+          };
+
+          treefmt = {
+            programs.nixfmt.enable = true;
+          };
+        };
     };
-  };
 }
