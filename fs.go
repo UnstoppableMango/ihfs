@@ -26,6 +26,7 @@ type (
 // Ensure interface compliance.
 var _ FS = (Os)(nil)
 
+// Copy is the interface implemented by a file system that supports copying a directory.
 type Copy interface {
 	FS
 	Copy(name string, dest FS) error
