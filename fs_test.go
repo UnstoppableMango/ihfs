@@ -1,8 +1,6 @@
 package ihfs_test
 
 import (
-	"io/fs"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -31,11 +29,7 @@ var _ = Describe("Fs", func() {
 	})
 
 	It("should use fs.ReadDir fallback when FS does not implement ReadDir", func() {
-		fsys := testfs.Fs{
-			OpenFunc: func(name string) (ihfs.File, error) {
-				return nil, fs.ErrNotExist
-			},
-		}
+		fsys := testfs.New()
 
 		names, err := ihfs.ReadDirNames(fsys, "./testdata/2-files")
 

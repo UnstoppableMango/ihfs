@@ -14,11 +14,9 @@ import (
 
 var _ = Describe("Iter", func() {
 	It("should return open errors", func() {
-		fsys := testfs.Fs{
-			OpenFunc: func(name string) (ihfs.File, error) {
-				return nil, fs.ErrNotExist
-			},
-		}
+		fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
+			return nil, fs.ErrNotExist
+		}))
 
 		seq := ihfs.IterPaths(fsys, "/nonexistent")
 
