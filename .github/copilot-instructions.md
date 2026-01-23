@@ -6,7 +6,7 @@ IHFS (I ❤️ File Systems) is a Go library providing composable filesystem int
 
 ## Technology Stack
 
-- **Language**: Go 1.25.5
+- **Language**: Go (see go.mod for version)
 - **Testing**: Ginkgo v2 + Gomega
 - **Build System**: Nix + Make
 - **Package Manager**: Go modules with gomod2nix
