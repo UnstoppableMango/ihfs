@@ -2,6 +2,7 @@ package ihfs
 
 import (
 	"io/fs"
+	"time"
 
 	"github.com/unmango/go/os"
 )
@@ -16,13 +17,39 @@ type (
 	Stat     = fs.StatFS
 	Sub      = fs.SubFS
 
+	DirEntry = fs.DirEntry
 	File     = fs.File
 	FileInfo = fs.FileInfo
-	DirEntry = fs.DirEntry
+	FileMode = fs.FileMode
 )
 
 // Ensure interface compliance.
 var _ FS = (Os)(nil)
+
+type Copy interface {
+	FS
+	Copy(name string, dest FS) error
+}
+
+type Mkdir interface {
+	FS
+	Mkdir(name string, perm FileMode) error
+}
+
+type Chmod interface {
+	FS
+	Chmod(name string, mode FileMode) error
+}
+
+type Chown interface {
+	FS
+	Chown(name string, uid, gid int) error
+}
+
+type Chtimes interface {
+	FS
+	Chtimes(name string, atime, mtime time.Time) error
+}
 
 // ReadDirNames reads the named directory and returns a list of names sorted by filename.
 func ReadDirNames(f FS, name string) ([]string, error) {
