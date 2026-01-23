@@ -44,7 +44,7 @@ var _ = Describe("Iter", func() {
 		}
 
 		Expect(collectedErrors).To(ConsistOf(nil, nil))
-		Expect(collectedPaths).To(ConsistOf(
+		Expect(collectedPaths).To(HaveExactElements(
 			"./testdata/2-files",
 			"testdata/2-files/one.txt",
 		))
@@ -56,7 +56,7 @@ var _ = Describe("Iter", func() {
 		paths, errors := slices.Collect2(seq)
 
 		Expect(errors).To(ConsistOf(nil, nil, nil))
-		Expect(paths).To(ConsistOf(
+		Expect(paths).To(HaveExactElements(
 			"./testdata/2-files",
 			"testdata/2-files/one.txt",
 			"testdata/2-files/two.txt",
@@ -81,17 +81,67 @@ var _ = Describe("Iter", func() {
 		))
 	})
 
+	It("should cancel dir entries iteration when yield returns false", func() {
+		fsys := osfs.New()
+
+		seq := ihfs.IterDirEntries(fsys, "./testdata/2-files")
+
+		collectedNames := []string{}
+		collectedErrors := []error{}
+		for d, err := range seq {
+			collectedNames = append(collectedNames, d.Name())
+			collectedErrors = append(collectedErrors, err)
+			if len(collectedNames) == 2 {
+				break
+			}
+		}
+
+		Expect(collectedErrors).To(ConsistOf(nil, nil))
+		Expect(collectedNames).To(HaveExactElements(
+			"2-files",
+			"one.txt",
+		))
+	})
+
 	It("should iterate over paths and dir entries", func() {
 		seq := ihfs.Iter(osfs.New(), "./testdata/2-files")
 
 		paths, entries, errors := slices.Collect3(seq)
 
 		Expect(errors).To(ConsistOf(nil, nil, nil))
-		Expect(paths).To(ConsistOf(
+		Expect(paths).To(HaveExactElements(
 			"./testdata/2-files",
 			"testdata/2-files/one.txt",
 			"testdata/2-files/two.txt",
 		))
 		Expect(entries).To(HaveLen(3))
+	})
+
+	It("should cancel iteration when yield returns false in Iter", func() {
+		fsys := osfs.New()
+
+		seq := ihfs.Iter(fsys, "./testdata/2-files")
+
+		paths := []string{}
+		names := []string{}
+		errors := []error{}
+
+		seq(func(path string, d ihfs.DirEntry, err error) bool {
+			paths = append(paths, path)
+			names = append(names, d.Name())
+			errors = append(errors, err)
+
+			return len(paths) < 2
+		})
+
+		Expect(errors).To(ConsistOf(nil, nil))
+		Expect(paths).To(HaveExactElements(
+			"./testdata/2-files",
+			"testdata/2-files/one.txt",
+		))
+		Expect(names).To(HaveExactElements(
+			"2-files",
+			"one.txt",
+		))
 	})
 })
