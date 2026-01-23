@@ -51,7 +51,7 @@ type Chtimes interface {
 	Chtimes(name string, atime, mtime time.Time) error
 }
 
-// ReadDirNames reads the named directory and returns a list of names sorted by filename.
+// ReadDirNames reads the named directory and returns a list of names.
 func ReadDirNames(f FS, name string) ([]string, error) {
 	entries, err := dirEntries(f, name)
 	if err != nil {
