@@ -15,6 +15,7 @@ This was not intentional.
 ```go
 import (
     "os"
+    "io/fs"
 
     "github.com/unstoppablemango/ihfs/osfs"
     "github.com/unstoppablemango/ihfs"
