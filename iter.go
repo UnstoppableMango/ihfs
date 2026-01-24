@@ -4,17 +4,40 @@ import (
 	"io/fs"
 
 	"github.com/unmango/go/iter"
+	"github.com/unmango/go/slices"
 )
 
 type (
-	// WalkFunc is an alias for fs.WalkDirFunc.
+	// WalkFunc is an alias for [fs.WalkDirFunc].
 	WalkFunc = fs.WalkDirFunc
 )
 
 var (
-	// SkipDir is an alias for fs.SkipDir.
+	// SkipDir is an alias for [fs.SkipDir].
 	SkipDir = fs.SkipDir
 )
+
+func Catch(seq iter.Seq3[string, DirEntry, error]) (iter.Seq2[string, DirEntry], error) {
+	var (
+		final   error
+		paths   []string
+		entries []DirEntry
+	)
+
+	seq(func(path string, d DirEntry, err error) bool {
+		final = err
+		paths = append(paths, path)
+		entries = append(entries, d)
+
+		return err == nil
+	})
+
+	if final != nil {
+		return nil, final
+	} else {
+		return slices.Zip(paths, entries), nil
+	}
+}
 
 // Iter returns a sequence that walks the file system fsys.
 func Iter(fsys FS, root string) iter.Seq3[string, DirEntry, error] {
@@ -52,7 +75,7 @@ func IterDirEntries(fsys FS, root string) iter.Seq2[DirEntry, error] {
 	}
 }
 
-// Walk is a convenience wrapper around fs.WalkDir.
+// Walk is a convenience wrapper around [fs.WalkDir].
 func Walk(fsys FS, root string, fn WalkFunc) error {
 	return fs.WalkDir(fsys, root, fn)
 }
