@@ -157,6 +157,21 @@ var _ = Describe("MyFeature", func() {
 
 For mocking filesystems, use the `testfs` package or create simple mock implementations.
 
+## Self-Correction
+
+When working with this codebase, agents should self-correct and improve documentation:
+
+- **If the code map is discovered to be stale, update it.** The project structure section and other documentation should reflect the current state of the repository. When you discover inaccuracies, update this document.
+
+- **If the user gives a correction about how work should be done in this repo, add it to "Local Norms" (or another clearly labeled section) so future sessions inherit it.** User feedback about repository-specific practices should be captured for future reference.
+
+## Local Norms
+
+This section contains repository-specific practices learned from user feedback:
+
+- Test coverage should be maintained at 100% when possible
+- Use mock implementations in tests rather than complex test fixtures
+
 ## Important Notes
 
 - This project uses Nix for reproducible builds
