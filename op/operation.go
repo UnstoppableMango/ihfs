@@ -72,6 +72,7 @@ func (r ReadLink) Subject() string {
 	return r.Name
 }
 
+// Stat represents an operation to get file information.
 type Stat struct {
 	Name string
 	result.Result[ihfs.FileInfo]
@@ -95,6 +96,7 @@ func (w WriteFile) Subject() string {
 	return w.Name
 }
 
+// Remove represents an operation to remove a file.
 type Remove struct {
 	Name   string
 	Result maybe.Maybe[error]

@@ -133,6 +133,14 @@ type RemoveAll interface {
 	RemoveAll(name string) error
 }
 
+// WriteFile is the interface implemented by a file system that supports writing files.
+type WriteFile interface {
+	FS
+
+	// WriteFile writes data to the named file.
+	WriteFile(name string, data []byte, perm FileMode) error
+}
+
 // ReadDirNames reads the named directory and returns a list of names.
 func ReadDirNames(f FS, name string) ([]string, error) {
 	entries, err := dirEntries(f, name)
