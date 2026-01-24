@@ -50,6 +50,7 @@
               goEnv
               gomod2nix
               nixfmt
+              watchexec
             ];
 
             GINKGO = "${pkgs.ginkgo}/bin/ginkgo";
