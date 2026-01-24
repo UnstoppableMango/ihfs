@@ -58,7 +58,6 @@ nix fmt
 ### Interface Design
 - Prefer composable, single-purpose interfaces
 - Follow `io/fs` patterns and conventions
-- Use interface compliance checks: `var _ Interface = (*Type)(nil)`
 - Type check with `ok` idiom before calling interface methods
 
 ### Naming Conventions

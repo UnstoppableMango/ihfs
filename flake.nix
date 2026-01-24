@@ -50,6 +50,7 @@
               goEnv
               gomod2nix
               nixfmt
+              ripgrep
               watchexec
             ];
 
