@@ -68,28 +68,7 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.DirExists(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
-			Expect(exists).To(BeFalse())
-		})
-
-		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
-
-			exists, err := try.DirExists(fsys, "nonexistent")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(exists).To(BeFalse())
-		})
-
-		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
-
-			exists, err := try.DirExists(fsys, "dir")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
+			Expect(err).To(MatchError(try.ErrUnsupported))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -134,43 +113,8 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.Exists(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
+			Expect(err).To(MatchError(try.ErrUnsupported))
 			Expect(exists).To(BeFalse())
-		})
-	})
-
-	Describe("IsDir", func() {
-		It("should return true for directory", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: name, isDir: true}, nil
-			}))
-
-			isDir, err := try.IsDir(fsys, "dir")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(isDir).To(BeTrue())
-		})
-
-		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
-
-			isDir, err := try.IsDir(fsys, "nonexistent")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
-			Expect(isDir).To(BeFalse())
-		})
-
-		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
-
-			isDir, err := try.IsDir(fsys, "dir")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
-			Expect(isDir).To(BeFalse())
 		})
 	})
 
@@ -218,18 +162,8 @@ var _ = Describe("Try Util", func() {
 			info, err := try.Stat(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
+			Expect(err).To(MatchError(try.ErrUnsupported))
 			Expect(info).To(BeNil())
-		})
-
-		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
-
-			exists, err := try.Exists(fsys, "file.txt")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
-			Expect(exists).To(BeFalse())
 		})
 	})
 
@@ -274,57 +208,8 @@ var _ = Describe("Try Util", func() {
 			isDir, err := try.IsDir(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
+			Expect(err).To(MatchError(try.ErrUnsupported))
 			Expect(isDir).To(BeFalse())
-		})
-	})
-
-	Describe("Stat", func() {
-		It("should return FileInfo for file", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: false}, nil
-			}))
-
-			info, err := try.Stat(fsys, "file.txt")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info).NotTo(BeNil())
-			Expect(info.Name()).To(Equal("file.txt"))
-		})
-
-		It("should return FileInfo for directory", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: name, isDir: true}, nil
-			}))
-
-			info, err := try.Stat(fsys, "dir")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info).NotTo(BeNil())
-			Expect(info.Name()).To(Equal("dir"))
-			Expect(info.IsDir()).To(BeTrue())
-		})
-
-		It("should return error for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
-
-			info, err := try.Stat(fsys, "nonexistent")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
-			Expect(info).To(BeNil())
-		})
-
-		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
-
-			info, err := try.Stat(fsys, "file.txt")
-
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, try.ErrUnsupported)).To(BeTrue())
-			Expect(info).To(BeNil())
 		})
 	})
 })

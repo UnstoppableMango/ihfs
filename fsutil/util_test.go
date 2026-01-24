@@ -153,7 +153,7 @@ var _ = Describe("Util", func() {
 			isDir, err := fsutil.IsDir(fsys, "nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 			Expect(isDir).To(BeFalse())
 		})
 
