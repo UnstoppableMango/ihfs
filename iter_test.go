@@ -12,6 +12,37 @@ import (
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
+var _ = Describe("Catch", func() {
+	It("should convert Seq3 to Seq2 when no error occurs", func() {
+		seq := ihfs.Iter(osfs.New(), "./testdata/2-files")
+
+		seq2, err := ihfs.Catch(seq)
+
+		Expect(err).NotTo(HaveOccurred())
+
+		paths, entries := slices.Collect2(seq2)
+
+		Expect(paths).To(HaveExactElements(
+			"./testdata/2-files",
+			"testdata/2-files/one.txt",
+			"testdata/2-files/two.txt",
+		))
+		Expect(entries).To(HaveLen(3))
+	})
+
+	It("should return error when iteration encounters error", func() {
+		fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
+			return nil, fs.ErrNotExist
+		}))
+		seq := ihfs.Iter(fsys, "/nonexistent")
+
+		seq2, err := ihfs.Catch(seq)
+
+		Expect(err).To(MatchError(fs.ErrNotExist))
+		Expect(seq2).To(BeNil())
+	})
+})
+
 var _ = Describe("Iter", func() {
 	It("should return open errors", func() {
 		fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {

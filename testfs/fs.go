@@ -2,9 +2,14 @@ package testfs
 
 import (
 	"io/fs"
+	"testing/fstest"
 
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
+)
+
+type (
+	Map = fstest.MapFS
 )
 
 type Fs struct {

@@ -1,5 +1,7 @@
 package ihfs
 
+// Operation represents a file system operation.
 type Operation interface {
-	Path() string
+	// Subject returns the subject of the operation, typically a file or directory path.
+	Subject() string
 }
