@@ -180,7 +180,6 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tw.Close()).To(Succeed())
 
-			// Write to temp file
 			tmpDir := GinkgoT().TempDir()
 			testPath = tmpDir + "/test-with-dirs.tar"
 			err = os.WriteFile(testPath, buf.Bytes(), 0644)
@@ -195,13 +194,16 @@ var _ = Describe("Fs", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
+			Expect(file.Close()).To(Succeed())
 		})
 
 		It("should return directory info for directory entry", func() {
 			file, err := tfs.Open("mydir/")
 			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
 
 			info, err := file.Stat()
+
 			Expect(err).NotTo(HaveOccurred())
 			Expect(info.IsDir()).To(BeTrue())
 			Expect(info.Name()).To(Equal("mydir"))
@@ -212,6 +214,7 @@ var _ = Describe("Fs", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
+			defer file.Close()
 
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
@@ -255,6 +258,7 @@ var _ = Describe("Fs", func() {
 					file, err := tfs.Open("tartest/test.txt")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(file).NotTo(BeNil())
+					defer file.Close()
 
 					content, err := io.ReadAll(file)
 					Expect(err).NotTo(HaveOccurred())
@@ -282,6 +286,7 @@ var _ = Describe("Fs", func() {
 					file, err := tfs.Open("tartest/test.txt")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(file).NotTo(BeNil())
+					defer file.Close()
 					done <- true
 				}()
 			}
@@ -309,6 +314,7 @@ var _ = Describe("Fs", func() {
 					file, err := tfs.Open(name)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(file).NotTo(BeNil())
+					defer file.Close()
 					done <- true
 				}(fileName)
 			}
@@ -336,6 +342,7 @@ var _ = Describe("Fs", func() {
 					file, err := tfs.Open("tartest/test.txt")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(file).NotTo(BeNil())
+					defer file.Close()
 
 					content, err := io.ReadAll(file)
 					Expect(err).NotTo(HaveOccurred())
