@@ -23,7 +23,7 @@ type (
 	FileMode = fs.FileMode
 )
 
-// Ensure interface compliance.
+// Ensure interface compliance with [os.Os].
 var _ FS = (Os)(nil)
 
 // Chmod is the interface implemented by a file system that supports changing file modes.

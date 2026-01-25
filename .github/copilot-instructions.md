@@ -95,8 +95,7 @@ nix fmt
 1. Create a new package directory (e.g., `newfs/`)
 2. Implement required `fs.FS` interface
 3. Add additional interfaces as needed (ReadDir, Stat, etc.)
-4. Add interface compliance checks
-5. Write comprehensive tests using Ginkgo
+4. Write comprehensive tests using Ginkgo
 
 ### Adding a New Operation
 1. Define operation interface/type in `op.go` or `op/` package
