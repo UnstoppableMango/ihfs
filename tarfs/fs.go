@@ -12,11 +12,12 @@ import (
 
 // Fs represents a read-only file system backed by a tar archive.
 type Fs struct {
-	name  string
-	cache *cache
-	mux   sync.Mutex
-	tar   io.ReadCloser
-	tr    *tar.Reader
+	name   string
+	cache  *cache
+	mux    sync.Mutex
+	tar    io.ReadCloser
+	tr     *tar.Reader
+	closed bool
 }
 
 // Open opens a tar file as a read-only file system.
@@ -53,6 +54,14 @@ func FromReader(name string, r io.Reader) *Fs {
 
 // Close closes the underlying tar archive.
 func (t *Fs) Close() error {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	if t.closed {
+		return nil
+	}
+
+	t.closed = true
 	return t.tar.Close()
 }
 
@@ -71,6 +80,10 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
+	if t.closed {
+		return nil, t.error(name, fs.ErrClosed, nil)
+	}
+
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
@@ -80,7 +93,10 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	for {
 		fd, err := next(t.tr)
 		if err == io.EOF {
-			t.Close()
+			t.closed = true
+			if closeErr := t.tar.Close(); closeErr != nil {
+				return nil, t.error(name, fs.ErrNotExist, closeErr)
+			}
 		}
 		if err != nil {
 			return nil, t.error(name, fs.ErrNotExist, err)

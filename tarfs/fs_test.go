@@ -3,6 +3,7 @@ package tarfs_test
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -51,6 +52,14 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should be idempotent", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(tfs.Close()).To(Succeed())
+			Expect(tfs.Close()).To(Succeed())
+		})
+
 		It("should return error when opening file after Close", func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
@@ -58,7 +67,7 @@ var _ = Describe("Fs", func() {
 			Expect(tfs.Close()).To(Succeed())
 
 			file, err := tfs.Open("tartest/test.txt")
-			Expect(err).To(MatchError(ContainSubstring("file does not exist")))
+			Expect(err).To(MatchError(ContainSubstring("file already closed")))
 			Expect(file).To(BeNil())
 		})
 	})
@@ -478,6 +487,67 @@ var _ = Describe("Fs", func() {
 			for range goroutines {
 				<-done
 			}
+		})
+
+		It("should handle race when one goroutine hits EOF and closes", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name: "file1.txt",
+				Mode: 0644,
+				Size: 5,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("data1"))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tw.WriteHeader(&tar.Header{
+				Name: "file2.txt",
+				Mode: 0644,
+				Size: 5,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("data2"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/small.tar"
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan error, 10)
+			const goroutines = 10
+
+			for i := range goroutines {
+				go func(idx int) {
+					defer GinkgoRecover()
+					fileName := "nonexistent.txt"
+					if idx < 2 {
+						fileName = fmt.Sprintf("file%d.txt", idx+1)
+					}
+					_, err := tfs.Open(fileName)
+					done <- err
+				}(i)
+			}
+
+			var closedErrors, notExistErrors int
+			for range goroutines {
+				err := <-done
+				if err != nil {
+					if errors.Is(err, fs.ErrClosed) {
+						closedErrors++
+					} else if errors.Is(err, fs.ErrNotExist) {
+						notExistErrors++
+					}
+				}
+			}
+
+			Expect(closedErrors + notExistErrors).To(BeNumerically(">", 0))
 		})
 	})
 })
