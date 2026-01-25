@@ -147,4 +147,97 @@ var _ = Describe("Fs", func() {
 			Expect(file).To(BeNil())
 		})
 	})
+
+	Describe("directory handling", func() {
+		var tfs *tarfs.Fs
+		var testPath string
+
+		BeforeEach(func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name:     "mydir/",
+				Mode:     0755,
+				Typeflag: tar.TypeDir,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tw.WriteHeader(&tar.Header{
+				Name: "mydir/file.txt",
+				Mode: 0644,
+				Size: 14,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("file in subdir"))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tw.WriteHeader(&tar.Header{
+				Name:     "emptydir/",
+				Mode:     0755,
+				Typeflag: tar.TypeDir,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tw.Close()).To(Succeed())
+
+			// Write to temp file
+			tmpDir := GinkgoT().TempDir()
+			testPath = tmpDir + "/test-with-dirs.tar"
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err = tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should open a directory entry", func() {
+			file, err := tfs.Open("mydir/")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+		})
+
+		It("should return directory info for directory entry", func() {
+			file, err := tfs.Open("mydir/")
+			Expect(err).NotTo(HaveOccurred())
+
+			info, err := file.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+			Expect(info.Name()).To(Equal("mydir"))
+		})
+
+		It("should open an empty directory", func() {
+			file, err := tfs.Open("emptydir/")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+
+			info, err := file.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+		})
+
+		It("should open files within directories", func() {
+			file, err := tfs.Open("mydir/file.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+
+			content, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("file in subdir"))
+		})
+
+		It("should read empty content from directory", func() {
+			file, err := tfs.Open("mydir/")
+			Expect(err).NotTo(HaveOccurred())
+
+			buf := make([]byte, 10)
+			n, err := file.Read(buf)
+
+			Expect(n).To(Equal(0))
+			Expect(err).To(Equal(io.EOF))
+		})
+	})
 })
