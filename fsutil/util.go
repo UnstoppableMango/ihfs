@@ -53,6 +53,8 @@ func ReadDirNames(f ihfs.ReadDir, name string) ([]string, error) {
 	return names, nil
 }
 
+// WriteReader reads all data from r and writes it to name in fsys using WriteFile.
+// It returns an error if reading from r fails or if fsys.WriteFile reports an error.
 func WriteReader(fsys ihfs.WriteFile, name string, r io.Reader) error {
 	if data, err := io.ReadAll(r); err != nil {
 		return fmt.Errorf("reading: %w", err)
