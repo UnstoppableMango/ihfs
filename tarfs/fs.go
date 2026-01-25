@@ -71,14 +71,6 @@ func (t *Fs) Open(name string) (fs.File, error) {
 		return file.file(), nil
 	}
 
-	// Check if tar is exhausted
-	if t.tr == nil {
-		return nil, t.error(name,
-			fs.ErrNotExist,
-			fmt.Errorf("tar reader is exhausted"),
-		)
-	}
-
 	// Lazy-load entries until we find the requested file
 	for {
 		fd, err := next(t.tr)
