@@ -31,6 +31,20 @@ func IsDir(fsys ihfs.FS, path string) (bool, error) {
 	return false, fmt.Errorf("stat: %w", ErrUnsupported)
 }
 
+func ReadDir(fsys ihfs.FS, path string) ([]ihfs.DirEntry, error) {
+	if dirfs, ok := fsys.(ihfs.ReadDir); ok {
+		return dirfs.ReadDir(path)
+	}
+	return nil, fmt.Errorf("read dir: %w", ErrUnsupported)
+}
+
+func ReadDirNames(fsys ihfs.FS, path string) ([]string, error) {
+	if dirfs, ok := fsys.(ihfs.ReadDir); ok {
+		return fsutil.ReadDirNames(dirfs, path)
+	}
+	return nil, fmt.Errorf("read dir: %w", ErrUnsupported)
+}
+
 func Stat(fsys ihfs.FS, path string) (ihfs.FileInfo, error) {
 	if stat, ok := fsys.(ihfs.Stat); ok {
 		return stat.Stat(path)
