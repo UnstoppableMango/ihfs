@@ -93,6 +93,9 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	for {
 		fd, err := next(t.tr)
 		if err == io.EOF {
+			// Reached end of archive without finding the file.
+			// Close the archive and return ErrNotExist (the file wasn't found).
+			// Subsequent Open() calls will see t.closed and return ErrClosed.
 			t.closed = true
 			if closeErr := t.tar.Close(); closeErr != nil {
 				return nil, t.error(name, fs.ErrNotExist, closeErr)
