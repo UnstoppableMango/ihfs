@@ -3,6 +3,7 @@ package tarfs_test
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 
@@ -145,6 +146,60 @@ var _ = Describe("Fs", func() {
 			file, err := tfs.Open("test.txt")
 			Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("lazy loading", func() {
+		It("should only read tar entries as needed", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			// Write multiple files
+			for i := 1; i <= 5; i++ {
+				num := fmt.Sprintf("%d", i)
+				name := "file" + num + ".txt"
+				content := "content " + num
+
+				err := tw.WriteHeader(&tar.Header{
+					Name: name,
+					Mode: 0644,
+					Size: int64(len(content)),
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = tw.Write([]byte(content))
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/lazy.tar"
+			err := os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Open first file - should only read up to it
+			file1, err := tfs.Open("file1.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content1, err := io.ReadAll(file1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content1)).To(Equal("content 1"))
+
+			// Open last file - should read through entire archive
+			file5, err := tfs.Open("file5.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content5, err := io.ReadAll(file5)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content5)).To(Equal("content 5"))
+
+			// Open middle file - should be cached now
+			file3, err := tfs.Open("file3.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content3, err := io.ReadAll(file3)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content3)).To(Equal("content 3"))
 		})
 	})
 

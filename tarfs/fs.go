@@ -15,6 +15,7 @@ type Fs struct {
 	name string
 	mux  sync.RWMutex
 	tar  io.ReadCloser
+	tr   *tar.Reader
 
 	fs map[string]*fileData
 }
@@ -34,14 +35,15 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 }
 
 func FromReader(name string, r io.Reader) *Fs {
-	fs := &Fs{name: name, fs: map[string]*fileData{}}
+	tfs := &Fs{name: name, fs: map[string]*fileData{}}
 	if rc, ok := r.(io.ReadCloser); ok {
-		fs.tar = rc
+		tfs.tar = rc
 	} else {
-		fs.tar = io.NopCloser(r)
+		tfs.tar = io.NopCloser(r)
 	}
 
-	return fs
+	tfs.tr = tar.NewReader(tfs.tar)
+	return tfs
 }
 
 func (t *Fs) Close() error {
@@ -54,6 +56,7 @@ func (t *Fs) Close() error {
 
 	err := t.tar.Close()
 	t.tar = nil
+	t.tr = nil
 	return err
 }
 
@@ -65,34 +68,56 @@ func (t *Fs) Name() string {
 // Open implements [fs.FS].
 func (t *Fs) Open(name string) (fs.File, error) {
 	t.mux.RLock()
-	defer t.mux.RUnlock()
 
 	if fd, ok := t.fs[name]; ok {
+		t.mux.RUnlock()
 		return fd.file(), nil
 	}
 
-	tr := tar.NewReader(t.tar)
+	if t.tr == nil {
+		t.mux.RUnlock()
+		return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
+	}
 
+	t.mux.RUnlock()
+	t.mux.Lock()
+
+	// Check again in case another goroutine loaded it
+	if fd, ok := t.fs[name]; ok {
+		t.mux.Unlock()
+		return fd.file(), nil
+	}
+
+	if t.tr == nil {
+		t.mux.Unlock()
+		return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
+	}
+
+	// Lazy-load entries until we find the requested file
 	for {
-		fd, err := next(tr)
+		fd, err := next(t.tr)
 		if err == io.EOF {
-			break
+			// Reached end of tar archive, close it
+			closeErr := t.tar.Close()
+			t.tar = nil
+			t.tr = nil
+			t.mux.Unlock()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+			return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
 		}
 		if err != nil {
+			t.mux.Unlock()
 			return nil, err
 		}
 
 		t.fs[fd.hdr.Name] = fd
 		if fd.hdr.Name == name {
+			t.mux.Unlock()
 			return fd.file(), nil
 		}
 	}
-
-	if err := t.Close(); err != nil {
-		return nil, err
-	}
-
-	return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
 }
 
 func next(tr *tar.Reader) (*fileData, error) {
