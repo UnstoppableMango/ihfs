@@ -14,10 +14,9 @@ import (
 type Fs struct {
 	name  string
 	cache *cache
-
-	tarMux sync.Mutex
-	tar    io.ReadCloser
-	tr     *tar.Reader
+	mux   sync.Mutex
+	tar   io.ReadCloser
+	tr    *tar.Reader
 }
 
 // Open opens a tar file as a read-only file system.
@@ -64,8 +63,8 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	}
 
 	// Not in cache, read from tar (only one goroutine at a time)
-	t.tarMux.Lock()
-	defer t.tarMux.Unlock()
+	t.mux.Lock()
+	defer t.mux.Unlock()
 
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
@@ -74,23 +73,32 @@ func (t *Fs) Open(name string) (fs.File, error) {
 
 	// Check if tar is exhausted
 	if t.tr == nil {
-		return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
+		return nil, t.error(name,
+			fs.ErrNotExist,
+			fmt.Errorf("tar reader is exhausted"),
+		)
 	}
 
 	// Lazy-load entries until we find the requested file
 	for {
 		fd, err := next(t.tr)
-		if err == io.EOF {
-			return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
-		}
 		if err != nil {
-			return nil, err
+			return nil, t.error(name, fs.ErrNotExist, err)
 		}
 
 		t.cache.set(fd.hdr.Name, fd)
 		if fd.hdr.Name == name {
 			return fd.file(), nil
 		}
+	}
+}
+
+func (t *Fs) error(name string, err, cause error) error {
+	return &TarError{
+		Archive: t.name,
+		Name:    name,
+		Err:     err,
+		Cause:   cause,
 	}
 }
 
@@ -105,4 +113,16 @@ func next(tr *tar.Reader) (*fileData, error) {
 	} else {
 		return &fileData{hdr, data}, nil
 	}
+}
+
+type TarError struct {
+	Archive, Name string
+	Err, Cause    error
+}
+
+func (e *TarError) Error() string {
+	return fmt.Sprintf(
+		"%s(%s): %v: %v",
+		e.Archive, e.Name, e.Err, e.Cause,
+	)
 }

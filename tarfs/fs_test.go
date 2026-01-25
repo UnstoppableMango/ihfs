@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -38,6 +39,68 @@ var _ = Describe("Fs", func() {
 			name := tfs.Name()
 
 			Expect(name).To(Equal("../testdata/test.tar"))
+		})
+	})
+
+	Describe("Close", func() {
+		It("should close the tar file", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tfs.Close()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when opening file after Close", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(tfs.Close()).To(Succeed())
+
+			file, err := tfs.Open("tartest/test.txt")
+			Expect(err).To(MatchError(ContainSubstring("file does not exist")))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("FromReader", func() {
+		It("should create Fs from io.Reader", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name: "test.txt",
+				Mode: 0644,
+				Size: 4,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("test"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tw.Close()).To(Succeed())
+
+			// Create from plain io.Reader (not io.ReadCloser)
+			reader := bytes.NewReader(buf.Bytes())
+			tfs := tarfs.FromReader("test.tar", reader)
+
+			Expect(tfs).NotTo(BeNil())
+			Expect(tfs.Name()).To(Equal("test.tar"))
+
+			file, err := tfs.Open("test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("test"))
+		})
+
+		It("should create Fs from io.ReadCloser", func() {
+			file, err := os.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			tfs := tarfs.FromReader("test.tar", file)
+
+			Expect(tfs).NotTo(BeNil())
+			Expect(tfs.Name()).To(Equal("test.tar"))
 		})
 	})
 
@@ -144,7 +207,12 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			file, err := tfs.Open("test.txt")
-			Expect(err).To(MatchError(io.ErrUnexpectedEOF))
+			Expect(err).To(MatchError(&tarfs.TarError{
+				Archive: testPath,
+				Name:    "test.txt",
+				Err:     fs.ErrNotExist,
+				Cause:   io.ErrUnexpectedEOF,
+			}))
 			Expect(file).To(BeNil())
 		})
 	})
