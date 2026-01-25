@@ -79,10 +79,6 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 		return file.file(), nil
 	}
 
-	if t.closed {
-		return nil, t.notExist(name, ihfs.ErrClosed)
-	}
-
 	// Not in cache, read from tar (only one goroutine at a time)
 	t.mux.Lock()
 	defer t.mux.Unlock()
@@ -90,6 +86,10 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
+	}
+
+	if t.closed {
+		return nil, t.notExist(name, ihfs.ErrClosed)
 	}
 
 	// Lazy-load entries until we find the requested file
