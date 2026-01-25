@@ -10,6 +10,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
+	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
@@ -210,6 +211,50 @@ var _ = Describe("Try Util", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(try.ErrUnsupported))
 			Expect(isDir).To(BeFalse())
+		})
+	})
+
+	Describe("ReadDir", func() {
+		It("should read directory entries", func() {
+			fsys := osfs.New()
+
+			entries, err := try.ReadDir(fsys, "../../testdata/2-files")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(2))
+			Expect(entries[0].Name()).To(Equal("one.txt"))
+			Expect(entries[1].Name()).To(Equal("two.txt"))
+		})
+
+		It("should return error when fs does not support ReadDir", func() {
+			fsys := boringFS{FS: testfs.New()}
+
+			entries, err := try.ReadDir(fsys, "./nonexistent")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(entries).To(BeNil())
+		})
+	})
+
+	Describe("ReadDirNames", func() {
+		It("should read directory entry names", func() {
+			fsys := osfs.New()
+
+			names, err := try.ReadDirNames(fsys, "../../testdata/2-files")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(names).To(ConsistOf("one.txt", "two.txt"))
+		})
+
+		It("should return error when fs does not support ReadDir", func() {
+			fsys := boringFS{FS: testfs.New()}
+
+			names, err := try.ReadDirNames(fsys, "./nonexistent")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(names).To(BeNil())
 		})
 	})
 })

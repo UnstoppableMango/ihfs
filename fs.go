@@ -17,11 +17,26 @@ type (
 	Stat     = fs.StatFS
 	Sub      = fs.SubFS
 
-	DirEntry = fs.DirEntry
-	File     = fs.File
-	FileInfo = fs.FileInfo
-	FileMode = fs.FileMode
+	DirEntry  = fs.DirEntry
+	File      = fs.File
+	FileInfo  = fs.FileInfo
+	FileMode  = fs.FileMode
+	PathError = fs.PathError
 )
+
+var (
+	ErrClosed     = fs.ErrClosed
+	ErrExist      = fs.ErrExist
+	ErrInvalid    = fs.ErrInvalid
+	ErrNotExist   = fs.ErrNotExist
+	ErrPermission = fs.ErrPermission
+)
+
+// Operation represents a file system operation.
+type Operation interface {
+	// Subject returns the subject of the operation, typically a file or directory path.
+	Subject() string
+}
 
 // Ensure interface compliance.
 var _ FS = (Os)(nil)
@@ -139,25 +154,4 @@ type WriteFile interface {
 
 	// WriteFile writes data to the named file.
 	WriteFile(name string, data []byte, perm FileMode) error
-}
-
-// ReadDirNames reads the named directory and returns a list of names.
-func ReadDirNames(f FS, name string) ([]string, error) {
-	entries, err := dirEntries(f, name)
-	if err != nil {
-		return nil, err
-	}
-
-	names := make([]string, len(entries))
-	for i, entry := range entries {
-		names[i] = entry.Name()
-	}
-	return names, nil
-}
-
-func dirEntries(f FS, name string) ([]DirEntry, error) {
-	if dirfs, ok := f.(ReadDir); ok {
-		return dirfs.ReadDir(name)
-	}
-	return fs.ReadDir(f, name)
 }
