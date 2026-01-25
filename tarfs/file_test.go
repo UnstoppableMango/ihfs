@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("File", func() {
 	var (
-		tfs  *tarfs.Fs
+		tfs  *tarfs.TarFile
 		file fs.File
 	)
 

@@ -4,9 +4,9 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"io/fs"
 	"sync"
 
+	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 )
 
@@ -15,11 +15,12 @@ import (
 //
 // Entries are accessed in order and cached as they are read, so random access may be inefficient.
 type TarFile struct {
-	name  string
-	cache *cache
-	mux   sync.Mutex
-	tar   io.ReadCloser
-	tr    *tar.Reader
+	name   string
+	cache  *cache
+	mux    sync.Mutex
+	tar    io.ReadCloser
+	tr     *tar.Reader
+	closed bool
 }
 
 // Open opens a tar file as a read-only file system.
@@ -28,7 +29,7 @@ func Open(name string) (*TarFile, error) {
 }
 
 // OpenFS opens a tar file from fs as a read-only file system.
-func OpenFS(fs fs.FS, name string) (*TarFile, error) {
+func OpenFS(fs ihfs.FS, name string) (*TarFile, error) {
 	if f, err := fs.Open(name); err != nil {
 		return nil, err
 	} else {
@@ -56,6 +57,14 @@ func FromReader(name string, r io.Reader) *TarFile {
 
 // Close closes the underlying tar archive.
 func (t *TarFile) Close() error {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	if t.closed {
+		return nil
+	}
+
+	t.closed = true
 	return t.tar.Close()
 }
 
@@ -64,10 +73,14 @@ func (t *TarFile) Name() string {
 	return t.name
 }
 
-// Open implements [fs.FS].
-func (t *TarFile) Open(name string) (fs.File, error) {
+// Open implements [ihfs.FS].
+func (t *TarFile) Open(name string) (ihfs.File, error) {
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
+	}
+
+	if t.closed {
+		return nil, t.notExist(name, ihfs.ErrClosed)
 	}
 
 	// Not in cache, read from tar (only one goroutine at a time)
@@ -83,10 +96,13 @@ func (t *TarFile) Open(name string) (fs.File, error) {
 	for {
 		fd, err := next(t.tr)
 		if err == io.EOF {
-			t.Close()
+			if closeErr := t.close(); closeErr != nil {
+				return nil, t.notExist(name, closeErr)
+			}
+			return nil, t.notExist(name, err)
 		}
 		if err != nil {
-			return nil, t.error(name, fs.ErrNotExist, err)
+			return nil, t.notExist(name, err)
 		}
 
 		t.cache.set(fd.hdr.Name, fd)
@@ -94,6 +110,15 @@ func (t *TarFile) Open(name string) (fs.File, error) {
 			return fd.file(), nil
 		}
 	}
+}
+
+func (t *TarFile) close() error {
+	t.closed = true
+	return t.tar.Close()
+}
+
+func (t *TarFile) notExist(name string, cause error) error {
+	return t.error(name, ihfs.ErrNotExist, cause)
 }
 
 func (t *TarFile) error(name string, err, cause error) error {
