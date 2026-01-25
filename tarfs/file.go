@@ -7,6 +7,7 @@ import (
 	"io/fs"
 )
 
+// File represents a file in a tar archive.
 type File struct {
 	io.Reader
 	hdr *tar.Header
@@ -22,6 +23,7 @@ func (f *File) Stat() (fs.FileInfo, error) {
 	return f.hdr.FileInfo(), nil
 }
 
+// Name returns the name of the tar entry.
 func (f *File) Name() string {
 	return f.hdr.Name
 }
