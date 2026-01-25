@@ -15,7 +15,7 @@ type Fs struct {
 	name string
 	mux  sync.Mutex
 	tr   *tar.Reader
-	fs   map[string]*File
+	fs   map[string]fileData
 }
 
 func Open(name string) (*Fs, error) {
@@ -31,7 +31,7 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	return &Fs{
 		name: name,
 		tr:   tar.NewReader(f),
-		fs:   map[string]*File{},
+		fs:   map[string]fileData{},
 	}, nil
 }
 
@@ -39,14 +39,17 @@ func (t *Fs) Name() string {
 	return t.name
 }
 
-// Open implements [TarFile].
+// Open implements [fs.FS].
 func (t *Fs) Open(name string) (fs.File, error) {
-	if f, ok := t.fs[name]; ok {
-		return f, nil
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	if fd, ok := t.fs[name]; ok {
+		return fd.file(), nil
 	}
 
 	for {
-		file, err := t.next()
+		fd, err := t.next()
 		if err == io.EOF {
 			break
 		}
@@ -54,28 +57,30 @@ func (t *Fs) Open(name string) (fs.File, error) {
 			return nil, err
 		}
 
-		t.fs[file.Name()] = file
-		if file.Name() == name {
-			return file, nil
+		t.fs[fd.hdr.Name] = fd
+		if fd.hdr.Name == name {
+			return fd.file(), nil
 		}
 	}
 
 	return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
 }
 
-func (t *Fs) next() (*File, error) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
-
+// next reads the next entry from the tar reader.
+// Caller must hold t.mux.
+func (t *Fs) next() (fileData, error) {
 	hdr, err := t.tr.Next()
 	if err != nil {
-		return nil, err
+		return fileData{}, err
 	}
 
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(t.tr); err != nil {
-		return nil, err
+		return fileData{}, err
 	}
 
-	return &File{hdr, &buf}, nil
+	return fileData{
+		hdr:  hdr,
+		data: buf.Bytes(),
+	}, nil
 }

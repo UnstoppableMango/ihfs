@@ -88,4 +88,12 @@ var _ = Describe("File", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Describe("Name", func() {
+		It("should return the file path", func() {
+			tf, ok := file.(*tarfs.File)
+			Expect(ok).To(BeTrueBecause("file is a *tarfs.File"))
+			Expect(tf.Name()).To(Equal("tartest/test.txt"))
+		})
+	})
 })
