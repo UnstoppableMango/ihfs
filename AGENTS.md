@@ -182,11 +182,11 @@ nix fmt
 
 Example:
 ```go
-type MyFS struct {
+type Fs struct {
     // fields
 }
 
-func (fs *MyFS) Open(name string) (ihfs.File, error) {
+func (fs *Fs) Open(name string) (ihfs.File, error) {
     // implementation
 }
 ```
