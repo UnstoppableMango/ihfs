@@ -10,8 +10,11 @@ import (
 	"github.com/unstoppablemango/ihfs/osfs"
 )
 
-// Fs represents a read-only file system backed by a tar archive.
-type Fs struct {
+// TarFile represents a read-only file system backed by a tar archive.
+// It will lazily buffer the contents of the tar archive as files are accessed.
+//
+// Entries are accessed in order and cached as they are read, so random access may be inefficient.
+type TarFile struct {
 	name  string
 	cache *cache
 	mux   sync.Mutex
@@ -20,12 +23,12 @@ type Fs struct {
 }
 
 // Open opens a tar file as a read-only file system.
-func Open(name string) (*Fs, error) {
+func Open(name string) (*TarFile, error) {
 	return OpenFS(osfs.Default, name)
 }
 
 // OpenFS opens a tar file from fs as a read-only file system.
-func OpenFS(fs fs.FS, name string) (*Fs, error) {
+func OpenFS(fs fs.FS, name string) (*TarFile, error) {
 	if f, err := fs.Open(name); err != nil {
 		return nil, err
 	} else {
@@ -33,15 +36,15 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	}
 }
 
-// FromReader creates a new Fs from an [io.Reader] containing a tar archive.
+// FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
 //
 // FromReader takes ownership of r, reading from it as needed. If r is an
 // [io.ReadCloser] it will be closed when either [r.Read] returns an error
 // or [Close] is called.
 //
 // If r is not an [io.ReadCloser], it will be wrapped in [io.NopCloser].
-func FromReader(name string, r io.Reader) *Fs {
-	tfs := &Fs{name: name, cache: newCache()}
+func FromReader(name string, r io.Reader) *TarFile {
+	tfs := &TarFile{name: name, cache: newCache()}
 	if rc, ok := r.(io.ReadCloser); ok {
 		tfs.tar = rc
 	} else {
@@ -52,17 +55,17 @@ func FromReader(name string, r io.Reader) *Fs {
 }
 
 // Close closes the underlying tar archive.
-func (t *Fs) Close() error {
+func (t *TarFile) Close() error {
 	return t.tar.Close()
 }
 
 // Name returns the name of the tar file backing this file system.
-func (t *Fs) Name() string {
+func (t *TarFile) Name() string {
 	return t.name
 }
 
 // Open implements [fs.FS].
-func (t *Fs) Open(name string) (fs.File, error) {
+func (t *TarFile) Open(name string) (fs.File, error) {
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
 	}
@@ -93,7 +96,7 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	}
 }
 
-func (t *Fs) error(name string, err, cause error) error {
+func (t *TarFile) error(name string, err, cause error) error {
 	return &TarError{
 		Archive: t.name,
 		Name:    name,
