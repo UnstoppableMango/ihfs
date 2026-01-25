@@ -13,14 +13,16 @@ type (
 )
 
 type Fs struct {
-	OpenFunc func(string) (ihfs.File, error)
-	StatFunc func(string) (ihfs.FileInfo, error)
+	OpenFunc      func(string) (ihfs.File, error)
+	StatFunc      func(string) (ihfs.FileInfo, error)
+	WriteFileFunc func(string, []byte, ihfs.FileMode) error
 }
 
 func New(opts ...Option) Fs {
 	fs := Fs{
-		OpenFunc: defaultOpenFunc,
-		StatFunc: defaultStatFunc,
+		OpenFunc:      defaultOpenFunc,
+		StatFunc:      defaultStatFunc,
+		WriteFileFunc: defaultWriteFileFunc,
 	}
 
 	fopt.ApplyAll(&fs, opts)
@@ -41,4 +43,12 @@ func (fs Fs) Stat(name string) (ihfs.FileInfo, error) {
 
 func defaultStatFunc(name string) (ihfs.FileInfo, error) {
 	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
+	return fs.WriteFileFunc(name, data, perm)
+}
+
+func defaultWriteFileFunc(name string, data []byte, perm ihfs.FileMode) error {
+	return fs.ErrPermission
 }
