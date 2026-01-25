@@ -12,12 +12,12 @@ import (
 
 // Fs represents a read-only file system backed by a tar archive.
 type Fs struct {
-	name string
-	mux  sync.RWMutex
-	tar  io.ReadCloser
-	tr   *tar.Reader
+	name  string
+	cache *cache
 
-	fs map[string]*fileData
+	tarMux sync.Mutex
+	tar    io.ReadCloser
+	tr     *tar.Reader
 }
 
 // Open opens a tar file as a read-only file system.
@@ -34,30 +34,21 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	}
 }
 
+// FromReader creates a new Fs from an io.Reader containing a tar archive.
 func FromReader(name string, r io.Reader) *Fs {
-	tfs := &Fs{name: name, fs: map[string]*fileData{}}
+	tfs := &Fs{name: name, cache: newCache()}
 	if rc, ok := r.(io.ReadCloser); ok {
 		tfs.tar = rc
 	} else {
 		tfs.tar = io.NopCloser(r)
 	}
-
 	tfs.tr = tar.NewReader(tfs.tar)
 	return tfs
 }
 
+// Close closes the underlying tar archive.
 func (t *Fs) Close() error {
-	t.mux.Lock()
-	defer t.mux.Unlock()
-
-	if t.tar == nil {
-		return nil
-	}
-
-	err := t.tar.Close()
-	t.tar = nil
-	t.tr = nil
-	return err
+	return t.tar.Close()
 }
 
 // Name returns the name of the tar file backing this file system.
@@ -67,29 +58,22 @@ func (t *Fs) Name() string {
 
 // Open implements [fs.FS].
 func (t *Fs) Open(name string) (fs.File, error) {
-	t.mux.RLock()
-
-	if fd, ok := t.fs[name]; ok {
-		t.mux.RUnlock()
-		return fd.file(), nil
+	// Check cache first with read lock
+	if file := t.cache.get(name); file != nil {
+		return file.file(), nil
 	}
 
+	// Not in cache, read from tar (only one goroutine at a time)
+	t.tarMux.Lock()
+	defer t.tarMux.Unlock()
+
+	// Check cache again in case another goroutine loaded it
+	if file := t.cache.get(name); file != nil {
+		return file.file(), nil
+	}
+
+	// Check if tar is exhausted
 	if t.tr == nil {
-		t.mux.RUnlock()
-		return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
-	}
-
-	t.mux.RUnlock()
-	t.mux.Lock()
-
-	// Check again in case another goroutine loaded it
-	if fd, ok := t.fs[name]; ok {
-		t.mux.Unlock()
-		return fd.file(), nil
-	}
-
-	if t.tr == nil {
-		t.mux.Unlock()
 		return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
 	}
 
@@ -97,24 +81,14 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	for {
 		fd, err := next(t.tr)
 		if err == io.EOF {
-			// Reached end of tar archive, close it
-			closeErr := t.tar.Close()
-			t.tar = nil
-			t.tr = nil
-			t.mux.Unlock()
-			if closeErr != nil {
-				return nil, closeErr
-			}
 			return nil, fmt.Errorf("%s: %w", name, fs.ErrNotExist)
 		}
 		if err != nil {
-			t.mux.Unlock()
 			return nil, err
 		}
 
-		t.fs[fd.hdr.Name] = fd
+		t.cache.set(fd.hdr.Name, fd)
 		if fd.hdr.Name == name {
-			t.mux.Unlock()
 			return fd.file(), nil
 		}
 	}
