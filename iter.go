@@ -17,6 +17,11 @@ var (
 	SkipDir = fs.SkipDir
 )
 
+// Catch iterates over seq until an error occurs and returns the error and
+// a Seq iterating over all paths and directory entries found before the error.
+//
+// When no error occurs, Catch returns a Seq that iterates over all paths and
+// directory entries from seq.
 func Catch(seq iter.Seq3[string, DirEntry, error]) (iter.Seq2[string, DirEntry], error) {
 	var (
 		final   error

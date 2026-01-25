@@ -2,7 +2,10 @@ package fsutil
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
+	"os"
 
 	"github.com/unstoppablemango/ihfs"
 )
@@ -34,5 +37,13 @@ func IsDir(fsys ihfs.Stat, path string) (bool, error) {
 		return false, err
 	} else {
 		return info.IsDir(), nil
+	}
+}
+
+func WriteReader(fsys ihfs.WriteFile, name string, r io.Reader) error {
+	if data, err := io.ReadAll(r); err != nil {
+		return fmt.Errorf("reading: %w", err)
+	} else {
+		return fsys.WriteFile(name, data, os.ModePerm)
 	}
 }
