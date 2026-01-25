@@ -2,6 +2,9 @@ package fsutil
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"os"
 
 	"github.com/unstoppablemango/ihfs"
 )
@@ -48,4 +51,12 @@ func ReadDirNames(f ihfs.ReadDir, name string) ([]string, error) {
 		names[i] = entry.Name()
 	}
 	return names, nil
+}
+
+func WriteReader(fsys ihfs.WriteFile, name string, r io.Reader) error {
+	if data, err := io.ReadAll(r); err != nil {
+		return fmt.Errorf("reading: %w", err)
+	} else {
+		return fsys.WriteFile(name, data, os.ModePerm)
+	}
 }
