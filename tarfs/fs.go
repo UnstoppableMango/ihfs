@@ -36,7 +36,7 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 // FromReader creates a new Fs from an [io.Reader] containing a tar archive.
 //
 // FromReader takes ownership of r, reading from it as needed. If r is an
-// [io.ReadCloser] it will be closed when either [Read] returns an error
+// [io.ReadCloser] it will be closed when either [r.Read] returns an error
 // or [Close] is called.
 //
 // If r is not an [io.ReadCloser], it will be wrapped in [io.NopCloser].
@@ -125,4 +125,8 @@ func (e *TarError) Error() string {
 		"%s(%s): %v: %v",
 		e.Archive, e.Name, e.Err, e.Cause,
 	)
+}
+
+func (e *TarError) Unwrap() []error {
+	return []error{e.Err, e.Cause}
 }

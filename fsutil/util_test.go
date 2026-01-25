@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io/fs"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -208,12 +207,12 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := bytes.NewReader([]byte("test content"))
-			err := fsutil.WriteReader(fsys, "test.txt", reader)
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(capturedName).To(Equal("test.txt"))
 			Expect(capturedData).To(Equal([]byte("test content")))
-			Expect(capturedPerm).To(Equal(os.ModePerm))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0x644)))
 		})
 
 		It("should return error when reading fails", func() {
@@ -222,7 +221,7 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := &errorReader{err: errors.New("read error")}
-			err := fsutil.WriteReader(fsys, "test.txt", reader)
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("reading"))
@@ -236,7 +235,7 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := bytes.NewReader([]byte("test content"))
-			err := fsutil.WriteReader(fsys, "test.txt", reader)
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(writeErr))
