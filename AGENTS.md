@@ -58,8 +58,9 @@ nix fmt
 
 ### Package Structure
 
-- Type aliases in `fs.go` for standard interfaces
-- Custom operations defined in `op.go`
+- Type aliases and error constants in `fs.go` for standard interfaces
+- `Operation` interface defined in `fs.go`
+- Concrete operation types in `op/` package
 - Implementation packages in subdirectories (e.g., `osfs/`, `testfs/`)
 - Iterator utilities in `iter.go`
 - Utility functions in `fsutil/` package
@@ -101,8 +102,7 @@ nix fmt
 ### Entry Points & Core Files
 
 #### Root Package (`./`)
-- **`fs.go`**: Type aliases for `io/fs` interfaces + custom FS interfaces (Chmod, Chown, Chtimes, etc.)
-- **`op.go`**: Operation interface definition (`Operation` with `Subject()` method)
+- **`fs.go`**: Type aliases for `io/fs` interfaces + standard error aliases + `Operation` interface definition + custom FS interfaces (Chmod, Chown, Chtimes, Copy, Mkdir, etc.)
 - **`iter.go`**: Iterator utilities for traversing filesystems (`Iter`, `Catch` functions)
 
 #### Implementation Packages
@@ -111,7 +111,7 @@ nix fmt
   - `fs.go`: Test filesystem implementation
   - `fileinfo.go`: Test FileInfo implementation
   - `option.go`: Option pattern for test setup
-- **`tarfs/`**: Tar filesystem implementation
+- **`tarfs/`**: Tar filesystem implementation (directory exists, implementation pending)
 
 #### Operation Types
 - **`op/`**: File system operation definitions
@@ -129,12 +129,13 @@ nix fmt
 - Run: `make test` or `go tool ginkgo -r`
 
 #### Test Files by Package
-- **Root (`ihfs_test`)**: `ihfs_suite_test.go`, `fs_test.go`, `iter_test.go`
+- **Root (`ihfs_test`)**: `ihfs_suite_test.go`, `iter_test.go`
 - **fsutil (`fsutil_test`)**: `fsutil_suite_test.go`, `util_test.go`
 - **fsutil/try (`try_test`)**: `try_suite_test.go`, `util_test.go`
 
 #### Test Data
 - **`testdata/`**: Test fixtures and sample files
+  - `2-files/`: Fixture with two files for testing
 
 ### Build & CI Configuration
 - **`Makefile`**: Build targets (`build`, `test`, `cover`, `fmt`)
@@ -158,17 +159,17 @@ nix fmt
 
 ```
 .
-├── fs.go              # Type aliases for standard fs interfaces
+├── fs.go              # Type aliases, error aliases, Operation interface, and custom FS interfaces
 ├── iter.go            # Iterator utilities for filesystem traversal
-├── op.go              # Operation interface definitions
-├── op/                # Operation implementations
+├── op/                # Concrete operation type implementations (Open, Glob, etc.)
 ├── fsutil/            # Filesystem utility functions
 │   ├── util.go        # Utility functions for Stat interface
 │   └── try/           # Type-safe utility functions with interface checks
 ├── osfs/              # OS filesystem implementation
-├── tarfs/             # Tar filesystem implementation
+├── tarfs/             # Tar filesystem implementation (pending)
 ├── testfs/            # Test filesystem utilities
 └── testdata/          # Test data files
+    └── 2-files/       # Test fixture with two files
 ```
 
 ## Common Tasks
