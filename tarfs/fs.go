@@ -97,6 +97,7 @@ func (t *Fs) Open(name string) (fs.File, error) {
 			if closeErr := t.tar.Close(); closeErr != nil {
 				return nil, t.error(name, fs.ErrNotExist, closeErr)
 			}
+			return nil, t.error(name, fs.ErrNotExist, err)
 		}
 		if err != nil {
 			return nil, t.error(name, fs.ErrNotExist, err)
