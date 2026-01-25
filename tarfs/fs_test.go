@@ -240,4 +240,114 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(Equal(io.EOF))
 		})
 	})
+
+	Describe("concurrent access", func() {
+		It("should handle concurrent Open calls on different files", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan bool)
+			const goroutines = 10
+
+			for range goroutines {
+				go func() {
+					defer GinkgoRecover()
+					file, err := tfs.Open("tartest/test.txt")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(file).NotTo(BeNil())
+
+					content, err := io.ReadAll(file)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(content)).To(Equal("test content\n"))
+
+					done <- true
+				}()
+			}
+
+			for range goroutines {
+				<-done
+			}
+		})
+
+		It("should handle concurrent Open calls on the same file", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan bool)
+			const goroutines = 20
+
+			for range goroutines {
+				go func() {
+					defer GinkgoRecover()
+					file, err := tfs.Open("tartest/test.txt")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(file).NotTo(BeNil())
+					done <- true
+				}()
+			}
+
+			for range goroutines {
+				<-done
+			}
+		})
+
+		It("should handle concurrent Open calls on multiple files", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan bool)
+			const goroutines = 20
+
+			for i := range goroutines {
+				fileName := "tartest/test.txt"
+				if i%2 == 0 {
+					fileName = "tartest/another.txt"
+				}
+
+				go func(name string) {
+					defer GinkgoRecover()
+					file, err := tfs.Open(name)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(file).NotTo(BeNil())
+					done <- true
+				}(fileName)
+			}
+
+			for range goroutines {
+				<-done
+			}
+		})
+
+		It("should handle concurrent reads from cached files", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Pre-cache the file
+			_, err = tfs.Open("tartest/test.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan bool)
+			const goroutines = 20
+
+			for range goroutines {
+				go func() {
+					defer GinkgoRecover()
+					// This should hit the cache
+					file, err := tfs.Open("tartest/test.txt")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(file).NotTo(BeNil())
+
+					content, err := io.ReadAll(file)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(content)).To(Equal("test content\n"))
+
+					done <- true
+				}()
+			}
+
+			for range goroutines {
+				<-done
+			}
+		})
+	})
 })
