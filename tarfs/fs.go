@@ -2,12 +2,12 @@ package tarfs
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
 	"sync"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 )
 
@@ -22,7 +22,7 @@ func Open(name string) (*Fs, error) {
 	return OpenFS(osfs.Default, name)
 }
 
-func OpenFS(fs ihfs.FS, name string) (*Fs, error) {
+func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	f, err := fs.Open(name)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (t *Fs) Name() string {
 }
 
 // Open implements [TarFile].
-func (t *Fs) Open(name string) (ihfs.File, error) {
+func (t *Fs) Open(name string) (fs.File, error) {
 	if f, ok := t.fs[name]; ok {
 		return f, nil
 	}
@@ -72,10 +72,10 @@ func (t *Fs) next() (*File, error) {
 		return nil, err
 	}
 
-	file := File{hdr: hdr}
-	if err := file.readFrom(t.tr); err != nil {
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(t.tr); err != nil {
 		return nil, err
 	}
 
-	return &file, nil
+	return &File{hdr, &buf}, nil
 }
