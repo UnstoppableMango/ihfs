@@ -24,7 +24,7 @@ func Open(name string) (*Fs, error) {
 	return OpenFS(osfs.Default, name)
 }
 
-// OpenFS opens a tar file from the given file system as a read-only file system.
+// OpenFS opens a tar file from fs as a read-only file system.
 func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	if f, err := fs.Open(name); err != nil {
 		return nil, err
@@ -33,7 +33,13 @@ func OpenFS(fs fs.FS, name string) (*Fs, error) {
 	}
 }
 
-// FromReader creates a new Fs from an io.Reader containing a tar archive.
+// FromReader creates a new Fs from an [io.Reader] containing a tar archive.
+//
+// FromReader takes ownership of r, reading from it as needed. If r is an
+// [io.ReadCloser] it will be closed when either [Read] returns an error
+// or [Close] is called.
+//
+// If r is not an [io.ReadCloser], it will be wrapped in [io.NopCloser].
 func FromReader(name string, r io.Reader) *Fs {
 	tfs := &Fs{name: name, cache: newCache()}
 	if rc, ok := r.(io.ReadCloser); ok {
@@ -57,7 +63,6 @@ func (t *Fs) Name() string {
 
 // Open implements [fs.FS].
 func (t *Fs) Open(name string) (fs.File, error) {
-	// Check cache first with read lock
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
 	}
@@ -74,6 +79,9 @@ func (t *Fs) Open(name string) (fs.File, error) {
 	// Lazy-load entries until we find the requested file
 	for {
 		fd, err := next(t.tr)
+		if err == io.EOF {
+			t.Close()
+		}
 		if err != nil {
 			return nil, t.error(name, fs.ErrNotExist, err)
 		}
