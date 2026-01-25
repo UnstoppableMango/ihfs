@@ -1,6 +1,8 @@
 package tarfs_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"io"
 	"os"
 
@@ -122,23 +124,26 @@ var _ = Describe("Fs", func() {
 	})
 
 	Describe("error handling", func() {
-		It("should return error when tar reader fails during Open", func() {
-			tfs, err := tarfs.Open("../testdata/corrupted.tar")
+		It("should handle broken tar with incomplete content", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			tw.WriteHeader(&tar.Header{
+				Name: "test.txt",
+				Size: 1000,
+				Mode: 0600,
+			})
+			tw.Write([]byte("short"))
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/incomplete.tar"
+			err := os.WriteFile(testPath, buf.Bytes(), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := tfs.Open("any-file.txt")
-
-			Expect(err).To(HaveOccurred())
-			Expect(file).To(BeNil())
-		})
-
-		It("should return error when reading truncated tar", func() {
-			tfs, err := tarfs.Open("../testdata/truncated.tar")
+			tfs, err := tarfs.Open(testPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := tfs.Open("any-file.txt")
-
-			Expect(err).To(HaveOccurred())
+			file, err := tfs.Open("test.txt")
+			Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 			Expect(file).To(BeNil())
 		})
 	})
