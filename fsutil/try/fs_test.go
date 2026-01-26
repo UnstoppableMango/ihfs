@@ -69,7 +69,7 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.DirExists(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -114,7 +114,7 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.Exists(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -163,7 +163,7 @@ var _ = Describe("Try Util", func() {
 			info, err := try.Stat(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(info).To(BeNil())
 		})
 	})
@@ -209,7 +209,7 @@ var _ = Describe("Try Util", func() {
 			isDir, err := try.IsDir(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(isDir).To(BeFalse())
 		})
 	})
@@ -232,7 +232,7 @@ var _ = Describe("Try Util", func() {
 			entries, err := try.ReadDir(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(entries).To(BeNil())
 		})
 	})
@@ -253,7 +253,7 @@ var _ = Describe("Try Util", func() {
 			names, err := try.ReadDirNames(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(names).To(BeNil())
 		})
 	})
