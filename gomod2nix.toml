@@ -44,8 +44,8 @@ schema = 3
     version = "v1.0.6"
     hash = "sha256-NjrK0FZPIfO/p2xtL1J7fOBQNTZAPZOC6Cb4aMMvhxI="
   [mod."github.com/unmango/go"]
-    version = "v0.12.1"
-    hash = "sha256-3pTPYU5xtrof76hUbN4qaaAZxQtIVoYpxMLkGAfRve4="
+    version = "v0.13.0"
+    hash = "sha256-iFjVpqDzTA0zL3KvSAQ7QSm85FhJuSipgkN0FOc/OZM="
   [mod."go.yaml.in/yaml/v3"]
     version = "v3.0.4"
     hash = "sha256-NkGFiDPoCxbr3LFsI6OCygjjkY0rdmg5ggvVVwpyDQ4="
