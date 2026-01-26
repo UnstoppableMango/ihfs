@@ -94,7 +94,7 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Lazy-load entries until we find the requested file
 	for {
-		fd, err := next(t.tr)
+		hdr, err := t.tr.Next()
 		if err == io.EOF {
 			if closeErr := t.close(); closeErr != nil {
 				return nil, t.notExist(name, closeErr)
@@ -105,8 +105,13 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			return nil, t.notExist(name, err)
 		}
 
-		t.cache.set(fd.hdr.Name, fd)
-		if fd.hdr.Name == name {
+		if hdr.Name == name {
+			data, err := io.ReadAll(t.tr)
+			if err != nil {
+				return nil, t.notExist(name, err)
+			}
+			fd := &fileData{hdr, data}
+			t.cache.set(hdr.Name, fd)
 			return fd.file(), nil
 		}
 	}
