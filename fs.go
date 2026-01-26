@@ -16,27 +16,7 @@ type (
 	ReadLink = fs.ReadLinkFS
 	Stat     = fs.StatFS
 	Sub      = fs.SubFS
-
-	DirEntry  = fs.DirEntry
-	File      = fs.File
-	FileInfo  = fs.FileInfo
-	FileMode  = fs.FileMode
-	PathError = fs.PathError
 )
-
-var (
-	ErrClosed     = fs.ErrClosed
-	ErrExist      = fs.ErrExist
-	ErrInvalid    = fs.ErrInvalid
-	ErrNotExist   = fs.ErrNotExist
-	ErrPermission = fs.ErrPermission
-)
-
-// Operation represents a file system operation.
-type Operation interface {
-	// Subject returns the subject of the operation, typically a file or directory path.
-	Subject() string
-}
 
 // Ensure interface compliance with [os.Os].
 var _ FS = (Os)(nil)

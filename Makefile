@@ -13,5 +13,8 @@ cover: coverprofile.out
 coverprofile.out: $(shell find . -name '*.go')
 	$(GINKGO) -r --cover
 
+clean:
+	find . -name '*cover*' -delete
+
 format fmt:
 	nix fmt

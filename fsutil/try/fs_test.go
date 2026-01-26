@@ -14,8 +14,6 @@ import (
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
-type boringFS struct{ ihfs.FS }
-
 type mockFileInfo struct {
 	name  string
 	isDir bool
@@ -64,12 +62,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			exists, err := try.DirExists(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -109,12 +107,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			exists, err := try.Exists(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -158,12 +156,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			info, err := try.Stat(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(info).To(BeNil())
 		})
 	})
@@ -204,12 +202,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return ErrUnsupported for non-Stat filesystem", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			isDir, err := try.IsDir(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(isDir).To(BeFalse())
 		})
 	})
@@ -227,12 +225,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error when fs does not support ReadDir", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			entries, err := try.ReadDir(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(entries).To(BeNil())
 		})
 	})
@@ -248,12 +246,12 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error when fs does not support ReadDir", func() {
-			fsys := boringFS{FS: testfs.New()}
+			fsys := testfs.BoringFs{}
 
 			names, err := try.ReadDirNames(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrUnsupported))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 			Expect(names).To(BeNil())
 		})
 	})
