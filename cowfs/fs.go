@@ -2,35 +2,75 @@ package cowfs
 
 import (
 	"errors"
+	"syscall"
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 )
 
+// Fs implements a copy-on-write filesystem. Changes to the file system will
+// only be made in the overlay. Changing an existing file in the base layer
+// which is not present in the overlay will copy the file to the overlay.
+//
+// The implementation is based heavily on [afero.CopyOnWriteFs].
 type Fs struct {
 	base  ihfs.FS
 	layer ihfs.FS
 }
 
-func (fs *Fs) Open(path string) (ihfs.File, error) {
-	if inBase, _ := fs.isInBase(path); inBase {
-		return fs.base.Open(path)
+// Open implements [fs.FS].
+func (f *Fs) Open(name string) (ihfs.File, error) {
+	if inBase, err := f.isInBase(name); err != nil {
+		return nil, err
+	} else if inBase {
+		return f.base.Open(name)
 	}
-	return fs.layer.Open(path)
+
+	if isDir, err := try.IsDir(f.layer, name); err != nil {
+		return nil, err
+	} else if !isDir {
+		return f.layer.Open(name)
+	}
+
+	if isDir, err := try.IsDir(f.base, name); !isDir || err != nil {
+		return f.layer.Open(name)
+	}
+
+	bfile, berr := f.base.Open(name)
+	afile, aerr := f.layer.Open(name)
+
+	if berr != nil || aerr != nil {
+		return nil, &ihfs.PathError{
+			Op:   "open",
+			Path: name,
+			Err:  errors.Join(aerr, berr),
+		}
+	}
+
+	return &File{
+		name:  name,
+		base:  bfile,
+		layer: afile,
+	}, nil
 }
 
-func (fs *Fs) isInBase(path string) (bool, error) {
-	if exists, _ := try.Exists(fs.layer, path); exists {
+func (f *Fs) isInBase(path string) (bool, error) {
+	if exists, _ := try.Exists(f.layer, path); exists {
 		return false, nil
 	}
 
-	_, err := try.Stat(fs.base, path)
+	_, err := try.Stat(f.base, path)
 	if err != nil {
 		if errors.Is(err, ihfs.ErrNotExist) {
 			return false, nil
 		}
-		return false, err
+		if errors.Is(err, syscall.ENOENT) {
+			return false, nil
+		}
+		if errors.Is(err, syscall.ENOTDIR) {
+			return false, nil
+		}
 	}
 
-	return true, nil
+	return true, err
 }
