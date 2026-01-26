@@ -16,12 +16,6 @@ type (
 	ReadLink = fs.ReadLinkFS
 	Stat     = fs.StatFS
 	Sub      = fs.SubFS
-
-	DirEntry  = fs.DirEntry
-	File      = fs.File
-	FileInfo  = fs.FileInfo
-	FileMode  = fs.FileMode
-	PathError = fs.PathError
 )
 
 var (
