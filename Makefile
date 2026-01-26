@@ -18,3 +18,6 @@ clean:
 
 format fmt:
 	nix fmt
+
+gomod2nix.toml: go.mod go.sum
+	$(GOMOD2NIX)
