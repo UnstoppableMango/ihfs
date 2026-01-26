@@ -164,7 +164,7 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Lazy-load entries until we find the requested file
 	for {
-		fd, err := next(t.tr)
+		hdr, err := t.tr.Next()
 		if err == io.EOF {
 			if closeErr := t.close(); closeErr != nil {
 				return nil, t.notExist(name, closeErr)
