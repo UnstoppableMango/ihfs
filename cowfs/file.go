@@ -1,6 +1,7 @@
 package cowfs
 
 import (
+	"io"
 	"io/fs"
 
 	"github.com/unstoppablemango/ihfs"
@@ -22,12 +23,23 @@ func (f *File) Close() error {
 	if f.layer != nil {
 		return f.layer.Close()
 	}
-	return nil
+
+	return BADFD
 }
 
 // Read implements [fs.File].
-func (f *File) Read([]byte) (int, error) {
-	panic("unimplemented")
+func (f *File) Read(b []byte) (int, error) {
+	if f.layer != nil {
+		n, err := f.layer.Read(b)
+		if (err == nil || err == io.EOF) && f.base != nil {
+			// if _, seekErr := f.base.
+		}
+	}
+	if f.base != nil {
+		return f.base.Read(b)
+	}
+
+	return 0, BADFD
 }
 
 // Stat implements [fs.File].
