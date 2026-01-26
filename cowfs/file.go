@@ -5,8 +5,13 @@ import (
 	"io/fs"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/fsutil/try"
 )
 
+// File represents a file in the copy-on-write filesystem. It wraps a file from
+// the base layer and a file from the overlay layer. Reads are served from the
+// overlay if present, otherwise from the base. Writes are directed to the
+// overlay.
 type File struct {
 	name  string
 	base  ihfs.File
@@ -23,7 +28,6 @@ func (f *File) Close() error {
 	if f.layer != nil {
 		return f.layer.Close()
 	}
-
 	return BADFD
 }
 
@@ -32,8 +36,12 @@ func (f *File) Read(b []byte) (int, error) {
 	if f.layer != nil {
 		n, err := f.layer.Read(b)
 		if (err == nil || err == io.EOF) && f.base != nil {
-			// if _, seekErr := f.base.
+			o, w := int64(n), io.SeekCurrent
+			if _, seekErr := try.Seek(f.base, o, w); seekErr != nil {
+				err = seekErr
+			}
 		}
+		return n, err
 	}
 	if f.base != nil {
 		return f.base.Read(b)
@@ -44,5 +52,11 @@ func (f *File) Read(b []byte) (int, error) {
 
 // Stat implements [fs.File].
 func (f *File) Stat() (fs.FileInfo, error) {
-	panic("unimplemented")
+	if f.layer != nil {
+		return f.layer.Stat()
+	}
+	if f.base != nil {
+		return f.base.Stat()
+	}
+	return nil, BADFD
 }

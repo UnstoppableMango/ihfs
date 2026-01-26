@@ -2,6 +2,7 @@ package cowfs
 
 import (
 	"errors"
+	"fmt"
 	"syscall"
 
 	"github.com/unstoppablemango/ihfs"
@@ -36,21 +37,24 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return f.layer.Open(name)
 	}
 
-	bfile, berr := f.base.Open(name)
-	afile, aerr := f.layer.Open(name)
+	bFile, bErr := f.base.Open(name)
+	lFile, lErr := f.layer.Open(name)
 
-	if berr != nil || aerr != nil {
+	if bErr != nil || lErr != nil {
 		return nil, &ihfs.PathError{
 			Op:   "open",
 			Path: name,
-			Err:  errors.Join(aerr, berr),
+			Err: errors.Join(
+				fmt.Errorf("base: %w", bErr),
+				fmt.Errorf("layer: %w", lErr),
+			),
 		}
 	}
 
 	return &File{
 		name:  name,
-		base:  bfile,
-		layer: afile,
+		base:  bFile,
+		layer: lFile,
 	}, nil
 }
 
