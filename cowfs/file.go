@@ -18,6 +18,14 @@ type File struct {
 	layer ihfs.File
 }
 
+func NewFile(name string, base, layer ihfs.File) *File {
+	return &File{
+		name:  name,
+		base:  base,
+		layer: layer,
+	}
+}
+
 // Close implements [fs.File].
 func (f *File) Close() error {
 	// Base should be closed first so that the overlay has a newer

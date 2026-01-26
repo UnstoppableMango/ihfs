@@ -19,6 +19,14 @@ type Fs struct {
 	layer ihfs.FS
 }
 
+// New creates a new copy-on-write filesystem with the given base and layer.
+func New(base, layer ihfs.FS) *Fs {
+	return &Fs{
+		base:  base,
+		layer: layer,
+	}
+}
+
 // Open implements [fs.FS].
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	if inBase, err := f.isInBase(name); err != nil {

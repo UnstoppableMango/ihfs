@@ -61,7 +61,7 @@ nix fmt
 - Type aliases and error constants in `fs.go` for standard interfaces
 - `Operation` interface defined in `fs.go`
 - Concrete operation types in `op/` package
-- Implementation packages in subdirectories (e.g., `osfs/`, `testfs/`)
+- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`)
 - Iterator utilities in `iter.go`
 - Utility functions in `fsutil/` package
 
@@ -108,6 +108,12 @@ nix fmt
 
 #### Implementation Packages
 - **`osfs/fs.go`**: OS filesystem implementation (wraps `github.com/unmango/go/os`)
+- **`cowfs/`**: Copy-on-write filesystem implementation
+  - `fs.go`: Copy-on-write filesystem (base + overlay layers)
+  - `file.go`: Copy-on-write file implementation
+  - `bsds.go`: BSD-specific constants (EBADF)
+  - `win_unix.go`: Windows/Unix-specific constants (EBADFD)
+  - `doc.go`: Package documentation
 - **`testfs/`**: Test filesystem utilities
   - `fs.go`: Test filesystem implementation
   - `file.go`: Test file implementation
@@ -118,6 +124,16 @@ nix fmt
   - `file.go`: Tar file implementation
   - `cache.go`: Caching utilities for tar entries
   - `doc.go`: Package documentation
+
+##### Filesystem Implementation Overview
+- **osfs**: Wraps the OS filesystem for standard file operations
+- **cowfs**: Copy-on-write filesystem with base and overlay layers (based on afero.CopyOnWriteFs)
+  - Changes only affect the overlay layer
+  - Reads prioritize overlay over base
+  - Directories from both layers are merged
+  - Constructor: `cowfs.New(base, layer ihfs.FS) *Fs`
+- **tarfs**: Read-only filesystem backed by tar archives
+- **testfs**: Mock filesystem for testing with configurable behavior
 
 #### Operation Types
 - **`op/`**: File system operation definitions
@@ -140,6 +156,7 @@ nix fmt
 - **Root (`ihfs_test`)**: `ihfs_suite_test.go`, `iter_test.go`
 - **fsutil (`fsutil_test`)**: `fsutil_suite_test.go`, `fs_test.go`
 - **fsutil/try (`try_test`)**: `try_suite_test.go`, `fs_test.go`, `file_test.go`
+- **cowfs (`cowfs_test`)**: `cowfs_suite_test.go`, `fs_test.go`, `file_test.go`
 - **tarfs (`tarfs_test`)**: `tarfs_suite_test.go`, `fs_test.go`, `file_test.go`
 
 #### Test Data
@@ -155,8 +172,8 @@ nix fmt
 
 ### Package Naming Conventions
 - **Main package**: `ihfs` (core library code)
-- **Tests**: `ihfs_test`, `fsutil_test`, `try_test` (external test packages)
-- **Implementations**: Named after their purpose (`osfs`, `tarfs`, `testfs`)
+- **Tests**: `ihfs_test`, `fsutil_test`, `try_test`, `cowfs_test` (external test packages)
+- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `tarfs`, `testfs`)
 - **Test suites**: Follow `*_suite_test.go` pattern
 - **Test files**: Follow `*_test.go` pattern
 
@@ -182,6 +199,12 @@ nix fmt
 │       └── file.go    # File operation wrappers
 ├── osfs/              # OS filesystem implementation
 │   └── fs.go          # OS filesystem wrapper
+├── cowfs/             # Copy-on-write filesystem implementation
+│   ├── fs.go          # Copy-on-write filesystem (base + overlay layers)
+│   ├── file.go        # Copy-on-write file implementation
+│   ├── bsds.go        # BSD-specific constants
+│   ├── win_unix.go    # Windows/Unix-specific constants
+│   └── doc.go         # Package documentation
 ├── tarfs/             # Tar filesystem implementation
 │   ├── fs.go          # Tar filesystem
 │   ├── file.go        # Tar file implementation
