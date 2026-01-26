@@ -21,7 +21,7 @@ var _ = Describe("File", func() {
 			Expect(err).To(MatchError(try.ErrNotSupported))
 		})
 
-		It("should return an error when file does not support seeking", func() {
+		It("should call Seek on the underlying file when supported", func() {
 			var actualOffset int64
 			var actualWhence int
 
@@ -40,6 +40,35 @@ var _ = Describe("File", func() {
 			Expect(n).To(Equal(int64(69)))
 			Expect(actualOffset).To(Equal(int64(420)))
 			Expect(actualWhence).To(Equal(67))
+		})
+	})
+
+	Describe("Write", func() {
+		It("should return an error when file does not support writing", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.Write(f, nil)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call Write on the underlying file when supported", func() {
+			var actualData []byte
+
+			f := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) {
+					actualData = p
+					return 69, errors.New("test error")
+				},
+			}
+
+			n, err := try.Write(f, []byte("hello"))
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(n).To(Equal(69))
+			Expect(actualData).To(Equal([]byte("hello")))
 		})
 	})
 })

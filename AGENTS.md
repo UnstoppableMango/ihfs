@@ -103,15 +103,21 @@ nix fmt
 
 #### Root Package (`./`)
 - **`fs.go`**: Type aliases for `io/fs` interfaces + standard error aliases + `Operation` interface definition + custom FS interfaces (Chmod, Chown, Chtimes, Copy, Mkdir, etc.)
+- **`file.go`**: Type aliases for file-related interfaces (`File`, `FileInfo`, `DirEntry`, `FileMode`, `PathError`) + standard error aliases + `Operation` interface definition + `Seeker` interface
 - **`iter.go`**: Iterator utilities for traversing filesystems (`Iter`, `Catch` functions)
 
 #### Implementation Packages
 - **`osfs/fs.go`**: OS filesystem implementation (wraps `github.com/unmango/go/os`)
 - **`testfs/`**: Test filesystem utilities
   - `fs.go`: Test filesystem implementation
+  - `file.go`: Test file implementation
   - `fileinfo.go`: Test FileInfo implementation
   - `option.go`: Option pattern for test setup
-- **`tarfs/`**: Tar filesystem implementation (directory exists, implementation pending)
+- **`tarfs/`**: Tar filesystem implementation
+  - `fs.go`: Tar filesystem implementation
+  - `file.go`: Tar file implementation
+  - `cache.go`: Caching utilities for tar entries
+  - `doc.go`: Package documentation
 
 #### Operation Types
 - **`op/`**: File system operation definitions
@@ -119,8 +125,10 @@ nix fmt
   - `operation.go`: Concrete operation type implementations
 
 #### Utilities
-- **`fsutil/util.go`**: Filesystem utilities (Stat-related helpers)
-- **`fsutil/try/util.go`**: Error-handling utilities for FS operations (type-safe wrappers with interface checks)
+- **`fsutil/fs.go`**: Filesystem utilities (FS-related helpers)
+- **`fsutil/try/`**: Error-handling utilities for FS operations
+  - `fs.go`: Type-safe wrappers for FS operations with interface checks
+  - `file.go`: Type-safe wrappers for File operations with interface checks
 
 ### Testing Structure
 
@@ -130,12 +138,14 @@ nix fmt
 
 #### Test Files by Package
 - **Root (`ihfs_test`)**: `ihfs_suite_test.go`, `iter_test.go`
-- **fsutil (`fsutil_test`)**: `fsutil_suite_test.go`, `util_test.go`
-- **fsutil/try (`try_test`)**: `try_suite_test.go`, `util_test.go`
+- **fsutil (`fsutil_test`)**: `fsutil_suite_test.go`, `fs_test.go`
+- **fsutil/try (`try_test`)**: `try_suite_test.go`, `fs_test.go`, `file_test.go`
+- **tarfs (`tarfs_test`)**: `tarfs_suite_test.go`, `fs_test.go`, `file_test.go`
 
 #### Test Data
 - **`testdata/`**: Test fixtures and sample files
   - `2-files/`: Fixture with two files for testing
+  - `test.tar`: Tar archive for testing tar filesystem
 
 ### Build & CI Configuration
 - **`Makefile`**: Build targets (`build`, `test`, `cover`, `fmt`)
@@ -160,16 +170,31 @@ nix fmt
 ```
 .
 ├── fs.go              # Type aliases, error aliases, Operation interface, and custom FS interfaces
+├── file.go            # File-related type aliases and Seeker interface
 ├── iter.go            # Iterator utilities for filesystem traversal
-├── op/                # Concrete operation type implementations (Open, Glob, etc.)
+├── op/                # Concrete operation type implementations
+│   ├── doc.go         # Package documentation
+│   └── operation.go   # Operation implementations
 ├── fsutil/            # Filesystem utility functions
-│   ├── util.go        # Utility functions for Stat interface
+│   ├── fs.go          # FS-related utilities
 │   └── try/           # Type-safe utility functions with interface checks
+│       ├── fs.go      # FS operation wrappers
+│       └── file.go    # File operation wrappers
 ├── osfs/              # OS filesystem implementation
-├── tarfs/             # Tar filesystem implementation (pending)
+│   └── fs.go          # OS filesystem wrapper
+├── tarfs/             # Tar filesystem implementation
+│   ├── fs.go          # Tar filesystem
+│   ├── file.go        # Tar file implementation
+│   ├── cache.go       # Caching utilities
+│   └── doc.go         # Package documentation
 ├── testfs/            # Test filesystem utilities
+│   ├── fs.go          # Test filesystem
+│   ├── file.go        # Test file implementation
+│   ├── fileinfo.go    # Test FileInfo
+│   └── option.go      # Test setup options
 └── testdata/          # Test data files
-    └── 2-files/       # Test fixture with two files
+    ├── 2-files/       # Test fixture with two files
+    └── test.tar       # Tar archive for testing
 ```
 
 ## Common Tasks

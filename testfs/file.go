@@ -8,6 +8,7 @@ type File struct {
 	ReadFunc  func(p []byte) (n int, err error)
 	StatFunc  func() (ihfs.FileInfo, error)
 	SeekFunc  func(offset int64, whence int) (int64, error)
+	WriteFunc func(p []byte) (n int, err error)
 }
 
 func (f *File) Close() error {
@@ -28,6 +29,10 @@ func (f *File) Stat() (ihfs.FileInfo, error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.SeekFunc(offset, whence)
+}
+
+func (f *File) Write(p []byte) (n int, err error) {
+	return f.WriteFunc(p)
 }
 
 type BoringFile struct {

@@ -32,3 +32,9 @@ type Seeker interface {
 	File
 	io.Seeker
 }
+
+// Writer is the interface implemented by a file that supports writing.
+type Writer interface {
+	File
+	io.Writer
+}
