@@ -15,3 +15,9 @@ func WithStat(fn func(string) (ihfs.FileInfo, error)) Option {
 		fs.StatFunc = fn
 	}
 }
+
+func WithWriteFile(fn func(string, []byte, ihfs.FileMode) error) Option {
+	return func(fs *Fs) {
+		fs.WriteFileFunc = fn
+	}
+}

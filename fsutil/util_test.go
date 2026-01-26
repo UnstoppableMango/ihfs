@@ -1,6 +1,7 @@
 package fsutil_test
 
 import (
+	"bytes"
 	"errors"
 	"io/fs"
 	"time"
@@ -191,4 +192,61 @@ var _ = Describe("Util", func() {
 			Expect(names).To(BeNil())
 		})
 	})
+
+	Describe("WriteReader", func() {
+		It("should write reader contents to file", func() {
+			var capturedName string
+			var capturedData []byte
+			var capturedPerm ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+				capturedName = name
+				capturedData = data
+				capturedPerm = perm
+				return nil
+			}))
+
+			reader := bytes.NewReader([]byte("test content"))
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("test.txt"))
+			Expect(capturedData).To(Equal([]byte("test content")))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0x644)))
+		})
+
+		It("should return error when reading fails", func() {
+			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+				return nil
+			}))
+
+			reader := &errorReader{err: errors.New("read error")}
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("reading"))
+			Expect(err.Error()).To(ContainSubstring("read error"))
+		})
+
+		It("should return error when WriteFile fails", func() {
+			writeErr := errors.New("write error")
+			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+				return writeErr
+			}))
+
+			reader := bytes.NewReader([]byte("test content"))
+			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(writeErr))
+		})
+	})
 })
+
+type errorReader struct {
+	err error
+}
+
+func (r *errorReader) Read(p []byte) (n int, err error) {
+	return 0, r.err
+}
