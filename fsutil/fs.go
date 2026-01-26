@@ -8,17 +8,21 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+// DirExists reports if the given path exists and is a directory.
+//
+// It differs from IsDir in that it returns false if the
+// path does not exist, rather than returning an error.
 func DirExists(fsys ihfs.Stat, path string) (bool, error) {
-	info, err := fsys.Stat(path)
-	if err == nil {
-		return info.IsDir(), nil
-	}
-	if errors.Is(err, ihfs.ErrNotExist) {
+	if isDir, err := IsDir(fsys, path); err == nil {
+		return isDir, nil
+	} else if errors.Is(err, ihfs.ErrNotExist) {
 		return false, nil
+	} else {
+		return false, err
 	}
-	return false, err
 }
 
+// Exists reports if the given path exists.
 func Exists(fsys ihfs.Stat, path string) (bool, error) {
 	_, err := fsys.Stat(path)
 	if err == nil {
@@ -30,6 +34,8 @@ func Exists(fsys ihfs.Stat, path string) (bool, error) {
 	return false, err
 }
 
+// IsDir reports if the given path exists and is a directory.
+// It calls fsys.Stat(path) and returns the result of FileInfo.IsDir().
 func IsDir(fsys ihfs.Stat, path string) (bool, error) {
 	if info, err := fsys.Stat(path); err != nil {
 		return false, err
