@@ -15,6 +15,15 @@ import (
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
+type errCloser struct {
+	io.Reader
+	closeErr error
+}
+
+func (e *errCloser) Close() error {
+	return e.closeErr
+}
+
 var _ = Describe("Fs", func() {
 	Describe("Open", func() {
 		It("should open a tar file", func() {
@@ -230,6 +239,36 @@ var _ = Describe("Fs", func() {
 			}
 
 			Expect(err.Error()).To(Equal("test.tar(test.txt): file does not exist: unexpected EOF"))
+		})
+
+		It("should handle close error when reaching EOF", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name: "file1.txt",
+				Mode: 0644,
+				Size: 5,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("data1"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tw.Close()).To(Succeed())
+
+			closeErr := errors.New("close failed")
+			reader := &errCloser{
+				Reader:   bytes.NewReader(buf.Bytes()),
+				closeErr: closeErr,
+			}
+
+			tfs := tarfs.FromReader("test.tar", reader)
+
+			file, err := tfs.Open("nonexistent.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(err).To(MatchError(closeErr))
+			Expect(file).To(BeNil())
 		})
 	})
 
