@@ -14,7 +14,15 @@ type File struct {
 
 // Close implements [fs.File].
 func (f *File) Close() error {
-	panic("unimplemented")
+	// Base should be closed first so that the overlay has a newer
+	// timestamp, otherwise the cache will never get hit.
+	if f.base != nil {
+		f.base.Close()
+	}
+	if f.layer != nil {
+		return f.layer.Close()
+	}
+	return nil
 }
 
 // Read implements [fs.File].
