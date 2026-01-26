@@ -230,6 +230,44 @@ var _ = Describe("Fs", func() {
 			Expect(file).To(BeNil())
 		})
 
+		It("should handle corrupt tar header", func() {
+			// Create an invalid tar that causes tar.Reader.Next() to fail
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			// Write a valid entry
+			err := tw.WriteHeader(&tar.Header{
+				Name: "file1.txt",
+				Mode: 0644,
+				Size: 5,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("data1"))
+			Expect(err).NotTo(HaveOccurred())
+
+			// Write another partial/corrupt entry - append invalid tar header bytes
+			// A tar header is 512 bytes, add garbage that looks like a header but has bad checksum
+			invalidHeader := make([]byte, 512)
+			copy(invalidHeader[:100], "file2.txt")  // Name field
+			invalidHeader[156] = '0'  // Type flag for regular file
+			// Leave checksum field (offset 148-155) as zeros, which will be invalid
+			buf.Write(invalidHeader)
+			
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/corrupt.tar"
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to open a file - this should cause Next() to fail with checksum error
+			file, err := tfs.Open("file2.txt")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(file).To(BeNil())
+		})
+
 		It("should format TarError correctly", func() {
 			err := &tarfs.TarError{
 				Archive: "test.tar",
@@ -322,6 +360,56 @@ var _ = Describe("Fs", func() {
 			file3, err := tfs.Open("file3.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 			Expect(file3).To(BeNil())
+		})
+
+		It("should cache entries while looking for a file", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			// Write files file1, file2, file3
+			for i := 1; i <= 3; i++ {
+				num := fmt.Sprintf("%d", i)
+				name := "file" + num + ".txt"
+				content := "content " + num
+
+				err := tw.WriteHeader(&tar.Header{
+					Name: name,
+					Mode: 0644,
+					Size: int64(len(content)),
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = tw.Write([]byte(content))
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/cache-test.tar"
+			err := os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Open file3 - this will read file1, file2, and file3,
+			// but only cache file3 (lazy caching)
+			file3, err := tfs.Open("file3.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content3, err := io.ReadAll(file3)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content3)).To(Equal("content 3"))
+
+			// Now file3 is cached but file1 and file2 are not
+			// Try to open file1 - should fail since tar reader is exhausted
+			file1, err := tfs.Open("file1.txt")
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(file1).To(BeNil())
+
+			// But file3 should still be accessible from cache
+			file3Again, err := tfs.Open("file3.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file3Again).NotTo(BeNil())
 		})
 	})
 
@@ -599,6 +687,85 @@ var _ = Describe("Fs", func() {
 			Expect(successCount + closedErrors + notExistErrors).To(Equal(10))
 			// At least one goroutine should hit an error (closed or not found)
 			Expect(closedErrors + notExistErrors).To(BeNumerically(">", 0))
+		})
+
+		It("should skip over non-matching files while searching", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			// Write files with different names
+			files := []string{"aaa.txt", "bbb.txt", "zzz.txt"}
+			for _, name := range files {
+				content := "content-" + name
+
+				err := tw.WriteHeader(&tar.Header{
+					Name: name,
+					Mode: 0644,
+					Size: int64(len(content)),
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = tw.Write([]byte(content))
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/skip.tar"
+			err := os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Open the middle file - should skip aaa.txt, find bbb.txt
+			file, err := tfs.Open("bbb.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+
+			content, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("content-bbb.txt"))
+		})
+
+		It("should handle double-check pattern when file is cached by another goroutine", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name: "file.txt",
+				Mode: 0644,
+				Size: 7,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/double-check.tar"
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			done := make(chan bool, 2)
+
+			// Start two goroutines that try to open the same file simultaneously
+			for range 2 {
+				go func() {
+					defer GinkgoRecover()
+					file, err := tfs.Open("file.txt")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(file).NotTo(BeNil())
+					done <- true
+				}()
+			}
+
+			// Both should succeed - one will load it, the other will get it from cache
+			<-done
+			<-done
 		})
 	})
 })

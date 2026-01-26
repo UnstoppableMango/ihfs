@@ -135,19 +135,6 @@ func (t *TarFile) error(name string, err, cause error) error {
 	}
 }
 
-func next(tr *tar.Reader) (*fileData, error) {
-	hdr, err := tr.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	if data, err := io.ReadAll(tr); err != nil {
-		return nil, err
-	} else {
-		return &fileData{hdr, data}, nil
-	}
-}
-
 type TarError struct {
 	Archive, Name string
 	Err, Cause    error
