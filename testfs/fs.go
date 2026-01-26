@@ -52,3 +52,11 @@ func (fs Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
 func defaultWriteFileFunc(name string, data []byte, perm ihfs.FileMode) error {
 	return fs.ErrPermission
 }
+
+type BoringFs struct {
+	OpenFunc func(string) (ihfs.File, error)
+}
+
+func (fs BoringFs) Open(name string) (ihfs.File, error) {
+	return fs.OpenFunc(name)
+}
