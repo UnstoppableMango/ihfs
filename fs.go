@@ -18,20 +18,6 @@ type (
 	Sub      = fs.SubFS
 )
 
-var (
-	ErrClosed     = fs.ErrClosed
-	ErrExist      = fs.ErrExist
-	ErrInvalid    = fs.ErrInvalid
-	ErrNotExist   = fs.ErrNotExist
-	ErrPermission = fs.ErrPermission
-)
-
-// Operation represents a file system operation.
-type Operation interface {
-	// Subject returns the subject of the operation, typically a file or directory path.
-	Subject() string
-}
-
 // Ensure interface compliance with [os.Os].
 var _ FS = (Os)(nil)
 
