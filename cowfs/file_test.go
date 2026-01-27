@@ -16,22 +16,8 @@ import (
 var _ = Describe("File", func() {
 	Describe("NewFile", func() {
 		It("should create a new File", func() {
-			baseFile := &testfs.File{
-				CloseFunc: func() error { return nil },
-				ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					return fi, nil
-				},
-			}
-			layerFile := &testfs.File{
-				CloseFunc: func() error { return nil },
-				ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					return fi, nil
-				},
-			}
+			baseFile := &testfs.File{}
+			layerFile := &testfs.File{}
 
 			file := cowfs.NewFile("test", baseFile, layerFile)
 			Expect(file).ToNot(BeNil())
@@ -47,32 +33,17 @@ var _ = Describe("File", func() {
 						closed["base"] = true
 						return nil
 					},
-					ReadFunc: func(p []byte) (int, error) { return 0, io.EOF },
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						fi.IsDirFunc = func() bool { return true }
-						return fi, nil
-					},
 				}
 				layerDir := &testfs.File{
 					CloseFunc: func() error {
 						closed["layer"] = true
 						return nil
 					},
-					ReadFunc: func(p []byte) (int, error) { return 0, io.EOF },
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						fi.IsDirFunc = func() bool { return true }
-						return fi, nil
-					},
 				}
 
 				base := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "dir" {
-							return baseDir, nil
-						}
-						return nil, fs.ErrNotExist
+						return baseDir, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -82,10 +53,7 @@ var _ = Describe("File", func() {
 				)
 				layer := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "dir" {
-							return layerDir, nil
-						}
-						return nil, fs.ErrNotExist
+						return layerDir, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -95,7 +63,7 @@ var _ = Describe("File", func() {
 				)
 
 				cfs := cowfs.New(base, layer)
-				file, err := cfs.Open("dir")
+				file, err := cfs.Open("test.txt")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(file).ToNot(BeNil())
 
@@ -111,7 +79,7 @@ var _ = Describe("File", func() {
 				layerFile := &testfs.File{
 					CloseFunc: func() error { return nil },
 					ReadFunc: func(p []byte) (int, error) {
-						return copy(p, []byte("layer")), io.EOF
+						return 0, io.EOF
 					},
 					StatFunc: func() (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -123,10 +91,7 @@ var _ = Describe("File", func() {
 				base := testfs.New()
 				layer := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "test.txt" {
-							return layerFile, nil
-						}
-						return nil, fs.ErrNotExist
+						return layerFile, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -149,24 +114,19 @@ var _ = Describe("File", func() {
 				baseFile := &testfs.File{
 					CloseFunc: func() error { return nil },
 					ReadFunc: func(p []byte) (int, error) {
-						return copy(p, []byte("base")), io.EOF
+						return 0, io.EOF
 					},
 					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						return fi, nil
+						return testfs.NewFileInfo(), nil
 					},
 				}
 
 				base := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "test.txt" {
-							return baseFile, nil
-						}
-						return nil, fs.ErrNotExist
+						return baseFile, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						return fi, nil
+						return testfs.NewFileInfo(), nil
 					}),
 				)
 				layer := testfs.New()
@@ -180,10 +140,12 @@ var _ = Describe("File", func() {
 			})
 		})
 
-		Context("when neither base nor layer exists (using NewFile)", func() {
+		Context("when neither base nor layer exists", func() {
 			It("should return BADFD error", func() {
 				file := cowfs.NewFile("test", nil, nil)
+
 				err := file.Close()
+
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(cowfs.BADFD))
 			})
@@ -192,48 +154,27 @@ var _ = Describe("File", func() {
 
 	Describe("Read", func() {
 		Context("when reading from both layers", func() {
+			// TODO: This test does not actually verify that the base position is synced.
 			It("should read from layer and sync base position", func() {
 				baseDir := &testfs.File{
-					CloseFunc: func() error { return nil },
-					ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						fi.IsDirFunc = func() bool { return true }
-						return fi, nil
-					},
 					SeekFunc: func(offset int64, whence int) (int64, error) {
 						return offset, nil
 					},
 				}
 				layerDir := &testfs.File{
-					CloseFunc: func() error { return nil },
-					ReadFunc:  func(p []byte) (int, error) { return copy(p, []byte("layer")), nil },
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						fi.IsDirFunc = func() bool { return true }
-						return fi, nil
+					ReadFunc: func(p []byte) (int, error) {
+						return 0, nil
 					},
 				}
 
 				base := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "dir" {
-							return baseDir, nil
-						}
-						return nil, fs.ErrNotExist
-					}),
-					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						fi.IsDirFunc = func() bool { return true }
-						return fi, nil
+						return baseDir, nil
 					}),
 				)
 				layer := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "dir" {
-							return layerDir, nil
-						}
-						return nil, fs.ErrNotExist
+						return layerDir, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -245,14 +186,10 @@ var _ = Describe("File", func() {
 				cfs := cowfs.New(base, layer)
 				file, err := cfs.Open("dir")
 				Expect(err).ToNot(HaveOccurred())
-				defer file.Close()
 
 				buf := make([]byte, 5)
 				n, err := file.Read(buf)
-				Expect(err).To(SatisfyAny(
-					BeNil(),
-					Equal(io.EOF),
-				))
+				Expect(err).NotTo(HaveOccurred())
 				Expect(n).To(BeNumerically(">=", 0))
 			})
 		})
@@ -260,22 +197,14 @@ var _ = Describe("File", func() {
 		Context("when layer is nil but base exists", func() {
 			It("should read from base", func() {
 				baseFile := &testfs.File{
-					CloseFunc: func() error { return nil },
 					ReadFunc: func(p []byte) (int, error) {
 						return copy(p, []byte("base content")), io.EOF
-					},
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
-						return fi, nil
 					},
 				}
 
 				base := testfs.New(
 					testfs.WithOpen(func(name string) (ihfs.File, error) {
-						if name == "test.txt" {
-							return baseFile, nil
-						}
-						return nil, fs.ErrNotExist
+						return baseFile, nil
 					}),
 					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -287,14 +216,10 @@ var _ = Describe("File", func() {
 				cfs := cowfs.New(base, layer)
 				file, err := cfs.Open("test.txt")
 				Expect(err).ToNot(HaveOccurred())
-				defer file.Close()
 
 				buf := make([]byte, 100)
 				n, err := file.Read(buf)
-				Expect(err).To(SatisfyAny(
-					BeNil(),
-					Equal(io.EOF),
-				))
+				Expect(err).To(MatchError(io.EOF))
 				Expect(string(buf[:n])).To(Equal("base content"))
 			})
 		})
