@@ -33,7 +33,7 @@ var _ = Describe("File", func() {
 
 			err := file.Close()
 
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(base).To(BeTrue())
 			Expect(layer).To(BeTrue())
 		})
@@ -49,6 +49,44 @@ var _ = Describe("File", func() {
 
 			Expect(file.Close()).NotTo(HaveOccurred())
 			Expect(called).To(BeTrue())
+		})
+
+		It("should return base errors", func() {
+			baseErr := errors.New("base close error")
+			file := cowfs.NewFile(
+				&testfs.File{
+					CloseFunc: func() error {
+						return baseErr
+					},
+				},
+				&testfs.File{
+					CloseFunc: func() error {
+						return nil
+					},
+				},
+			)
+
+			err := file.Close()
+			Expect(err).To(MatchError("base close error"))
+		})
+
+		It("should return layer errors", func() {
+			layerErr := errors.New("layer close error")
+			file := cowfs.NewFile(
+				&testfs.File{
+					CloseFunc: func() error {
+						return nil
+					},
+				},
+				&testfs.File{
+					CloseFunc: func() error {
+						return layerErr
+					},
+				},
+			)
+
+			err := file.Close()
+			Expect(err).To(MatchError("layer close error"))
 		})
 
 		It("should return BADFD when neither exists", func() {
@@ -171,7 +209,7 @@ var _ = Describe("File", func() {
 			)
 
 			info, err := file.Stat()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(info.Size()).To(Equal(int64(200)))
 		})
 
@@ -185,7 +223,7 @@ var _ = Describe("File", func() {
 			}, nil)
 
 			info, err := file.Stat()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(info.Name()).To(Equal("base.txt"))
 		})
 

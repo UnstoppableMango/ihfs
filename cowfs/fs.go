@@ -52,6 +52,9 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return NewFile(bFile, lFile), nil
 	}
 
+	// TODO: possible file handle leaking
+	// https://github.com/UnstoppableMango/ihfs/pull/14#discussion_r2737484821
+
 	return nil, &ihfs.PathError{
 		Op:   "open",
 		Path: name,
@@ -63,7 +66,9 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 }
 
 func (f *Fs) isInBase(path string) (bool, error) {
-	if exists, _ := try.Exists(f.layer, path); exists {
+	if exists, err := try.Exists(f.layer, path); err != nil {
+		return false, fmt.Errorf("layer: %w", err)
+	} else if exists {
 		return false, nil
 	}
 
@@ -75,7 +80,9 @@ func (f *Fs) isInBase(path string) (bool, error) {
 		if errors.Is(err, syscall.ENOTDIR) {
 			return false, nil
 		}
+
+		return true, fmt.Errorf("base: %w", err)
 	}
 
-	return true, err
+	return true, nil
 }
