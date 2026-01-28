@@ -263,7 +263,7 @@ var _ = Describe("Fs", func() {
 
 			cfs := cowfs.New(base, testfs.New())
 			_, err := cfs.Open("test.txt")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
 		It("should handle ENOENT", func() {
@@ -275,7 +275,7 @@ var _ = Describe("Fs", func() {
 
 			cfs := cowfs.New(base, testfs.New())
 			_, err := cfs.Open("test.txt")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
 		It("should handle ENOTDIR", func() {
@@ -287,7 +287,7 @@ var _ = Describe("Fs", func() {
 
 			cfs := cowfs.New(base, testfs.New())
 			_, err := cfs.Open("test.txt")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
 		It("should return other errors", func() {

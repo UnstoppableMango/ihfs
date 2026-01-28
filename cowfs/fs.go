@@ -72,9 +72,6 @@ func (f *Fs) isInBase(path string) (bool, error) {
 		if errors.Is(err, ihfs.ErrNotExist) {
 			return false, nil
 		}
-		if errors.Is(err, syscall.ENOENT) {
-			return false, nil
-		}
 		if errors.Is(err, syscall.ENOTDIR) {
 			return false, nil
 		}
