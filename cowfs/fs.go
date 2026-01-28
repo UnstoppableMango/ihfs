@@ -48,22 +48,18 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	bFile, bErr := f.base.Open(name)
 	lFile, lErr := f.layer.Open(name)
 
-	if bErr != nil || lErr != nil {
-		return nil, &ihfs.PathError{
-			Op:   "open",
-			Path: name,
-			Err: errors.Join(
-				fmt.Errorf("base: %w", bErr),
-				fmt.Errorf("layer: %w", lErr),
-			),
-		}
+	if bErr == nil && lErr == nil {
+		return NewFile(bFile, lFile), nil
 	}
 
-	return &File{
-		name:  name,
-		base:  bFile,
-		layer: lFile,
-	}, nil
+	return nil, &ihfs.PathError{
+		Op:   "open",
+		Path: name,
+		Err: errors.Join(
+			fmt.Errorf("base: %w", bErr),
+			fmt.Errorf("layer: %w", lErr),
+		),
+	}
 }
 
 func (f *Fs) isInBase(path string) (bool, error) {

@@ -13,46 +13,41 @@ import (
 // overlay if present, otherwise from the base. Writes are directed to the
 // overlay.
 type File struct {
-	name  string
-	base  ihfs.File
-	layer ihfs.File
+	Base  ihfs.File
+	Layer ihfs.File
 }
 
-func NewFile(name string, base, layer ihfs.File) *File {
-	return &File{
-		name:  name,
-		base:  base,
-		layer: layer,
-	}
+func NewFile(base, layer ihfs.File) *File {
+	return &File{Base: base, Layer: layer}
 }
 
 // Close implements [fs.File].
 func (f *File) Close() error {
 	// Base should be closed first so that the overlay has a newer
 	// timestamp, otherwise the cache will never get hit.
-	if f.base != nil {
-		f.base.Close()
+	if f.Base != nil {
+		f.Base.Close()
 	}
-	if f.layer != nil {
-		return f.layer.Close()
+	if f.Layer != nil {
+		return f.Layer.Close()
 	}
 	return BADFD
 }
 
 // Read implements [fs.File].
 func (f *File) Read(b []byte) (int, error) {
-	if f.layer != nil {
-		n, err := f.layer.Read(b)
-		if (err == nil || err == io.EOF) && f.base != nil {
+	if f.Layer != nil {
+		n, err := f.Layer.Read(b)
+		if (err == nil || err == io.EOF) && f.Base != nil {
 			o, w := int64(n), io.SeekCurrent
-			if _, seekErr := try.Seek(f.base, o, w); seekErr != nil {
+			if _, seekErr := try.Seek(f.Base, o, w); seekErr != nil {
 				err = seekErr
 			}
 		}
 		return n, err
 	}
-	if f.base != nil {
-		return f.base.Read(b)
+	if f.Base != nil {
+		return f.Base.Read(b)
 	}
 
 	return 0, BADFD
@@ -60,11 +55,11 @@ func (f *File) Read(b []byte) (int, error) {
 
 // Stat implements [fs.File].
 func (f *File) Stat() (fs.FileInfo, error) {
-	if f.layer != nil {
-		return f.layer.Stat()
+	if f.Layer != nil {
+		return f.Layer.Stat()
 	}
-	if f.base != nil {
-		return f.base.Stat()
+	if f.Base != nil {
+		return f.Base.Stat()
 	}
 	return nil, BADFD
 }
