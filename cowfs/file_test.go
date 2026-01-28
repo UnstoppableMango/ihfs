@@ -85,11 +85,13 @@ var _ = Describe("File", func() {
 		})
 
 		It("should sync base position on read", func() {
-			var seekCalled bool
+			var seekOffset int64
+			var seekWhence int
 			file := cowfs.NewFile(
 				&testfs.File{
 					SeekFunc: func(offset int64, whence int) (int64, error) {
-						seekCalled = true
+						seekOffset = offset
+						seekWhence = whence
 						return offset, nil
 					},
 				},
@@ -102,7 +104,8 @@ var _ = Describe("File", func() {
 
 			buf := make([]byte, 100)
 			_, _ = file.Read(buf)
-			Expect(seekCalled).To(BeTrue())
+			Expect(seekOffset).To(Equal(int64(1)))
+			Expect(seekWhence).To(Equal(io.SeekCurrent))
 		})
 
 		It("should return seek error", func() {
