@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 )
@@ -17,14 +18,19 @@ import (
 type Fs struct {
 	base  ihfs.FS
 	layer ihfs.FS
+	merge MergeStrategy
 }
 
 // New creates a new copy-on-write filesystem with the given base and layer.
-func New(base, layer ihfs.FS) *Fs {
-	return &Fs{
+func New(base, layer ihfs.FS, options ...Option) *Fs {
+	f := &Fs{
 		base:  base,
 		layer: layer,
+		merge: DefaultMergeStrategy,
 	}
+	fopt.ApplyAll(f, options)
+
+	return f
 }
 
 // Open implements [fs.FS].
@@ -49,7 +55,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	lFile, lErr := f.layer.Open(name)
 
 	if bErr == nil && lErr == nil {
-		return NewFile(bFile, lFile), nil
+		return newFile(bFile, lFile, f.merge), nil
 	}
 
 	// TODO: possible file handle leaking
