@@ -5,10 +5,10 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-var Default ihfs.Os = Fs{os.System}
+var Default ihfs.OsFS = Fs{os.System}
 
 type Fs struct{ os.Fs }
 
-func New() ihfs.Os {
+func New() ihfs.OsFS {
 	return Fs{os.System}
 }

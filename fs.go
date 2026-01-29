@@ -8,21 +8,21 @@ import (
 )
 
 type (
-	FS       = fs.FS
-	Glob     = fs.GlobFS
-	Os       = os.Fs
-	ReadDir  = fs.ReadDirFS
-	ReadFile = fs.ReadFileFS
-	ReadLink = fs.ReadLinkFS
-	Stat     = fs.StatFS
-	Sub      = fs.SubFS
+	FS         = fs.FS
+	GlobFS     = fs.GlobFS
+	OsFS       = os.Fs
+	ReadDirFS  = fs.ReadDirFS
+	ReadFileFS = fs.ReadFileFS
+	ReadLinkFS = fs.ReadLinkFS
+	StatFS     = fs.StatFS
+	SubFS      = fs.SubFS
 )
 
 // Ensure interface compliance with [os.Os].
-var _ FS = (Os)(nil)
+var _ FS = (OsFS)(nil)
 
-// Chmod is the interface implemented by a file system that supports changing file modes.
-type Chmod interface {
+// ChmodFS is the interface implemented by a file system that supports changing file modes.
+type ChmodFS interface {
 	FS
 
 	// Chmod changes the mode of the named file to mode.
@@ -31,8 +31,8 @@ type Chmod interface {
 	Chmod(name string, mode FileMode) error
 }
 
-// Chown is the interface implemented by a file system that supports changing file ownership.
-type Chown interface {
+// ChownFS is the interface implemented by a file system that supports changing file ownership.
+type ChownFS interface {
 	FS
 
 	// Chown changes the numeric uid and gid of the named file.
@@ -42,8 +42,8 @@ type Chown interface {
 	Chown(name string, uid, gid int) error
 }
 
-// Chtimes is the interface implemented by a file system that supports changing file access and modification times.
-type Chtimes interface {
+// ChtimesFS is the interface implemented by a file system that supports changing file access and modification times.
+type ChtimesFS interface {
 	FS
 
 	// Chtimes changes the access and modification times of the named
@@ -56,8 +56,8 @@ type Chtimes interface {
 	Chtimes(name string, atime, mtime time.Time) error
 }
 
-// Copy is the interface implemented by a file system that supports copying another file system.
-type Copy interface {
+// CopyFS is the interface implemented by a file system that supports copying another file system.
+type CopyFS interface {
 	FS
 
 	// Copy copies the file system fsys into the directory dir.
@@ -73,8 +73,8 @@ type Copy interface {
 	Copy(dir string, fsys FS) error
 }
 
-// Mkdir is the interface implemented by a file system that supports creating directories.
-type Mkdir interface {
+// MkdirFS is the interface implemented by a file system that supports creating directories.
+type MkdirFS interface {
 	FS
 
 	// Mkdir creates a new directory with the specified name and permission
@@ -83,8 +83,8 @@ type Mkdir interface {
 	Mkdir(name string, mode FileMode) error
 }
 
-// MkdirAll is the interface implemented by a file system that supports creating directories along a path.
-type MkdirAll interface {
+// MkdirAllFS is the interface implemented by a file system that supports creating directories along a path.
+type MkdirAllFS interface {
 	FS
 
 	// MkdirAll creates a directory named path,
@@ -97,8 +97,8 @@ type MkdirAll interface {
 	MkdirAll(name string, mode FileMode) error
 }
 
-// MkdirTemp is the interface implemented by a file system that supports creating temporary directories.
-type MkdirTemp interface {
+// MkdirTempFS is the interface implemented by a file system that supports creating temporary directories.
+type MkdirTempFS interface {
 	FS
 
 	// MkdirTemp creates a new temporary directory in the directory dir
@@ -107,8 +107,8 @@ type MkdirTemp interface {
 	MkdirTemp(dir, pattern string) (name string, err error)
 }
 
-// Remove is the interface implemented by a file system that supports removing files.
-type Remove interface {
+// RemoveFS is the interface implemented by a file system that supports removing files.
+type RemoveFS interface {
 	FS
 
 	// Remove removes the named file or (empty) directory.
@@ -116,8 +116,8 @@ type Remove interface {
 	Remove(name string) error
 }
 
-// RemoveAll is the interface implemented by a file system that supports removing directories and their contents.
-type RemoveAll interface {
+// RemoveAllFS is the interface implemented by a file system that supports removing directories and their contents.
+type RemoveAllFS interface {
 	FS
 
 	// RemoveAll removes path and any children it contains.
@@ -128,8 +128,8 @@ type RemoveAll interface {
 	RemoveAll(name string) error
 }
 
-// WriteFile is the interface implemented by a file system that supports writing files.
-type WriteFile interface {
+// WriteFileFS is the interface implemented by a file system that supports writing files.
+type WriteFileFS interface {
 	FS
 
 	// WriteFile writes data to the named file.
