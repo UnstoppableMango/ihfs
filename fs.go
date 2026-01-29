@@ -73,6 +73,22 @@ type CopyFS interface {
 	Copy(dir string, fsys FS) error
 }
 
+// Create is the interface implemented by a file system that supports creating new files.
+type Create interface {
+	FS
+
+	// Create creates a new file with the specified name.
+	// If the file already exists, it should be truncated.
+	// If there is an error, it should be of type [*PathError].
+	Create(name string) (File, error)
+}
+
+// Linker is the interface implemented by a file system that supports creating and reading symbolic links.
+type Linker interface {
+	Symlink
+	ReadLink
+}
+
 // MkdirFS is the interface implemented by a file system that supports creating directories.
 type MkdirFS interface {
 	FS
@@ -107,6 +123,15 @@ type MkdirTempFS interface {
 	MkdirTemp(dir, pattern string) (name string, err error)
 }
 
+// OpenFile is the interface implemented by a file system that supports opening files.
+type OpenFile interface {
+	FS
+
+	// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
+	// If there is an error, it should be of type [*PathError].
+	OpenFile(name string, flag int, perm FileMode) (File, error)
+}
+
 // RemoveFS is the interface implemented by a file system that supports removing files.
 type RemoveFS interface {
 	FS
@@ -126,6 +151,34 @@ type RemoveAllFS interface {
 	// should return nil (no error).
 	// If there is an error, it should be of type [*PathError].
 	RemoveAll(name string) error
+}
+
+// Rename is the interface implemented by a file system that supports renaming files.
+type Rename interface {
+	FS
+
+	// Rename renames (moves) oldpath to newpath.
+	// If there is an error, it should be of type [*PathError].
+	Rename(oldpath, newpath string) error
+}
+
+// Symlink is the interface implemented by a file system that supports creating symbolic links.
+type Symlink interface {
+	FS
+
+	// Symlink creates a symbolic link named newname pointing to oldname.
+	// If there is an error, it should be of type [*PathError].
+	Symlink(oldname, newname string) error
+}
+
+// TempFile is the interface implemented by a file system that supports creating temporary files.
+type TempFile interface {
+	FS
+
+	// TempFile creates a new temporary file in the directory dir
+	// and returns the pathname of the new file.
+	// It is the caller's responsibility to remove the file when it is no longer needed.
+	TempFile(dir, pattern string) (name string, err error)
 }
 
 // WriteFileFS is the interface implemented by a file system that supports writing files.
