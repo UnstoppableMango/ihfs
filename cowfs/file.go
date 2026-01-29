@@ -126,7 +126,7 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		if merged, err := f.merge(layerEntries, baseEntries); err != nil {
 			return nil, err
 		} else {
-			f.entries = append(f.entries, merged...)
+			f.entries = merged
 		}
 	}
 
