@@ -19,5 +19,6 @@ clean:
 format fmt:
 	nix fmt
 
+gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
 	$(GOMOD2NIX)
