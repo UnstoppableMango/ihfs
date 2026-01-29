@@ -236,6 +236,107 @@ var _ = Describe("File", func() {
 		})
 	})
 
+	Describe("ReadDir", func() {
+		It("should merge entries from both layers", func() {
+			baseEntry := testfs.NewDirEntry("base.txt", false)
+			layerEntry := testfs.NewDirEntry("layer.txt", false)
+			sharedEntry := testfs.NewDirEntry("shared.txt", false)
+
+			baseFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{baseEntry, sharedEntry}, nil
+				},
+			}
+			layerFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{layerEntry, sharedEntry}, nil
+				},
+			}
+
+			file := cowfs.NewFile(baseFile, layerFile)
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(3))
+
+			names := make(map[string]bool)
+			for _, e := range entries {
+				names[e.Name()] = true
+			}
+			Expect(names).To(HaveKey("base.txt"))
+			Expect(names).To(HaveKey("layer.txt"))
+			Expect(names).To(HaveKey("shared.txt"))
+		})
+
+		It("should prioritize layer over base for duplicates", func() {
+			sharedEntry := testfs.NewDirEntry("shared.txt", false)
+
+			baseFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{sharedEntry}, nil
+				},
+			}
+			layerFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{sharedEntry}, nil
+				},
+			}
+
+			file := cowfs.NewFile(baseFile, layerFile)
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("shared.txt"))
+		})
+
+		It("should support pagination", func() {
+			entry1 := testfs.NewDirEntry("file1.txt", false)
+			entry2 := testfs.NewDirEntry("file2.txt", false)
+
+			layerFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry1, entry2}, nil
+				},
+			}
+			file := cowfs.NewFile(nil, layerFile)
+
+			entries, err := file.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+
+			entries, err = file.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+
+			entries, err = file.ReadDir(1)
+			Expect(err).To(Equal(io.EOF))
+			Expect(entries).To(BeNil())
+		})
+
+		It("should return EOF when pagination exhausted", func() {
+			entry := testfs.NewDirEntry("file.txt", false)
+			layerFile := &testfs.File{
+				CloseFunc: func() error { return nil },
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				},
+			}
+			file := cowfs.NewFile(nil, layerFile)
+
+			_, _ = file.ReadDir(1)
+			entries, err := file.ReadDir(1)
+
+			Expect(err).To(Equal(io.EOF))
+			Expect(entries).To(BeNil())
+		})
+	})
+
 	Describe("Write", func() {
 		It("should write to layer and base when both exist", func() {
 			var baseData, layerData []byte

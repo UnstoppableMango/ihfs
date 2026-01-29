@@ -6,11 +6,12 @@ import (
 )
 
 type (
-	DirEntry  = fs.DirEntry
-	File      = fs.File
-	FileInfo  = fs.FileInfo
-	FileMode  = fs.FileMode
-	PathError = fs.PathError
+	DirEntry    = fs.DirEntry
+	File        = fs.File
+	FileInfo    = fs.FileInfo
+	FileMode    = fs.FileMode
+	PathError   = fs.PathError
+	ReadDirFile = fs.ReadDirFile
 )
 
 var (
