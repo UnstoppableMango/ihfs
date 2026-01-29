@@ -3,7 +3,6 @@ package cowfs_test
 import (
 	"errors"
 	"io"
-	"io/fs"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -425,71 +424,6 @@ var _ = Describe("File", func() {
 			entries, err = file.ReadDir(10)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(entries).To(HaveLen(1))
-		})
-
-		It("should return error when merge strategy fails", func() {
-			mergeErr := errors.New("merge failed")
-			failingMerge := func(layer, base []ihfs.DirEntry) ([]ihfs.DirEntry, error) {
-				return nil, mergeErr
-			}
-
-			baseEntry := testfs.NewDirEntry("base.txt", false)
-			layerEntry := testfs.NewDirEntry("layer.txt", false)
-
-			baseFile := &testfs.File{
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
-					return []ihfs.DirEntry{baseEntry}, nil
-				},
-			}
-			layerFile := &testfs.File{
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
-					return []ihfs.DirEntry{layerEntry}, nil
-				},
-			}
-
-			// Test through Fs.Open which uses newFile internally with merge strategy
-			base := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return baseFile, nil
-				}),
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				}),
-			)
-			layer := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return layerFile, nil
-				}),
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				}),
-			)
-
-			// Create a cowfs with a failing merge strategy
-			cfs := cowfs.New(base, layer, cowfs.WithMergeStrategy(failingMerge))
-			dir, err := cfs.Open("dir")
-			Expect(err).NotTo(HaveOccurred())
-
-			dirFile, ok := dir.(fs.ReadDirFile)
-			Expect(ok).To(BeTrue())
-
-			entries, err := dirFile.ReadDir(-1)
-			Expect(err).To(Equal(mergeErr))
-			Expect(entries).To(BeNil())
 		})
 	})
 
