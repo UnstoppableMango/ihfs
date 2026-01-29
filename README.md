@@ -17,20 +17,23 @@ import (
     "os"
     "io/fs"
 
+    "github.com/unstoppablemango/ihfs/osfs/fsutil/try"
     "github.com/unstoppablemango/ihfs/osfs"
     "github.com/unstoppablemango/ihfs"
 )
 
+// Built around [io/fs]
 var fs fs.FS = osfs.New()
 
-if mkdir, ok := fs.(ihfs.Mkdir); ok {
+// Regular type checks
+if mkdir, ok := fs.(ihfs.MkdirFS); ok {
     _ = mkdir.Mkdir("foo", os.ModeDir)
 }
 
-if w, ok := fs.(ihfs.WriteFile); ok {
-    _, _ = w.WriteFile("foo/bar.txt", []byte("❤️"), os.ModePerm)
-}
+// The [try] package
+_, err := try.WriteFile(fs, "foo/bar.txt", []byte("❤️"), os.ModePerm)
 
+// Walking with [iter.Seq]
 seq, err := ihfs.Catch(ihfs.Iter(fs, "."))
 
 for path, dirEntry := range seq {
