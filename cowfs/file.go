@@ -18,11 +18,20 @@ type File struct {
 	layer   ihfs.File
 	off     int
 	entries []ihfs.DirEntry
+	merge   MergeStrategy
 }
 
 // NewFile creates a new copy-on-write file with the given base and layer files.
 func NewFile(base, layer ihfs.File) *File {
-	return &File{base: base, layer: layer}
+	return newFile(base, layer, DefaultMergeStrategy)
+}
+
+func newFile(base, layer ihfs.File, merge MergeStrategy) *File {
+	return &File{
+		base:  base,
+		layer: layer,
+		merge: merge,
+	}
 }
 
 // Close implements [fs.File].
@@ -95,69 +104,46 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		var layerEntries []ihfs.DirEntry
 		if f.layer != nil {
 			if dir, ok := f.layer.(fs.ReadDirFile); ok {
-				entries, err := dir.ReadDir(-1)
-				if err != nil {
+				if entries, err := dir.ReadDir(-1); err != nil {
 					return nil, err
+				} else {
+					layerEntries = entries
 				}
-				layerEntries = entries
 			}
 		}
 
 		var baseEntries []ihfs.DirEntry
 		if f.base != nil {
 			if dir, ok := f.base.(fs.ReadDirFile); ok {
-				entries, err := dir.ReadDir(-1)
-				if err != nil {
+				if entries, err := dir.ReadDir(-1); err != nil {
 					return nil, err
+				} else {
+					baseEntries = entries
 				}
-				baseEntries = entries
 			}
 		}
 
-		merged := mergeDirEntries(layerEntries, baseEntries)
-		f.entries = append(f.entries, merged...)
+		if merged, err := f.merge(layerEntries, baseEntries); err != nil {
+			return nil, err
+		} else {
+			f.entries = append(f.entries, merged...)
+		}
 	}
 
 	entries := f.entries[f.off:]
 
 	if n <= 0 {
-		f.off += len(entries)
 		return entries, nil
 	}
-
 	if len(entries) == 0 {
 		return nil, io.EOF
 	}
-
 	if n > len(entries) {
 		n = len(entries)
 	}
 
 	f.off += n
 	return entries[:n], nil
-}
-
-// mergeDirEntries merges directory entries from the layer and base,
-// with layer entries taking precedence over base entries with the same name.
-func mergeDirEntries(layer, base []ihfs.DirEntry) []ihfs.DirEntry {
-	entries := make(map[string]ihfs.DirEntry)
-
-	for _, entry := range layer {
-		entries[entry.Name()] = entry
-	}
-
-	for _, entry := range base {
-		if _, exists := entries[entry.Name()]; !exists {
-			entries[entry.Name()] = entry
-		}
-	}
-
-	result := make([]ihfs.DirEntry, 0, len(entries))
-	for _, entry := range entries {
-		result = append(result, entry)
-	}
-
-	return result
 }
 
 // Write implements [ihfs.Writer].
