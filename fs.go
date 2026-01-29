@@ -73,8 +73,8 @@ type CopyFS interface {
 	Copy(dir string, fsys FS) error
 }
 
-// Create is the interface implemented by a file system that supports creating new files.
-type Create interface {
+// CreateFS is the interface implemented by a file system that supports creating new files.
+type CreateFS interface {
 	FS
 
 	// Create creates a new file with the specified name.
@@ -83,10 +83,10 @@ type Create interface {
 	Create(name string) (File, error)
 }
 
-// Linker is the interface implemented by a file system that supports creating and reading symbolic links.
-type Linker interface {
-	Symlink
-	ReadLink
+// LinkerFS is the interface implemented by a file system that supports creating and reading symbolic links.
+type LinkerFS interface {
+	SymlinkFS
+	ReadLinkFS
 }
 
 // MkdirFS is the interface implemented by a file system that supports creating directories.
@@ -123,13 +123,23 @@ type MkdirTempFS interface {
 	MkdirTemp(dir, pattern string) (name string, err error)
 }
 
-// OpenFile is the interface implemented by a file system that supports opening files.
-type OpenFile interface {
+// OpenFileFS is the interface implemented by a file system that supports opening files with flags and permissions.
+type OpenFileFS interface {
 	FS
 
 	// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
 	// If there is an error, it should be of type [*PathError].
 	OpenFile(name string, flag int, perm FileMode) (File, error)
+}
+
+// ReadDirNameFS is the interface implemented by a file system that supports an optimized version of reading directory entry names.
+type ReadDirNameFS interface {
+	FS
+
+	// ReadDirNames reads the names of the entries in the named directory.
+	// It returns a slice of names in directory order.
+	// If there is an error, it should be of type [*PathError].
+	ReadDirNames(name string) ([]string, error)
 }
 
 // RemoveFS is the interface implemented by a file system that supports removing files.
@@ -153,8 +163,8 @@ type RemoveAllFS interface {
 	RemoveAll(name string) error
 }
 
-// Rename is the interface implemented by a file system that supports renaming files.
-type Rename interface {
+// RenameFS is the interface implemented by a file system that supports renaming files.
+type RenameFS interface {
 	FS
 
 	// Rename renames (moves) oldpath to newpath.
@@ -162,8 +172,8 @@ type Rename interface {
 	Rename(oldpath, newpath string) error
 }
 
-// Symlink is the interface implemented by a file system that supports creating symbolic links.
-type Symlink interface {
+// SymlinkFS is the interface implemented by a file system that supports creating symbolic links.
+type SymlinkFS interface {
 	FS
 
 	// Symlink creates a symbolic link named newname pointing to oldname.
@@ -171,8 +181,8 @@ type Symlink interface {
 	Symlink(oldname, newname string) error
 }
 
-// TempFile is the interface implemented by a file system that supports creating temporary files.
-type TempFile interface {
+// TempFileFS is the interface implemented by a file system that supports creating temporary files.
+type TempFileFS interface {
 	FS
 
 	// TempFile creates a new temporary file in the directory dir
