@@ -121,6 +121,8 @@ github.com/tidwall/sjson v1.2.5/go.mod h1:Fvgq9kS/6ociJEDnK0Fk1cpYF4FIW6ZF7LAe+6
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/unmango/go v0.13.0 h1:ic6yM+/FcOVSNn05HL4iW+4VwPAPLjUL5aafPjXZFwU=
 github.com/unmango/go v0.13.0/go.mod h1:8Jv/HAgVVDOzTGMiHRcYpJ/be41O9EEWeSSZhnQ2aFg=
+github.com/unmango/go v0.15.0 h1:Eel2nXTCM1u59VzdWWlHExZMlR9L/dXzR+apywHllBw=
+github.com/unmango/go v0.15.0/go.mod h1:kHGDNngCnYp+2XKvPeniSLHDTU81cE+Dc1eNtSA1gZw=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
