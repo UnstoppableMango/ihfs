@@ -185,9 +185,14 @@ type SymlinkFS interface {
 type TempFileFS interface {
 	FS
 
-	// TempFile creates a new temporary file in the directory dir
-	// and returns the pathname of the new file.
-	// It is the caller's responsibility to remove the file when it is no longer needed.
+	// TempFile creates a new temporary file in the directory dir and returns
+	// the pathname of the new file, not an open file handle as in [os.CreateTemp].
+	//
+	// Callers are responsible for opening the returned path themselves if they
+	// need a file descriptor, and for removing the file when it is no longer
+	// needed. Because creation and opening are separate steps, callers should
+	// be aware of the potential for a race between file creation and subsequent
+	// use if the path can be modified by other actors.
 	TempFile(dir, pattern string) (name string, err error)
 }
 
