@@ -2,3 +2,5 @@
 .envrc
 /result
 cover*
+*.out
+*.test
