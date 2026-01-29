@@ -243,13 +243,11 @@ var _ = Describe("File", func() {
 			sharedEntry := testfs.NewDirEntry("shared.txt", false)
 
 			baseFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{baseEntry, sharedEntry}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{layerEntry, sharedEntry}, nil
 				},
@@ -274,13 +272,11 @@ var _ = Describe("File", func() {
 			sharedEntry := testfs.NewDirEntry("shared.txt", false)
 
 			baseFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{sharedEntry}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{sharedEntry}, nil
 				},
@@ -299,7 +295,6 @@ var _ = Describe("File", func() {
 			entry2 := testfs.NewDirEntry("file2.txt", false)
 
 			layerFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry1, entry2}, nil
 				},
@@ -322,7 +317,6 @@ var _ = Describe("File", func() {
 		It("should return EOF when pagination exhausted", func() {
 			entry := testfs.NewDirEntry("file.txt", false)
 			layerFile := &testfs.File{
-				CloseFunc: func() error { return nil },
 				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry}, nil
 				},
@@ -334,6 +328,102 @@ var _ = Describe("File", func() {
 
 			Expect(err).To(Equal(io.EOF))
 			Expect(entries).To(BeNil())
+		})
+
+		It("should return error when layer ReadDir fails", func() {
+			layerErr := errors.New("layer readdir failed")
+			layerFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return nil, layerErr
+				},
+			}
+			file := cowfs.NewFile(nil, layerFile)
+
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).To(Equal(layerErr))
+			Expect(entries).To(BeNil())
+		})
+
+		It("should return error when base ReadDir fails", func() {
+			baseErr := errors.New("base readdir failed")
+			baseFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return nil, baseErr
+				},
+			}
+			file := cowfs.NewFile(baseFile, nil)
+
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).To(Equal(baseErr))
+			Expect(entries).To(BeNil())
+		})
+
+		It("should handle layer not implementing ReadDirFile", func() {
+			baseEntry := testfs.NewDirEntry("base.txt", false)
+			baseFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{baseEntry}, nil
+				},
+			}
+			layerFile := &testfs.BoringFile{}
+			file := cowfs.NewFile(baseFile, layerFile)
+
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("base.txt"))
+		})
+
+		It("should handle base not implementing ReadDirFile", func() {
+			layerEntry := testfs.NewDirEntry("layer.txt", false)
+			layerFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{layerEntry}, nil
+				},
+			}
+			baseFile := &testfs.BoringFile{}
+			file := cowfs.NewFile(baseFile, layerFile)
+
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("layer.txt"))
+		})
+
+		It("should handle neither implementing ReadDirFile", func() {
+			file := cowfs.NewFile(&testfs.BoringFile{}, &testfs.BoringFile{})
+
+			entries, err := file.ReadDir(-1)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(BeEmpty())
+		})
+
+		It("should return remaining entries when n exceeds available", func() {
+			entry1 := testfs.NewDirEntry("file1.txt", false)
+			entry2 := testfs.NewDirEntry("file2.txt", false)
+			entry3 := testfs.NewDirEntry("file3.txt", false)
+
+			layerFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry1, entry2, entry3}, nil
+				},
+			}
+			file := cowfs.NewFile(nil, layerFile)
+
+			// Read 2 entries first
+			entries, err := file.ReadDir(2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(2))
+
+			// Request 10 entries but only 1 remains
+			entries, err = file.ReadDir(10)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
 		})
 	})
 
