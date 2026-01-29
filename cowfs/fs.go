@@ -72,16 +72,15 @@ func (f *Fs) isInBase(path string) (bool, error) {
 		return false, nil
 	}
 
-	_, err := try.Stat(f.base, path)
-	if err != nil {
-		if errors.Is(err, ihfs.ErrNotExist) {
+	if _, err := try.Stat(f.base, path); err != nil {
+		switch {
+		case errors.Is(err, ihfs.ErrNotExist):
+			fallthrough
+		case errors.Is(err, syscall.ENOTDIR):
 			return false, nil
+		default:
+			return false, fmt.Errorf("base: %w", err)
 		}
-		if errors.Is(err, syscall.ENOTDIR) {
-			return false, nil
-		}
-
-		return true, fmt.Errorf("base: %w", err)
 	}
 
 	return true, nil

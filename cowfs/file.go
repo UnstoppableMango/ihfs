@@ -73,3 +73,19 @@ func (f *File) Stat() (fs.FileInfo, error) {
 	}
 	return nil, BADFD
 }
+
+// Write implements [ihfs.Writer].
+func (f *File) Write(b []byte) (int, error) {
+	if f.layer != nil {
+		n, err := try.Write(f.layer, b)
+		if err == nil || f.base != nil {
+			_, err = try.Write(f.base, b)
+		}
+		return n, err
+	}
+	if f.base != nil {
+		return try.Write(f.base, b)
+	}
+
+	return 0, BADFD
+}
