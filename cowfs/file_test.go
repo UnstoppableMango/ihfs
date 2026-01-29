@@ -9,6 +9,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/cowfs"
+	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
@@ -253,11 +254,11 @@ var _ = Describe("File", func() {
 				},
 			)
 
-			n, err := file.Write([]byte("layer data"))
+			n, err := file.Write([]byte("data"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(n).To(Equal(10))
-			Expect(string(layerData)).To(Equal("layer data"))
-			Expect(string(baseData)).To(Equal("layer data"))
+			Expect(n).To(Equal(4))
+			Expect(string(layerData)).To(Equal("data"))
+			Expect(string(baseData)).To(Equal("data"))
 		})
 
 		It("should write to base only", func() {
@@ -317,14 +318,11 @@ var _ = Describe("File", func() {
 
 		It("should return layer write error when base not present", func() {
 			writeErr := errors.New("layer write failed")
-			file := cowfs.NewFile(
-				nil,
-				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
-						return 0, writeErr
-					},
+			file := cowfs.NewFile(nil, &testfs.File{
+				WriteFunc: func(p []byte) (int, error) {
+					return 0, writeErr
 				},
-			)
+			})
 
 			n, err := file.Write([]byte("data"))
 			Expect(n).To(Equal(0))
@@ -436,7 +434,7 @@ var _ = Describe("File", func() {
 			Expect(n).To(Equal(4))
 			Expect(string(layerData)).To(Equal("test"))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("write"))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 		})
 
 		It("should handle base not supporting write when only base exists", func() {
@@ -445,7 +443,7 @@ var _ = Describe("File", func() {
 			n, err := file.Write([]byte("data"))
 			Expect(n).To(Equal(0))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("write"))
+			Expect(err).To(MatchError(try.ErrNotSupported))
 		})
 
 		It("should handle large writes", func() {
