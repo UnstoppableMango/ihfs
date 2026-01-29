@@ -73,6 +73,32 @@ type CopyFS interface {
 	Copy(dir string, fsys FS) error
 }
 
+// CreateFS is the interface implemented by a file system that supports creating new files.
+type CreateFS interface {
+	FS
+
+	// Create creates a new file with the specified name.
+	// If the file already exists, it should be truncated.
+	// If there is an error, it should be of type [*PathError].
+	Create(name string) (File, error)
+}
+
+// CreateTempFS is the interface implemented by a file system that supports creating temporary files.
+type CreateTempFS interface {
+	FS
+
+	// CreateTemp creates a new temporary file in the directory dir
+	// and returns the file and its pathname.
+	// It is the caller's responsibility to remove the file when it is no longer needed.
+	CreateTemp(dir, pattern string) (File, error)
+}
+
+// LinkerFS is the interface implemented by a file system that supports creating and reading symbolic links.
+type LinkerFS interface {
+	SymlinkFS
+	ReadLinkFS
+}
+
 // MkdirFS is the interface implemented by a file system that supports creating directories.
 type MkdirFS interface {
 	FS
@@ -107,6 +133,25 @@ type MkdirTempFS interface {
 	MkdirTemp(dir, pattern string) (name string, err error)
 }
 
+// OpenFileFS is the interface implemented by a file system that supports opening files with flags and permissions.
+type OpenFileFS interface {
+	FS
+
+	// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
+	// If there is an error, it should be of type [*PathError].
+	OpenFile(name string, flag int, perm FileMode) (File, error)
+}
+
+// ReadDirNameFS is the interface implemented by a file system that supports an optimized version of reading directory entry names.
+type ReadDirNameFS interface {
+	FS
+
+	// ReadDirNames reads the names of the entries in the named directory.
+	// It returns a slice of names in directory order.
+	// If there is an error, it should be of type [*PathError].
+	ReadDirNames(name string) ([]string, error)
+}
+
 // RemoveFS is the interface implemented by a file system that supports removing files.
 type RemoveFS interface {
 	FS
@@ -126,6 +171,39 @@ type RemoveAllFS interface {
 	// should return nil (no error).
 	// If there is an error, it should be of type [*PathError].
 	RemoveAll(name string) error
+}
+
+// RenameFS is the interface implemented by a file system that supports renaming files.
+type RenameFS interface {
+	FS
+
+	// Rename renames (moves) oldpath to newpath.
+	// If there is an error, it should be of type [*PathError].
+	Rename(oldpath, newpath string) error
+}
+
+// SymlinkFS is the interface implemented by a file system that supports creating symbolic links.
+type SymlinkFS interface {
+	FS
+
+	// Symlink creates a symbolic link named newname pointing to oldname.
+	// If there is an error, it should be of type [*PathError].
+	Symlink(oldname, newname string) error
+}
+
+// TempFileFS is the interface implemented by a file system that supports creating temporary files.
+type TempFileFS interface {
+	FS
+
+	// TempFile creates a new temporary file in the directory dir and returns
+	// the pathname of the new file, not an open file handle as in [os.CreateTemp].
+	//
+	// Callers are responsible for opening the returned path themselves if they
+	// need a file descriptor, and for removing the file when it is no longer
+	// needed. Because creation and opening are separate steps, callers should
+	// be aware of the potential for a race between file creation and subsequent
+	// use if the path can be modified by other actors.
+	TempFile(dir, pattern string) (name string, err error)
 }
 
 // WriteFileFS is the interface implemented by a file system that supports writing files.
