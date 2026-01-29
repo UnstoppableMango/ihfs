@@ -11,8 +11,10 @@ import (
 // For directories, it wraps files from both base and layer.
 // For regular files, it only wraps the cached layer file.
 type File struct {
-	base  ihfs.File
-	layer ihfs.File
+	base    ihfs.File
+	layer   ihfs.File
+	off     int
+	entries []ihfs.DirEntry
 }
 
 // NewFile creates a new cache-on-read file with the given base and layer files.
@@ -71,40 +73,45 @@ func (f *File) Stat() (ihfs.FileInfo, error) {
 // ReadDir reads the contents of the directory. For cache-on-read,
 // directories are merged from both base and layer, similar to cowfs.
 func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
-	var entries []ihfs.DirEntry
+	if f.off == 0 {
+		var entries []ihfs.DirEntry
 
-	// Get entries from layer if available
-	if f.layer != nil {
-		if dir, ok := f.layer.(ihfs.ReadDirFile); ok {
-			layerEntries, err := dir.ReadDir(-1)
-			if err != nil {
-				return nil, err
+		// Get entries from layer if available
+		if f.layer != nil {
+			if dir, ok := f.layer.(ihfs.ReadDirFile); ok {
+				layerEntries, err := dir.ReadDir(-1)
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, layerEntries...)
 			}
-			entries = append(entries, layerEntries...)
 		}
-	}
 
-	// Get entries from base if available
-	if f.base != nil {
-		if dir, ok := f.base.(ihfs.ReadDirFile); ok {
-			baseEntries, err := dir.ReadDir(-1)
-			if err != nil {
-				return nil, err
-			}
-			// Merge entries, avoiding duplicates
-			seen := make(map[string]bool)
-			for _, e := range entries {
-				seen[e.Name()] = true
-			}
-			for _, e := range baseEntries {
-				if !seen[e.Name()] {
-					entries = append(entries, e)
+		// Get entries from base if available
+		if f.base != nil {
+			if dir, ok := f.base.(ihfs.ReadDirFile); ok {
+				baseEntries, err := dir.ReadDir(-1)
+				if err != nil {
+					return nil, err
+				}
+				// Merge entries, avoiding duplicates
+				seen := make(map[string]bool)
+				for _, e := range entries {
+					seen[e.Name()] = true
+				}
+				for _, e := range baseEntries {
+					if !seen[e.Name()] {
+						entries = append(entries, e)
+					}
 				}
 			}
 		}
+
+		f.entries = entries
 	}
 
-	// Handle pagination
+	entries := f.entries[f.off:]
+
 	if n <= 0 {
 		return entries, nil
 	}
@@ -115,5 +122,6 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		n = len(entries)
 	}
 
+	f.off += n
 	return entries[:n], nil
 }

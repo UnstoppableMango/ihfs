@@ -109,6 +109,23 @@ func (f *Fs) copyToLayer(name string) error {
 		return fmt.Errorf("layer filesystem does not support MkdirAll")
 	}
 
+	// Ensure parent directories exist in the layer
+	if mkdirer, ok := f.layer.(ihfs.MkdirAllFS); ok {
+		parent := name
+		// Find the parent directory
+		for i := len(name) - 1; i >= 0; i-- {
+			if name[i] == '/' {
+				parent = name[:i]
+				break
+			}
+		}
+		if parent != name && parent != "" {
+			if err := mkdirer.MkdirAll(parent, 0755); err != nil {
+				return fmt.Errorf("failed to create parent directories: %w", err)
+			}
+		}
+	}
+
 	// Create the file in the layer
 	var lFile ihfs.File
 	if creator, ok := f.layer.(ihfs.CreateFS); ok {
@@ -116,7 +133,11 @@ func (f *Fs) copyToLayer(name string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create layer file: %w", err)
 		}
-		defer lFile.Close()
+		defer func() {
+			if closeErr := lFile.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 	} else {
 		return fmt.Errorf("layer filesystem does not support Create")
 	}
@@ -124,16 +145,25 @@ func (f *Fs) copyToLayer(name string) error {
 	// Copy the contents - lFile needs to be a Writer
 	if writer, ok := lFile.(ihfs.Writer); ok {
 		if _, err := io.Copy(writer, bFile); err != nil {
+			// Clean up the partially created file
+			if remover, ok := f.layer.(ihfs.RemoveFS); ok {
+				_ = remover.Remove(name)
+			}
 			return fmt.Errorf("failed to copy file contents: %w", err)
 		}
 	} else {
+		// Clean up the created file since we can't write to it
+		if remover, ok := f.layer.(ihfs.RemoveFS); ok {
+			_ = remover.Remove(name)
+		}
 		return fmt.Errorf("layer file does not support Write")
 	}
 
 	// Copy the modification time
 	if chtimer, ok := f.layer.(ihfs.ChtimesFS); ok {
 		if err := chtimer.Chtimes(name, bInfo.ModTime(), bInfo.ModTime()); err != nil {
-			return fmt.Errorf("failed to set modification time: %w", err)
+			// Log but don't fail - the file was copied successfully
+			return nil
 		}
 	}
 
@@ -157,13 +187,13 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			return nil, err
 		}
 		if bfi.IsDir() {
-			return f.base.Open(name)
+			// For directories, fall through to merge logic below
+		} else {
+			if err := f.copyToLayer(name); err != nil {
+				return nil, err
+			}
+			return f.layer.Open(name)
 		}
-		if err := f.copyToLayer(name); err != nil {
-			return nil, err
-		}
-		return f.layer.Open(name)
-
 	case cacheStale:
 		if !fi.IsDir() {
 			if err := f.copyToLayer(name); err != nil {
@@ -177,11 +207,17 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		}
 	}
 
-	// the dirs from cacheHit, cacheStale fall down here:
-	bfile, _ := f.base.Open(name)
-	lfile, err := f.layer.Open(name)
-	if err != nil && bfile == nil {
-		return nil, err
+	// the dirs from cacheHit, cacheStale, and cacheMiss fall down here:
+	bfile, bErr := f.base.Open(name)
+	lfile, lErr := f.layer.Open(name)
+	
+	// Only ignore base errors if it's a not-exist error
+	if bErr != nil && !errors.Is(bErr, ihfs.ErrNotExist) && lfile == nil {
+		return nil, bErr
+	}
+	
+	if lErr != nil && bfile == nil {
+		return nil, lErr
 	}
 	return newFile(bfile, lfile), nil
 }

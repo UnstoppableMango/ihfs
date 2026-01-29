@@ -201,10 +201,23 @@ var _ = Describe("File", func() {
 			}
 
 			file := corfs.NewFile(baseFile, layerFile)
-			entries, err := file.ReadDir(1)
+			
+			// First call should return first entry
+			entries1, err1 := file.ReadDir(1)
+			Expect(err1).ToNot(HaveOccurred())
+			Expect(entries1).To(HaveLen(1))
+			Expect(entries1[0].Name()).To(Equal("layer.txt"))
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(entries).To(HaveLen(1))
+			// Second call should return second entry
+			entries2, err2 := file.ReadDir(1)
+			Expect(err2).ToNot(HaveOccurred())
+			Expect(entries2).To(HaveLen(1))
+			Expect(entries2[0].Name()).To(Equal("base.txt"))
+
+			// Third call should return EOF
+			entries3, err3 := file.ReadDir(1)
+			Expect(err3).To(Equal(io.EOF))
+			Expect(entries3).To(BeNil())
 		})
 
 		It("should return EOF when no entries and n > 0", func() {
