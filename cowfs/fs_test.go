@@ -253,6 +253,135 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
+	Describe("Options", func() {
+		Describe("WithMergeStrategy", func() {
+			It("should use custom merge strategy", func() {
+				customMergeCalled := false
+				customMerge := func(layer, base []ihfs.DirEntry) ([]ihfs.DirEntry, error) {
+					customMergeCalled = true
+					return append(layer, base...), nil
+				}
+
+				baseEntry := testfs.NewDirEntry("base.txt", false)
+				layerEntry := testfs.NewDirEntry("layer.txt", false)
+
+				baseDir := &testfs.File{
+					StatFunc: func() (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					},
+					ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+						return []ihfs.DirEntry{baseEntry}, nil
+					},
+				}
+				layerDir := &testfs.File{
+					StatFunc: func() (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					},
+					ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+						return []ihfs.DirEntry{layerEntry}, nil
+					},
+				}
+
+				base := testfs.New(
+					testfs.WithOpen(func(name string) (ihfs.File, error) {
+						return baseDir, nil
+					}),
+					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					}),
+				)
+				layer := testfs.New(
+					testfs.WithOpen(func(name string) (ihfs.File, error) {
+						return layerDir, nil
+					}),
+					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					}),
+				)
+
+				cfs := cowfs.New(base, layer, cowfs.WithMergeStrategy(customMerge))
+				file, err := cfs.Open("dir")
+				Expect(err).ToNot(HaveOccurred())
+
+				dirFile, ok := file.(fs.ReadDirFile)
+				Expect(ok).To(BeTrue())
+
+				entries, err := dirFile.ReadDir(-1)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entries).To(HaveLen(2))
+				Expect(customMergeCalled).To(BeTrue())
+			})
+		})
+
+		Describe("WithDefaultMergeStrategy", func() {
+			It("should use default merge strategy", func() {
+				baseEntry := testfs.NewDirEntry("base.txt", false)
+				layerEntry := testfs.NewDirEntry("layer.txt", false)
+
+				baseDir := &testfs.File{
+					StatFunc: func() (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					},
+					ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+						return []ihfs.DirEntry{baseEntry}, nil
+					},
+				}
+				layerDir := &testfs.File{
+					StatFunc: func() (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					},
+					ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+						return []ihfs.DirEntry{layerEntry}, nil
+					},
+				}
+
+				base := testfs.New(
+					testfs.WithOpen(func(name string) (ihfs.File, error) {
+						return baseDir, nil
+					}),
+					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					}),
+				)
+				layer := testfs.New(
+					testfs.WithOpen(func(name string) (ihfs.File, error) {
+						return layerDir, nil
+					}),
+					testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+						fi := testfs.NewFileInfo()
+						fi.IsDirFunc = func() bool { return true }
+						return fi, nil
+					}),
+				)
+
+				cfs := cowfs.New(base, layer, cowfs.WithDefaultMergeStrategy())
+				file, err := cfs.Open("dir")
+				Expect(err).ToNot(HaveOccurred())
+
+				dirFile, ok := file.(fs.ReadDirFile)
+				Expect(ok).To(BeTrue())
+
+				entries, err := dirFile.ReadDir(-1)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entries).To(HaveLen(2))
+			})
+		})
+	})
+
 	Describe("isInBase", func() {
 		It("should handle ErrNotExist", func() {
 			base := testfs.New(
