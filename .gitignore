@@ -4,3 +4,4 @@
 cover*
 *.out
 *.test
+go.work*

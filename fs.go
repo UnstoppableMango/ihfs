@@ -83,6 +83,16 @@ type CreateFS interface {
 	Create(name string) (File, error)
 }
 
+// CreateTempFS is the interface implemented by a file system that supports creating temporary files.
+type CreateTempFS interface {
+	FS
+
+	// CreateTemp creates a new temporary file in the directory dir
+	// and returns the file and its pathname.
+	// It is the caller's responsibility to remove the file when it is no longer needed.
+	CreateTemp(dir, pattern string) (File, error)
+}
+
 // LinkerFS is the interface implemented by a file system that supports creating and reading symbolic links.
 type LinkerFS interface {
 	SymlinkFS
