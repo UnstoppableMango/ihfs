@@ -19,6 +19,9 @@ clean:
 format fmt:
 	nix fmt
 
+validate:
+	curl --data-binary @codecov.yml https://codecov.io/validate
+
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
 	$(GOMOD2NIX)
