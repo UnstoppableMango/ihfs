@@ -10,6 +10,7 @@ import (
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
+	"github.com/unstoppablemango/ihfs/union"
 )
 
 // Fs implements a cache-on-read filesystem. When files are read from
@@ -210,14 +211,14 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	// the dirs from cacheHit, cacheStale, and cacheMiss fall down here:
 	bfile, bErr := f.base.Open(name)
 	lfile, lErr := f.layer.Open(name)
-	
+
 	// Only ignore base errors if it's a not-exist error
 	if bErr != nil && !errors.Is(bErr, ihfs.ErrNotExist) && lfile == nil {
 		return nil, bErr
 	}
-	
+
 	if lErr != nil && bfile == nil {
 		return nil, lErr
 	}
-	return newFile(bfile, lfile), nil
+	return union.NewFile(bfile, lfile), nil
 }
