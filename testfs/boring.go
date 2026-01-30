@@ -14,7 +14,7 @@ func (fs BoringFs) Open(name string) (ihfs.File, error) {
 	if fs.OpenFunc != nil {
 		return fs.OpenFunc(name)
 	}
-	return nil, ihfs.ErrNotExist
+	return nil, fmt.Errorf("open: %w", ErrNotImplemented)
 }
 
 type BoringFile struct {
