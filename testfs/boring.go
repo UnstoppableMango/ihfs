@@ -23,21 +23,21 @@ type BoringFile struct {
 	StatFunc  func() (ihfs.FileInfo, error)
 }
 
-func (f *BoringFile) Close() error {
+func (f BoringFile) Close() error {
 	if f.CloseFunc != nil {
 		return f.CloseFunc()
 	}
 	return fmt.Errorf("close: %w", ErrNotImplemented)
 }
 
-func (f *BoringFile) Read(p []byte) (n int, err error) {
+func (f BoringFile) Read(p []byte) (n int, err error) {
 	if f.ReadFunc != nil {
 		return f.ReadFunc(p)
 	}
 	return 0, fmt.Errorf("read: %w", ErrNotImplemented)
 }
 
-func (f *BoringFile) Stat() (ihfs.FileInfo, error) {
+func (f BoringFile) Stat() (ihfs.FileInfo, error) {
 	if f.StatFunc != nil {
 		return f.StatFunc()
 	}
