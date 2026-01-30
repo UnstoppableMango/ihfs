@@ -3,6 +3,7 @@ package try_test
 import (
 	"errors"
 	"io/fs"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -640,12 +641,12 @@ var _ = Describe("Try Util", func() {
 				return expectedFile, nil
 			}))
 
-			file, err := try.OpenFile(fsys, "file.txt", 0o644, 0o755)
+			file, err := try.OpenFile(fsys, "file.txt", os.O_RDONLY, 0o755)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).To(Equal(expectedFile))
 			Expect(capturedName).To(Equal("file.txt"))
-			Expect(capturedFlag).To(Equal(0o644))
+			Expect(capturedFlag).To(Equal(os.O_RDONLY))
 			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o755)))
 		})
 
@@ -695,9 +696,6 @@ var _ = Describe("Try Util", func() {
 				testfs.WithReadLink(func(name string) (string, error) {
 					capturedName = name
 					return "target", nil
-				}),
-				testfs.WithLstat(func(name string) (ihfs.FileInfo, error) {
-					return nil, nil
 				}),
 			)
 
@@ -830,8 +828,8 @@ var _ = Describe("Try Util", func() {
 		})
 	})
 
-	Describe("ReadDirNames with ReadDirNameFS", func() {
-		It("should call ReadDirNames on ReadDirNameFS when supported", func() {
+	Describe("ReadDirNames with ReadDirNamesFS", func() {
+		It("should call ReadDirNames on ReadDirNamesFS when supported", func() {
 			var capturedName string
 
 			fsys := testfs.New(testfs.WithReadDirNames(func(name string) ([]string, error) {

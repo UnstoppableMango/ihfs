@@ -162,8 +162,8 @@ func ReadDir(fsys ihfs.FS, path string) ([]ihfs.DirEntry, error) {
 }
 
 // ReadDirNames reads the named directory and returns a list of names.
-// If the FS does not implement [ihfs.ReadDirFS], ReadDirNames returns
-// an error that can be checked with [errors.Is] for [ErrNotSupported].
+// If the FS does not implement [ihfs.ReadDirFS] or [ihfs.ReadDirNamesFS], ReadDirNames
+// returns an error that can be checked with [errors.Is] for [ErrNotSupported].
 func ReadDirNames(fsys ihfs.FS, path string) ([]string, error) {
 	if dirfs, ok := fsys.(ihfs.ReadDirNamesFS); ok {
 		return dirfs.ReadDirNames(path)
