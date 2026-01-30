@@ -1,10 +1,11 @@
-package cowfs
+package union
 
 import (
 	"errors"
 	"io"
 	"io/fs"
 
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 )
@@ -22,16 +23,15 @@ type File struct {
 }
 
 // NewFile creates a new copy-on-write file with the given base and layer files.
-func NewFile(base, layer ihfs.File) *File {
-	return newFile(base, layer, DefaultMergeStrategy)
-}
-
-func newFile(base, layer ihfs.File, merge MergeStrategy) *File {
-	return &File{
+func NewFile(base, layer ihfs.File, options ...Option) *File {
+	file := &File{
 		base:  base,
 		layer: layer,
-		merge: merge,
+		merge: DefaultMergeStrategy,
 	}
+	fopt.ApplyAll(file, options)
+
+	return file
 }
 
 // Close implements [fs.File].

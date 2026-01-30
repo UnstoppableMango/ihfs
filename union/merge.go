@@ -1,4 +1,4 @@
-package cowfs
+package union
 
 import "github.com/unstoppablemango/ihfs"
 

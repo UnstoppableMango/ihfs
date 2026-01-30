@@ -1,13 +1,7 @@
 package cowfs
 
-type Option func(*Fs)
+import "github.com/unstoppablemango/ihfs/union"
 
-func WithMergeStrategy(strategy MergeStrategy) Option {
-	return func(f *Fs) {
-		f.merge = strategy
-	}
-}
+type Option = union.Option
 
-func WithDefaultMergeStrategy() Option {
-	return WithMergeStrategy(DefaultMergeStrategy)
-}
+var WithMergeStrategy = union.WithMergeStrategy
