@@ -540,4 +540,424 @@ var _ = Describe("Try Util", func() {
 			Expect(err).To(MatchError(try.ErrNotSupported))
 		})
 	})
+
+	Describe("Create", func() {
+		It("should call Create on the filesystem", func() {
+			var capturedName string
+			expectedFile := &testfs.File{}
+
+			fsys := testfs.New(testfs.WithCreate(func(name string) (ihfs.File, error) {
+				capturedName = name
+				return expectedFile, nil
+			}))
+
+			file, err := try.Create(fsys, "file.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).To(Equal(expectedFile))
+			Expect(capturedName).To(Equal("file.txt"))
+		})
+
+		It("should return ErrNotSupported when fs does not support Create", func() {
+			fsys := testfs.BoringFs{}
+
+			file, err := try.Create(fsys, "file.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("CreateTemp", func() {
+		It("should call CreateTemp on the filesystem", func() {
+			var capturedDir, capturedPattern string
+			expectedFile := &testfs.File{}
+
+			fsys := &mockCreateTempFS{
+				createTemp: func(dir, pattern string) (ihfs.File, error) {
+					capturedDir = dir
+					capturedPattern = pattern
+					return expectedFile, nil
+				},
+			}
+
+			file, err := try.CreateTemp(fsys, "/tmp", "prefix-*")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).To(Equal(expectedFile))
+			Expect(capturedDir).To(Equal("/tmp"))
+			Expect(capturedPattern).To(Equal("prefix-*"))
+		})
+
+		It("should return ErrNotSupported when fs does not support CreateTemp", func() {
+			fsys := testfs.BoringFs{}
+
+			file, err := try.CreateTemp(fsys, "/tmp", "prefix-*")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("Glob", func() {
+		It("should call Glob on the filesystem", func() {
+			var capturedPattern string
+
+			fsys := &mockGlobFS{
+				glob: func(pattern string) ([]string, error) {
+					capturedPattern = pattern
+					return []string{"file1.txt", "file2.txt"}, nil
+				},
+			}
+
+			matches, err := try.Glob(fsys, "*.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matches).To(Equal([]string{"file1.txt", "file2.txt"}))
+			Expect(capturedPattern).To(Equal("*.txt"))
+		})
+
+		It("should return ErrNotSupported when fs does not support Glob", func() {
+			fsys := testfs.BoringFs{}
+
+			matches, err := try.Glob(fsys, "*.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(matches).To(BeNil())
+		})
+	})
+
+	Describe("OpenFile", func() {
+		It("should call OpenFile on the filesystem", func() {
+			var capturedName string
+			var capturedFlag int
+			var capturedPerm ihfs.FileMode
+			expectedFile := &testfs.File{}
+
+			fsys := &mockOpenFileFS{
+				openFile: func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+					capturedName = name
+					capturedFlag = flag
+					capturedPerm = perm
+					return expectedFile, nil
+				},
+			}
+
+			file, err := try.OpenFile(fsys, "file.txt", 0o644, 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).To(Equal(expectedFile))
+			Expect(capturedName).To(Equal("file.txt"))
+			Expect(capturedFlag).To(Equal(0o644))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o755)))
+		})
+
+		It("should return ErrNotSupported when fs does not support OpenFile", func() {
+			fsys := testfs.BoringFs{}
+
+			file, err := try.OpenFile(fsys, "file.txt", 0, 0)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("ReadFile", func() {
+		It("should call ReadFile on the filesystem", func() {
+			var capturedName string
+
+			fsys := &mockReadFileFS{
+				readFile: func(name string) ([]byte, error) {
+					capturedName = name
+					return []byte("content"), nil
+				},
+			}
+
+			data, err := try.ReadFile(fsys, "file.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(Equal([]byte("content")))
+			Expect(capturedName).To(Equal("file.txt"))
+		})
+
+		It("should return ErrNotSupported when fs does not support ReadFile", func() {
+			fsys := testfs.BoringFs{}
+
+			data, err := try.ReadFile(fsys, "file.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(data).To(BeNil())
+		})
+	})
+
+	Describe("ReadLink", func() {
+		It("should call ReadLink on the filesystem", func() {
+			var capturedName string
+
+			fsys := &mockReadLinkFS{
+				BoringFs: testfs.BoringFs{},
+				readLink: func(name string) (string, error) {
+					capturedName = name
+					return "target", nil
+				},
+			}
+
+			target, err := try.ReadLink(fsys, "symlink")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(target).To(Equal("target"))
+			Expect(capturedName).To(Equal("symlink"))
+		})
+
+		It("should return ErrNotSupported when fs does not support ReadLink", func() {
+			fsys := testfs.BoringFs{}
+
+			target, err := try.ReadLink(fsys, "symlink")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(target).To(Equal(""))
+		})
+	})
+
+	Describe("Rename", func() {
+		It("should call Rename on the filesystem", func() {
+			var capturedOldpath, capturedNewpath string
+
+			fsys := &mockRenameFS{
+				BoringFs: testfs.BoringFs{},
+				rename: func(oldpath, newpath string) error {
+					capturedOldpath = oldpath
+					capturedNewpath = newpath
+					return nil
+				},
+			}
+
+			err := try.Rename(fsys, "old.txt", "new.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedOldpath).To(Equal("old.txt"))
+			Expect(capturedNewpath).To(Equal("new.txt"))
+		})
+
+		It("should return ErrNotSupported when fs does not support Rename", func() {
+			fsys := testfs.BoringFs{}
+
+			err := try.Rename(fsys, "old.txt", "new.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+	})
+
+	Describe("Sub", func() {
+		It("should call Sub on the filesystem", func() {
+			var capturedDir string
+			expectedFS := testfs.New()
+
+			fsys := &mockSubFS{
+				BoringFs: testfs.BoringFs{},
+				sub: func(dir string) (ihfs.FS, error) {
+					capturedDir = dir
+					return &expectedFS, nil
+				},
+			}
+
+			subFS, err := try.Sub(fsys, "subdir")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(subFS).To(BeIdenticalTo(&expectedFS))
+			Expect(capturedDir).To(Equal("subdir"))
+		})
+
+		It("should return ErrNotSupported when fs does not support Sub", func() {
+			fsys := testfs.BoringFs{}
+
+			subFS, err := try.Sub(fsys, "subdir")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(subFS).To(BeNil())
+		})
+	})
+
+	Describe("Symlink", func() {
+		It("should call Symlink on the filesystem", func() {
+			var capturedOldname, capturedNewname string
+
+			fsys := &mockSymlinkFS{
+				symlink: func(oldname, newname string) error {
+					capturedOldname = oldname
+					capturedNewname = newname
+					return nil
+				},
+			}
+
+			err := try.Symlink(fsys, "target", "link")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedOldname).To(Equal("target"))
+			Expect(capturedNewname).To(Equal("link"))
+		})
+
+		It("should return ErrNotSupported when fs does not support Symlink", func() {
+			fsys := testfs.BoringFs{}
+
+			err := try.Symlink(fsys, "target", "link")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+	})
+
+	Describe("TempFile", func() {
+		It("should call TempFile on the filesystem", func() {
+			var capturedDir, capturedPattern string
+
+			fsys := &mockTempFileFS{
+				tempFile: func(dir, pattern string) (string, error) {
+					capturedDir = dir
+					capturedPattern = pattern
+					return "/tmp/tempfile123", nil
+				},
+			}
+
+			name, err := try.TempFile(fsys, "/tmp", "prefix-*")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).To(Equal("/tmp/tempfile123"))
+			Expect(capturedDir).To(Equal("/tmp"))
+			Expect(capturedPattern).To(Equal("prefix-*"))
+		})
+
+		It("should return ErrNotSupported when fs does not support TempFile", func() {
+			fsys := testfs.BoringFs{}
+
+			name, err := try.TempFile(fsys, "/tmp", "prefix-*")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(name).To(Equal(""))
+		})
+	})
+
+	Describe("ReadDirNames with ReadDirNameFS", func() {
+		It("should call ReadDirNames on ReadDirNameFS when supported", func() {
+			var capturedName string
+
+			fsys := &mockReadDirNameFS{
+				readDirNames: func(name string) ([]string, error) {
+					capturedName = name
+					return []string{"file1.txt", "file2.txt"}, nil
+				},
+			}
+
+			names, err := try.ReadDirNames(fsys, "dir")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(names).To(Equal([]string{"file1.txt", "file2.txt"}))
+			Expect(capturedName).To(Equal("dir"))
+		})
+	})
 })
+
+// Mock implementations for interfaces not in testfs
+
+type mockCreateTempFS struct {
+	testfs.BoringFs
+	createTemp func(dir, pattern string) (ihfs.File, error)
+}
+
+func (m *mockCreateTempFS) CreateTemp(dir, pattern string) (ihfs.File, error) {
+	return m.createTemp(dir, pattern)
+}
+
+type mockGlobFS struct {
+	testfs.BoringFs
+	glob func(pattern string) ([]string, error)
+}
+
+func (m *mockGlobFS) Glob(pattern string) ([]string, error) {
+	return m.glob(pattern)
+}
+
+type mockOpenFileFS struct {
+	testfs.BoringFs
+	openFile func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error)
+}
+
+func (m *mockOpenFileFS) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+	return m.openFile(name, flag, perm)
+}
+
+type mockReadFileFS struct {
+	testfs.BoringFs
+	readFile func(name string) ([]byte, error)
+}
+
+func (m *mockReadFileFS) ReadFile(name string) ([]byte, error) {
+	return m.readFile(name)
+}
+
+type mockReadLinkFS struct {
+	testfs.BoringFs
+	readLink func(name string) (string, error)
+}
+
+func (m *mockReadLinkFS) ReadLink(name string) (string, error) {
+	return m.readLink(name)
+}
+
+func (m *mockReadLinkFS) Lstat(name string) (ihfs.FileInfo, error) {
+	return nil, nil
+}
+
+type mockRenameFS struct {
+	testfs.BoringFs
+	rename func(oldpath, newpath string) error
+}
+
+func (m *mockRenameFS) Rename(oldpath, newpath string) error {
+	return m.rename(oldpath, newpath)
+}
+
+type mockSubFS struct {
+	testfs.BoringFs
+	sub func(dir string) (ihfs.FS, error)
+}
+
+func (m *mockSubFS) Sub(dir string) (ihfs.FS, error) {
+	return m.sub(dir)
+}
+
+type mockSymlinkFS struct {
+	testfs.BoringFs
+	symlink func(oldname, newname string) error
+}
+
+func (m *mockSymlinkFS) Symlink(oldname, newname string) error {
+	return m.symlink(oldname, newname)
+}
+
+type mockTempFileFS struct {
+	testfs.BoringFs
+	tempFile func(dir, pattern string) (string, error)
+}
+
+func (m *mockTempFileFS) TempFile(dir, pattern string) (string, error) {
+	return m.tempFile(dir, pattern)
+}
+
+type mockReadDirNameFS struct {
+	testfs.BoringFs
+	readDirNames func(name string) ([]string, error)
+}
+
+func (m *mockReadDirNameFS) ReadDirNames(name string) ([]string, error) {
+	return m.readDirNames(name)
+}
