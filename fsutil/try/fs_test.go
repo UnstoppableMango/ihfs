@@ -574,13 +574,11 @@ var _ = Describe("Try Util", func() {
 			var capturedDir, capturedPattern string
 			expectedFile := &testfs.File{}
 
-			fsys := &mockCreateTempFS{
-				createTemp: func(dir, pattern string) (ihfs.File, error) {
-					capturedDir = dir
-					capturedPattern = pattern
-					return expectedFile, nil
-				},
-			}
+			fsys := testfs.New(testfs.WithCreateTemp(func(dir, pattern string) (ihfs.File, error) {
+				capturedDir = dir
+				capturedPattern = pattern
+				return expectedFile, nil
+			}))
 
 			file, err := try.CreateTemp(fsys, "/tmp", "prefix-*")
 
@@ -605,12 +603,10 @@ var _ = Describe("Try Util", func() {
 		It("should call Glob on the filesystem", func() {
 			var capturedPattern string
 
-			fsys := &mockGlobFS{
-				glob: func(pattern string) ([]string, error) {
-					capturedPattern = pattern
-					return []string{"file1.txt", "file2.txt"}, nil
-				},
-			}
+			fsys := testfs.New(testfs.WithGlob(func(pattern string) ([]string, error) {
+				capturedPattern = pattern
+				return []string{"file1.txt", "file2.txt"}, nil
+			}))
 
 			matches, err := try.Glob(fsys, "*.txt")
 
@@ -637,14 +633,12 @@ var _ = Describe("Try Util", func() {
 			var capturedPerm ihfs.FileMode
 			expectedFile := &testfs.File{}
 
-			fsys := &mockOpenFileFS{
-				openFile: func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
-					capturedName = name
-					capturedFlag = flag
-					capturedPerm = perm
-					return expectedFile, nil
-				},
-			}
+			fsys := testfs.New(testfs.WithOpenFile(func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+				capturedName = name
+				capturedFlag = flag
+				capturedPerm = perm
+				return expectedFile, nil
+			}))
 
 			file, err := try.OpenFile(fsys, "file.txt", 0o644, 0o755)
 
@@ -670,12 +664,10 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadFile on the filesystem", func() {
 			var capturedName string
 
-			fsys := &mockReadFileFS{
-				readFile: func(name string) ([]byte, error) {
-					capturedName = name
-					return []byte("content"), nil
-				},
-			}
+			fsys := testfs.New(testfs.WithReadFile(func(name string) ([]byte, error) {
+				capturedName = name
+				return []byte("content"), nil
+			}))
 
 			data, err := try.ReadFile(fsys, "file.txt")
 
@@ -699,13 +691,15 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadLink on the filesystem", func() {
 			var capturedName string
 
-			fsys := &mockReadLinkFS{
-				BoringFs: testfs.BoringFs{},
-				readLink: func(name string) (string, error) {
+			fsys := testfs.New(
+				testfs.WithReadLink(func(name string) (string, error) {
 					capturedName = name
 					return "target", nil
-				},
-			}
+				}),
+				testfs.WithLstat(func(name string) (ihfs.FileInfo, error) {
+					return nil, nil
+				}),
+			)
 
 			target, err := try.ReadLink(fsys, "symlink")
 
@@ -729,14 +723,11 @@ var _ = Describe("Try Util", func() {
 		It("should call Rename on the filesystem", func() {
 			var capturedOldpath, capturedNewpath string
 
-			fsys := &mockRenameFS{
-				BoringFs: testfs.BoringFs{},
-				rename: func(oldpath, newpath string) error {
-					capturedOldpath = oldpath
-					capturedNewpath = newpath
-					return nil
-				},
-			}
+			fsys := testfs.New(testfs.WithRename(func(oldpath, newpath string) error {
+				capturedOldpath = oldpath
+				capturedNewpath = newpath
+				return nil
+			}))
 
 			err := try.Rename(fsys, "old.txt", "new.txt")
 
@@ -760,13 +751,10 @@ var _ = Describe("Try Util", func() {
 			var capturedDir string
 			expectedFS := testfs.New()
 
-			fsys := &mockSubFS{
-				BoringFs: testfs.BoringFs{},
-				sub: func(dir string) (ihfs.FS, error) {
-					capturedDir = dir
-					return &expectedFS, nil
-				},
-			}
+			fsys := testfs.New(testfs.WithSub(func(dir string) (ihfs.FS, error) {
+				capturedDir = dir
+				return &expectedFS, nil
+			}))
 
 			subFS, err := try.Sub(fsys, "subdir")
 
@@ -790,13 +778,11 @@ var _ = Describe("Try Util", func() {
 		It("should call Symlink on the filesystem", func() {
 			var capturedOldname, capturedNewname string
 
-			fsys := &mockSymlinkFS{
-				symlink: func(oldname, newname string) error {
-					capturedOldname = oldname
-					capturedNewname = newname
-					return nil
-				},
-			}
+			fsys := testfs.New(testfs.WithSymlink(func(oldname, newname string) error {
+				capturedOldname = oldname
+				capturedNewname = newname
+				return nil
+			}))
 
 			err := try.Symlink(fsys, "target", "link")
 
@@ -819,13 +805,11 @@ var _ = Describe("Try Util", func() {
 		It("should call TempFile on the filesystem", func() {
 			var capturedDir, capturedPattern string
 
-			fsys := &mockTempFileFS{
-				tempFile: func(dir, pattern string) (string, error) {
-					capturedDir = dir
-					capturedPattern = pattern
-					return "/tmp/tempfile123", nil
-				},
-			}
+			fsys := testfs.New(testfs.WithTempFile(func(dir, pattern string) (string, error) {
+				capturedDir = dir
+				capturedPattern = pattern
+				return "/tmp/tempfile123", nil
+			}))
 
 			name, err := try.TempFile(fsys, "/tmp", "prefix-*")
 
@@ -850,12 +834,10 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadDirNames on ReadDirNameFS when supported", func() {
 			var capturedName string
 
-			fsys := &mockReadDirNameFS{
-				readDirNames: func(name string) ([]string, error) {
-					capturedName = name
-					return []string{"file1.txt", "file2.txt"}, nil
-				},
-			}
+			fsys := testfs.New(testfs.WithReadDirNames(func(name string) ([]string, error) {
+				capturedName = name
+				return []string{"file1.txt", "file2.txt"}, nil
+			}))
 
 			names, err := try.ReadDirNames(fsys, "dir")
 
@@ -865,99 +847,3 @@ var _ = Describe("Try Util", func() {
 		})
 	})
 })
-
-// Mock implementations for interfaces not in testfs
-
-type mockCreateTempFS struct {
-	testfs.BoringFs
-	createTemp func(dir, pattern string) (ihfs.File, error)
-}
-
-func (m *mockCreateTempFS) CreateTemp(dir, pattern string) (ihfs.File, error) {
-	return m.createTemp(dir, pattern)
-}
-
-type mockGlobFS struct {
-	testfs.BoringFs
-	glob func(pattern string) ([]string, error)
-}
-
-func (m *mockGlobFS) Glob(pattern string) ([]string, error) {
-	return m.glob(pattern)
-}
-
-type mockOpenFileFS struct {
-	testfs.BoringFs
-	openFile func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error)
-}
-
-func (m *mockOpenFileFS) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
-	return m.openFile(name, flag, perm)
-}
-
-type mockReadFileFS struct {
-	testfs.BoringFs
-	readFile func(name string) ([]byte, error)
-}
-
-func (m *mockReadFileFS) ReadFile(name string) ([]byte, error) {
-	return m.readFile(name)
-}
-
-type mockReadLinkFS struct {
-	testfs.BoringFs
-	readLink func(name string) (string, error)
-}
-
-func (m *mockReadLinkFS) ReadLink(name string) (string, error) {
-	return m.readLink(name)
-}
-
-func (m *mockReadLinkFS) Lstat(name string) (ihfs.FileInfo, error) {
-	return nil, nil
-}
-
-type mockRenameFS struct {
-	testfs.BoringFs
-	rename func(oldpath, newpath string) error
-}
-
-func (m *mockRenameFS) Rename(oldpath, newpath string) error {
-	return m.rename(oldpath, newpath)
-}
-
-type mockSubFS struct {
-	testfs.BoringFs
-	sub func(dir string) (ihfs.FS, error)
-}
-
-func (m *mockSubFS) Sub(dir string) (ihfs.FS, error) {
-	return m.sub(dir)
-}
-
-type mockSymlinkFS struct {
-	testfs.BoringFs
-	symlink func(oldname, newname string) error
-}
-
-func (m *mockSymlinkFS) Symlink(oldname, newname string) error {
-	return m.symlink(oldname, newname)
-}
-
-type mockTempFileFS struct {
-	testfs.BoringFs
-	tempFile func(dir, pattern string) (string, error)
-}
-
-func (m *mockTempFileFS) TempFile(dir, pattern string) (string, error) {
-	return m.tempFile(dir, pattern)
-}
-
-type mockReadDirNameFS struct {
-	testfs.BoringFs
-	readDirNames func(name string) ([]string, error)
-}
-
-func (m *mockReadDirNameFS) ReadDirNames(name string) ([]string, error) {
-	return m.readDirNames(name)
-}

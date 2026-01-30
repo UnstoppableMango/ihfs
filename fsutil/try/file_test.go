@@ -87,8 +87,8 @@ var _ = Describe("File", func() {
 			var actualData []byte
 			var actualOff int64
 
-			f := &mockReaderAt{
-				readAt: func(p []byte, off int64) (int, error) {
+			f := &testfs.File{
+				ReadAtFunc: func(p []byte, off int64) (int, error) {
 					actualData = p
 					actualOff = off
 					return 42, errors.New("test error")
@@ -120,8 +120,8 @@ var _ = Describe("File", func() {
 			var actualData []byte
 			var actualOff int64
 
-			f := &mockWriterAt{
-				writeAt: func(p []byte, off int64) (int, error) {
+			f := &testfs.File{
+				WriteAtFunc: func(p []byte, off int64) (int, error) {
 					actualData = p
 					actualOff = off
 					return 42, errors.New("test error")
@@ -151,8 +151,8 @@ var _ = Describe("File", func() {
 		It("should call WriteString on the underlying file when supported", func() {
 			var actualString string
 
-			f := &mockStringWriter{
-				writeString: func(s string) (int, error) {
+			f := &testfs.File{
+				WriteStringFunc: func(s string) (int, error) {
 					actualString = s
 					return 42, errors.New("test error")
 				},
@@ -180,8 +180,8 @@ var _ = Describe("File", func() {
 		It("should call Sync on the underlying file when supported", func() {
 			var called bool
 
-			f := &mockSyncer{
-				sync: func() error {
+			f := &testfs.File{
+				SyncFunc: func() error {
 					called = true
 					return errors.New("test error")
 				},
@@ -208,8 +208,8 @@ var _ = Describe("File", func() {
 		It("should call Truncate on the underlying file when supported", func() {
 			var actualSize int64
 
-			f := &mockTruncater{
-				truncate: func(size int64) error {
+			f := &testfs.File{
+				TruncateFunc: func(size int64) error {
 					actualSize = size
 					return errors.New("test error")
 				},
@@ -267,8 +267,8 @@ var _ = Describe("File", func() {
 		It("should call ReadDirNames on the underlying file when supported", func() {
 			var actualN int
 
-			f := &mockDirNameReader{
-				readDirNames: func(n int) ([]string, error) {
+			f := &testfs.File{
+				ReadDirNamesFunc: func(n int) ([]string, error) {
 					actualN = n
 					return []string{"file1.txt", "file2.txt"}, errors.New("test error")
 				},
@@ -283,59 +283,3 @@ var _ = Describe("File", func() {
 		})
 	})
 })
-
-// Mock implementations for file interfaces
-
-type mockReaderAt struct {
-	testfs.BoringFile
-	readAt func(p []byte, off int64) (int, error)
-}
-
-func (m *mockReaderAt) ReadAt(p []byte, off int64) (int, error) {
-	return m.readAt(p, off)
-}
-
-type mockWriterAt struct {
-	testfs.BoringFile
-	writeAt func(p []byte, off int64) (int, error)
-}
-
-func (m *mockWriterAt) WriteAt(p []byte, off int64) (int, error) {
-	return m.writeAt(p, off)
-}
-
-type mockStringWriter struct {
-	testfs.BoringFile
-	writeString func(s string) (int, error)
-}
-
-func (m *mockStringWriter) WriteString(s string) (int, error) {
-	return m.writeString(s)
-}
-
-type mockSyncer struct {
-	testfs.BoringFile
-	sync func() error
-}
-
-func (m *mockSyncer) Sync() error {
-	return m.sync()
-}
-
-type mockTruncater struct {
-	testfs.BoringFile
-	truncate func(size int64) error
-}
-
-func (m *mockTruncater) Truncate(size int64) error {
-	return m.truncate(size)
-}
-
-type mockDirNameReader struct {
-	testfs.BoringFile
-	readDirNames func(n int) ([]string, error)
-}
-
-func (m *mockDirNameReader) ReadDirNames(n int) ([]string, error) {
-	return m.readDirNames(n)
-}

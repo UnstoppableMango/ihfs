@@ -91,3 +91,69 @@ func WithReadDir(fn func(string) ([]ihfs.DirEntry, error)) Option {
 		fs.ReadDirFunc = fn
 	}
 }
+
+func WithCreateTemp(fn func(string, string) (ihfs.File, error)) Option {
+	return func(fs *Fs) {
+		fs.CreateTempFunc = fn
+	}
+}
+
+func WithGlob(fn func(string) ([]string, error)) Option {
+	return func(fs *Fs) {
+		fs.GlobFunc = fn
+	}
+}
+
+func WithLstat(fn func(string) (ihfs.FileInfo, error)) Option {
+	return func(fs *Fs) {
+		fs.LstatFunc = fn
+	}
+}
+
+func WithOpenFile(fn func(string, int, ihfs.FileMode) (ihfs.File, error)) Option {
+	return func(fs *Fs) {
+		fs.OpenFileFunc = fn
+	}
+}
+
+func WithReadDirNames(fn func(string) ([]string, error)) Option {
+	return func(fs *Fs) {
+		fs.ReadDirNamesFunc = fn
+	}
+}
+
+func WithReadFile(fn func(string) ([]byte, error)) Option {
+	return func(fs *Fs) {
+		fs.ReadFileFunc = fn
+	}
+}
+
+func WithReadLink(fn func(string) (string, error)) Option {
+	return func(fs *Fs) {
+		fs.ReadLinkFunc = fn
+	}
+}
+
+func WithRename(fn func(string, string) error) Option {
+	return func(fs *Fs) {
+		fs.RenameFunc = fn
+	}
+}
+
+func WithSub(fn func(string) (ihfs.FS, error)) Option {
+	return func(fs *Fs) {
+		fs.SubFunc = fn
+	}
+}
+
+func WithSymlink(fn func(string, string) error) Option {
+	return func(fs *Fs) {
+		fs.SymlinkFunc = fn
+	}
+}
+
+func WithTempFile(fn func(string, string) (string, error)) Option {
+	return func(fs *Fs) {
+		fs.TempFileFunc = fn
+	}
+}
