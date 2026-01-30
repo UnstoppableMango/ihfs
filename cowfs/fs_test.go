@@ -27,7 +27,7 @@ var _ = Describe("Fs", func() {
 					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return testfs.NewFileInfo(), nil
+					return testfs.NewFileInfo(name), nil
 				}),
 			)
 			layer := testfs.New()
@@ -53,7 +53,7 @@ var _ = Describe("Fs", func() {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return testfs.NewFileInfo(), nil
+					return testfs.NewFileInfo(name), nil
 				}),
 			)
 
@@ -69,14 +69,14 @@ var _ = Describe("Fs", func() {
 		It("should merge directories from both layers", func() {
 			baseDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
 			}
 			layerDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -87,7 +87,7 @@ var _ = Describe("Fs", func() {
 					return baseDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -97,7 +97,7 @@ var _ = Describe("Fs", func() {
 					return layerDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -139,7 +139,7 @@ var _ = Describe("Fs", func() {
 			layerDir := &testfs.File{
 				CloseFunc: func() error { return nil },
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -150,7 +150,7 @@ var _ = Describe("Fs", func() {
 					return nil, errors.New("open error")
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -160,7 +160,7 @@ var _ = Describe("Fs", func() {
 					return layerDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -178,7 +178,7 @@ var _ = Describe("Fs", func() {
 		It("should return joined error when layer open fails", func() {
 			baseDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -189,7 +189,7 @@ var _ = Describe("Fs", func() {
 					return baseDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -199,7 +199,7 @@ var _ = Describe("Fs", func() {
 					return nil, errors.New("open error")
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -223,7 +223,7 @@ var _ = Describe("Fs", func() {
 		It("should open layer directory when base is not directory", func() {
 			layerDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -231,7 +231,7 @@ var _ = Describe("Fs", func() {
 
 			base := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					return fi, nil
 				}),
@@ -241,7 +241,7 @@ var _ = Describe("Fs", func() {
 					return layerDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),

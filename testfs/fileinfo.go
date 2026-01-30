@@ -5,8 +5,11 @@ import (
 	"time"
 )
 
+// TODO: make this API less awkward to use in tests
+
 type FileInfo struct {
-	NameFunc    func() string
+	name string
+
 	IsDirFunc   func() bool
 	SizeFunc    func() int64
 	ModeFunc    func() fs.FileMode
@@ -14,9 +17,9 @@ type FileInfo struct {
 	SysFunc     func() any
 }
 
-func NewFileInfo() *FileInfo {
+func NewFileInfo(name string) *FileInfo {
 	return &FileInfo{
-		NameFunc:    func() string { return "" },
+		name:        name,
 		IsDirFunc:   func() bool { return false },
 		SizeFunc:    func() int64 { return 0 },
 		ModeFunc:    func() fs.FileMode { return 0 },
@@ -26,7 +29,7 @@ func NewFileInfo() *FileInfo {
 }
 
 func (fi *FileInfo) Name() string {
-	return fi.NameFunc()
+	return fi.name
 }
 
 func (fi *FileInfo) IsDir() bool {
