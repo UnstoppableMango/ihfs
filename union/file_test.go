@@ -268,6 +268,33 @@ var _ = Describe("File", func() {
 			Expect(names).To(HaveKey("shared.txt"))
 		})
 
+		It("should return error when merge strategy fails", func() {
+			mergeErr := errors.New("merge failed")
+			baseEntry := testfs.NewDirEntry("base.txt", false)
+			layerEntry := testfs.NewDirEntry("layer.txt", false)
+
+			baseFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{baseEntry}, nil
+				},
+			}
+			layerFile := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{layerEntry}, nil
+				},
+			}
+
+			file := union.NewFile(baseFile, layerFile, union.WithMergeStrategy(
+				func(layer, base []ihfs.DirEntry) ([]ihfs.DirEntry, error) {
+					return nil, mergeErr
+				},
+			))
+
+			entries, err := file.ReadDir(-1)
+			Expect(err).To(Equal(mergeErr))
+			Expect(entries).To(BeNil())
+		})
+
 		It("should prioritize layer over base for duplicates", func() {
 			sharedEntry := testfs.NewDirEntry("shared.txt", false)
 
