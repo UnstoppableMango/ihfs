@@ -32,13 +32,13 @@ func CopyToLayer(base, layer ihfs.FS, name string) error {
 	}
 	defer bfh.Close()
 
-	return copyFile(base, layer, name, bfh)
+	return copyFile(layer, name, bfh)
 }
 
 // copyFile is an internal helper that performs the actual file copy operation.
 // It takes an already-opened file handle from the base filesystem and copies
 // it to the layer filesystem, preserving metadata.
-func copyFile(base, layer ihfs.FS, name string, bfh ihfs.File) error {
+func copyFile(layer ihfs.FS, name string, bfh ihfs.File) error {
 	// First make sure the directory exists
 	dir := filepath.Dir(name)
 	if exists, err := try.Exists(layer, dir); err != nil {
@@ -71,16 +71,22 @@ func copyFile(base, layer ihfs.FS, name string, bfh ihfs.File) error {
 	n, err := io.Copy(writer, bfh)
 	if err != nil {
 		// If anything fails, clean up the file
-		try.Remove(layer, name)
 		lfh.Close()
+		try.Remove(layer, name)
 		return err
 	}
 
 	// Verify the copy was complete
 	bfi, err := bfh.Stat()
-	if err != nil || bfi.Size() != n {
-		try.Remove(layer, name)
+	if err != nil {
 		lfh.Close()
+		try.Remove(layer, name)
+		return err
+	}
+
+	if bfi.Size() != n {
+		lfh.Close()
+		try.Remove(layer, name)
 		return syscall.EIO
 	}
 
