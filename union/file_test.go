@@ -1,4 +1,4 @@
-package cowfs_test
+package union_test
 
 import (
 	"errors"
@@ -8,16 +8,16 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/cowfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"github.com/unstoppablemango/ihfs/union"
 )
 
 var _ = Describe("File", func() {
 	Describe("Close", func() {
 		It("should close both files", func() {
 			var base, layer bool
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					CloseFunc: func() error {
 						base = true
@@ -41,7 +41,7 @@ var _ = Describe("File", func() {
 
 		It("should close layer only", func() {
 			var called bool
-			file := cowfs.NewFile(nil, &testfs.File{
+			file := union.NewFile(nil, &testfs.File{
 				CloseFunc: func() error {
 					called = true
 					return nil
@@ -54,7 +54,7 @@ var _ = Describe("File", func() {
 
 		It("should return base errors", func() {
 			baseErr := errors.New("base close error")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					CloseFunc: func() error {
 						return baseErr
@@ -73,7 +73,7 @@ var _ = Describe("File", func() {
 
 		It("should return layer errors", func() {
 			layerErr := errors.New("layer close error")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					CloseFunc: func() error {
 						return nil
@@ -91,14 +91,14 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return BADFD when neither exists", func() {
-			file := cowfs.NewFile(nil, nil)
-			Expect(file.Close()).To(Equal(cowfs.BADFD))
+			file := union.NewFile(nil, nil)
+			Expect(file.Close()).To(Equal(union.BADFD))
 		})
 	})
 
 	Describe("Read", func() {
 		It("should read from layer", func() {
-			file := cowfs.NewFile(nil, &testfs.File{
+			file := union.NewFile(nil, &testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
 					return copy(p, []byte("layer")), io.EOF
 				},
@@ -111,7 +111,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should read from base", func() {
-			file := cowfs.NewFile(&testfs.File{
+			file := union.NewFile(&testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
 					return copy(p, []byte("base")), io.EOF
 				},
@@ -126,7 +126,7 @@ var _ = Describe("File", func() {
 		It("should sync base position on read", func() {
 			var seekOffset int64
 			var seekWhence int
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					SeekFunc: func(offset int64, whence int) (int64, error) {
 						seekOffset = offset
@@ -149,7 +149,7 @@ var _ = Describe("File", func() {
 
 		It("should return seek error", func() {
 			seekErr := errors.New("seek failed")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					SeekFunc: func(offset int64, whence int) (int64, error) {
 						return 0, seekErr
@@ -169,16 +169,16 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return BADFD when neither exists", func() {
-			file := cowfs.NewFile(nil, nil)
+			file := union.NewFile(nil, nil)
 			buf := make([]byte, 100)
 			n, err := file.Read(buf)
 			Expect(n).To(Equal(0))
-			Expect(err).To(Equal(cowfs.BADFD))
+			Expect(err).To(Equal(union.BADFD))
 		})
 
 		It("should return read error", func() {
 			readErr := errors.New("read error")
-			file := cowfs.NewFile(nil, &testfs.File{
+			file := union.NewFile(nil, &testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
 					return 0, readErr
 				},
@@ -192,7 +192,7 @@ var _ = Describe("File", func() {
 
 	Describe("Stat", func() {
 		It("should return layer info", func() {
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					StatFunc: func() (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo()
@@ -215,7 +215,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return base info", func() {
-			file := cowfs.NewFile(&testfs.File{
+			file := union.NewFile(&testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo()
 					fi.NameFunc = func() string { return "base.txt" }
@@ -229,10 +229,10 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return BADFD when neither exists", func() {
-			file := cowfs.NewFile(nil, nil)
+			file := union.NewFile(nil, nil)
 			info, err := file.Stat()
 			Expect(info).To(BeNil())
-			Expect(err).To(Equal(cowfs.BADFD))
+			Expect(err).To(Equal(union.BADFD))
 		})
 	})
 
@@ -253,7 +253,7 @@ var _ = Describe("File", func() {
 				},
 			}
 
-			file := cowfs.NewFile(baseFile, layerFile)
+			file := union.NewFile(baseFile, layerFile)
 			entries, err := file.ReadDir(-1)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -282,7 +282,7 @@ var _ = Describe("File", func() {
 				},
 			}
 
-			file := cowfs.NewFile(baseFile, layerFile)
+			file := union.NewFile(baseFile, layerFile)
 			entries, err := file.ReadDir(-1)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -299,7 +299,7 @@ var _ = Describe("File", func() {
 					return []ihfs.DirEntry{entry1, entry2}, nil
 				},
 			}
-			file := cowfs.NewFile(nil, layerFile)
+			file := union.NewFile(nil, layerFile)
 
 			entries, err := file.ReadDir(1)
 			Expect(err).NotTo(HaveOccurred())
@@ -321,7 +321,7 @@ var _ = Describe("File", func() {
 					return []ihfs.DirEntry{entry}, nil
 				},
 			}
-			file := cowfs.NewFile(nil, layerFile)
+			file := union.NewFile(nil, layerFile)
 
 			_, _ = file.ReadDir(1)
 			entries, err := file.ReadDir(1)
@@ -337,7 +337,7 @@ var _ = Describe("File", func() {
 					return nil, layerErr
 				},
 			}
-			file := cowfs.NewFile(nil, layerFile)
+			file := union.NewFile(nil, layerFile)
 
 			entries, err := file.ReadDir(-1)
 
@@ -352,7 +352,7 @@ var _ = Describe("File", func() {
 					return nil, baseErr
 				},
 			}
-			file := cowfs.NewFile(baseFile, nil)
+			file := union.NewFile(baseFile, nil)
 
 			entries, err := file.ReadDir(-1)
 
@@ -368,7 +368,7 @@ var _ = Describe("File", func() {
 				},
 			}
 			layerFile := &testfs.BoringFile{}
-			file := cowfs.NewFile(baseFile, layerFile)
+			file := union.NewFile(baseFile, layerFile)
 
 			entries, err := file.ReadDir(-1)
 
@@ -385,7 +385,7 @@ var _ = Describe("File", func() {
 				},
 			}
 			baseFile := &testfs.BoringFile{}
-			file := cowfs.NewFile(baseFile, layerFile)
+			file := union.NewFile(baseFile, layerFile)
 
 			entries, err := file.ReadDir(-1)
 
@@ -395,7 +395,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should handle neither implementing ReadDirFile", func() {
-			file := cowfs.NewFile(&testfs.BoringFile{}, &testfs.BoringFile{})
+			file := union.NewFile(&testfs.BoringFile{}, &testfs.BoringFile{})
 
 			entries, err := file.ReadDir(-1)
 
@@ -413,7 +413,7 @@ var _ = Describe("File", func() {
 					return []ihfs.DirEntry{entry1, entry2, entry3}, nil
 				},
 			}
-			file := cowfs.NewFile(nil, layerFile)
+			file := union.NewFile(nil, layerFile)
 
 			// Read 2 entries first
 			entries, err := file.ReadDir(2)
@@ -430,7 +430,7 @@ var _ = Describe("File", func() {
 	Describe("Write", func() {
 		It("should write to layer and base when both exist", func() {
 			var baseData, layerData []byte
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						baseData = append(baseData, p...)
@@ -454,7 +454,7 @@ var _ = Describe("File", func() {
 
 		It("should write to base only", func() {
 			var baseData []byte
-			file := cowfs.NewFile(&testfs.File{
+			file := union.NewFile(&testfs.File{
 				WriteFunc: func(p []byte) (int, error) {
 					baseData = append(baseData, p...)
 					return len(p), nil
@@ -470,7 +470,7 @@ var _ = Describe("File", func() {
 		It("should write to layer when layer write fails with base", func() {
 			writeErr := errors.New("layer error")
 			baseErr := errors.New("base error")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return 0, baseErr
@@ -489,7 +489,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return layer byte count", func() {
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return 10, nil
@@ -509,7 +509,7 @@ var _ = Describe("File", func() {
 
 		It("should return layer write error when base not present", func() {
 			writeErr := errors.New("layer write failed")
-			file := cowfs.NewFile(nil, &testfs.File{
+			file := union.NewFile(nil, &testfs.File{
 				WriteFunc: func(p []byte) (int, error) {
 					return 0, writeErr
 				},
@@ -522,7 +522,7 @@ var _ = Describe("File", func() {
 
 		It("should return base write error when layer succeeds", func() {
 			baseErr := errors.New("base write failed")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return 0, baseErr
@@ -542,7 +542,7 @@ var _ = Describe("File", func() {
 
 		It("should write to base when layer succeeds and base exists", func() {
 			var baseCalled bool
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						baseCalled = true
@@ -563,15 +563,15 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return BADFD when neither exists", func() {
-			file := cowfs.NewFile(nil, nil)
+			file := union.NewFile(nil, nil)
 			n, err := file.Write([]byte("data"))
 			Expect(n).To(Equal(0))
-			Expect(err).To(Equal(cowfs.BADFD))
+			Expect(err).To(Equal(union.BADFD))
 		})
 
 		It("should handle empty writes", func() {
 			var layerData, baseData []byte
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						baseData = append(baseData, p...)
@@ -595,7 +595,7 @@ var _ = Describe("File", func() {
 
 		It("should handle layer not supporting write with base", func() {
 			baseErr := errors.New("base error")
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return 0, baseErr
@@ -611,7 +611,7 @@ var _ = Describe("File", func() {
 
 		It("should handle base not supporting write when layer succeeds", func() {
 			var layerData []byte
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.BoringFile{},
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
@@ -629,7 +629,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should handle base not supporting write when only base exists", func() {
-			file := cowfs.NewFile(&testfs.BoringFile{}, nil)
+			file := union.NewFile(&testfs.BoringFile{}, nil)
 
 			n, err := file.Write([]byte("data"))
 			Expect(n).To(Equal(0))
@@ -644,7 +644,7 @@ var _ = Describe("File", func() {
 				largeData[i] = byte(i % 256)
 			}
 
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						baseSize += len(p)
@@ -667,7 +667,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should handle partial layer writes", func() {
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return len(p), nil
@@ -686,7 +686,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should handle partial base writes", func() {
-			file := cowfs.NewFile(
+			file := union.NewFile(
 				&testfs.File{
 					WriteFunc: func(p []byte) (int, error) {
 						return len(p) / 2, nil
