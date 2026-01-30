@@ -195,14 +195,14 @@ var _ = Describe("File", func() {
 			file := union.NewFile(
 				&testfs.File{
 					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
+						fi := testfs.NewFileInfo("not applicable")
 						fi.SizeFunc = func() int64 { return 100 }
 						return fi, nil
 					},
 				},
 				&testfs.File{
 					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo()
+						fi := testfs.NewFileInfo("not applicable")
 						fi.SizeFunc = func() int64 { return 200 }
 						return fi, nil
 					},
@@ -217,9 +217,7 @@ var _ = Describe("File", func() {
 		It("should return base info", func() {
 			file := union.NewFile(&testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
-					fi.NameFunc = func() string { return "base.txt" }
-					return fi, nil
+					return testfs.NewFileInfo("base.txt"), nil
 				},
 			}, nil)
 

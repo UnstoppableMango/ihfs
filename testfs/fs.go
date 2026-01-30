@@ -13,9 +13,12 @@ type (
 	Map = fstest.MapFS
 )
 
+// TODO: make this API less awkward to use in tests
+
 type Fs struct {
 	OpenFunc      func(string) (ihfs.File, error)
 	StatFunc      func(string) (ihfs.FileInfo, error)
+	CreateFunc    func(string) (ihfs.File, error)
 	WriteFileFunc func(string, []byte, ihfs.FileMode) error
 	ChmodFunc     func(string, ihfs.FileMode) error
 	ChownFunc     func(string, int, int) error
@@ -33,6 +36,7 @@ func New(opts ...Option) Fs {
 	fs := Fs{
 		OpenFunc:      defaultOpenFunc,
 		StatFunc:      defaultStatFunc,
+		CreateFunc:    defaultCreateFunc,
 		WriteFileFunc: defaultWriteFileFunc,
 		ChmodFunc:     defaultChmodFunc,
 		ChownFunc:     defaultChownFunc,
@@ -64,6 +68,14 @@ func (fs Fs) Stat(name string) (ihfs.FileInfo, error) {
 
 func defaultStatFunc(name string) (ihfs.FileInfo, error) {
 	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) Create(name string) (ihfs.File, error) {
+	return fs.CreateFunc(name)
+}
+
+func defaultCreateFunc(name string) (ihfs.File, error) {
+	return nil, fs.ErrPermission
 }
 
 func (fs Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
@@ -152,12 +164,4 @@ func (fs Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 
 func defaultReadDirFunc(name string) ([]ihfs.DirEntry, error) {
 	return nil, fs.ErrNotExist
-}
-
-type BoringFs struct {
-	OpenFunc func(string) (ihfs.File, error)
-}
-
-func (fs BoringFs) Open(name string) (ihfs.File, error) {
-	return fs.OpenFunc(name)
 }
