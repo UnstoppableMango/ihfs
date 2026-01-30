@@ -16,38 +16,60 @@ type (
 // TODO: make this API less awkward to use in tests
 
 type Fs struct {
-	OpenFunc      func(string) (ihfs.File, error)
-	StatFunc      func(string) (ihfs.FileInfo, error)
-	CreateFunc    func(string) (ihfs.File, error)
-	WriteFileFunc func(string, []byte, ihfs.FileMode) error
-	ChmodFunc     func(string, ihfs.FileMode) error
-	ChownFunc     func(string, int, int) error
-	ChtimesFunc   func(string, time.Time, time.Time) error
-	CopyFunc      func(string, ihfs.FS) error
-	MkdirFunc     func(string, ihfs.FileMode) error
-	MkdirAllFunc  func(string, ihfs.FileMode) error
-	MkdirTempFunc func(string, string) (string, error)
-	RemoveFunc    func(string) error
-	RemoveAllFunc func(string) error
-	ReadDirFunc   func(string) ([]ihfs.DirEntry, error)
+	OpenFunc         func(string) (ihfs.File, error)
+	StatFunc         func(string) (ihfs.FileInfo, error)
+	CreateFunc       func(string) (ihfs.File, error)
+	CreateTempFunc   func(string, string) (ihfs.File, error)
+	WriteFileFunc    func(string, []byte, ihfs.FileMode) error
+	ReadFileFunc     func(string) ([]byte, error)
+	ChmodFunc        func(string, ihfs.FileMode) error
+	ChownFunc        func(string, int, int) error
+	ChtimesFunc      func(string, time.Time, time.Time) error
+	CopyFunc         func(string, ihfs.FS) error
+	GlobFunc         func(string) ([]string, error)
+	LstatFunc        func(string) (ihfs.FileInfo, error)
+	MkdirFunc        func(string, ihfs.FileMode) error
+	MkdirAllFunc     func(string, ihfs.FileMode) error
+	MkdirTempFunc    func(string, string) (string, error)
+	OpenFileFunc     func(string, int, ihfs.FileMode) (ihfs.File, error)
+	ReadDirFunc      func(string) ([]ihfs.DirEntry, error)
+	ReadDirNamesFunc func(string) ([]string, error)
+	ReadLinkFunc     func(string) (string, error)
+	RemoveFunc       func(string) error
+	RemoveAllFunc    func(string) error
+	RenameFunc       func(string, string) error
+	SubFunc          func(string) (ihfs.FS, error)
+	SymlinkFunc      func(string, string) error
+	TempFileFunc     func(string, string) (string, error)
 }
 
 func New(opts ...Option) Fs {
 	fs := Fs{
-		OpenFunc:      defaultOpenFunc,
-		StatFunc:      defaultStatFunc,
-		CreateFunc:    defaultCreateFunc,
-		WriteFileFunc: defaultWriteFileFunc,
-		ChmodFunc:     defaultChmodFunc,
-		ChownFunc:     defaultChownFunc,
-		ChtimesFunc:   defaultChtimesFunc,
-		CopyFunc:      defaultCopyFunc,
-		MkdirFunc:     defaultMkdirFunc,
-		MkdirAllFunc:  defaultMkdirAllFunc,
-		MkdirTempFunc: defaultMkdirTempFunc,
-		RemoveFunc:    defaultRemoveFunc,
-		RemoveAllFunc: defaultRemoveAllFunc,
-		ReadDirFunc:   defaultReadDirFunc,
+		OpenFunc:         defaultOpenFunc,
+		StatFunc:         defaultStatFunc,
+		CreateFunc:       defaultCreateFunc,
+		CreateTempFunc:   defaultCreateTempFunc,
+		WriteFileFunc:    defaultWriteFileFunc,
+		ReadFileFunc:     defaultReadFileFunc,
+		ChmodFunc:        defaultChmodFunc,
+		ChownFunc:        defaultChownFunc,
+		ChtimesFunc:      defaultChtimesFunc,
+		CopyFunc:         defaultCopyFunc,
+		GlobFunc:         defaultGlobFunc,
+		LstatFunc:        defaultLstatFunc,
+		MkdirFunc:        defaultMkdirFunc,
+		MkdirAllFunc:     defaultMkdirAllFunc,
+		MkdirTempFunc:    defaultMkdirTempFunc,
+		OpenFileFunc:     defaultOpenFileFunc,
+		ReadDirFunc:      defaultReadDirFunc,
+		ReadDirNamesFunc: defaultReadDirNamesFunc,
+		ReadLinkFunc:     defaultReadLinkFunc,
+		RemoveFunc:       defaultRemoveFunc,
+		RemoveAllFunc:    defaultRemoveAllFunc,
+		RenameFunc:       defaultRenameFunc,
+		SubFunc:          defaultSubFunc,
+		SymlinkFunc:      defaultSymlinkFunc,
+		TempFileFunc:     defaultTempFileFunc,
 	}
 
 	fopt.ApplyAll(&fs, opts)
@@ -164,4 +186,92 @@ func (fs Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 
 func defaultReadDirFunc(name string) ([]ihfs.DirEntry, error) {
 	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) CreateTemp(dir, pattern string) (ihfs.File, error) {
+	return fs.CreateTempFunc(dir, pattern)
+}
+
+func defaultCreateTempFunc(dir, pattern string) (ihfs.File, error) {
+	return nil, fs.ErrPermission
+}
+
+func (fs Fs) Glob(pattern string) ([]string, error) {
+	return fs.GlobFunc(pattern)
+}
+
+func defaultGlobFunc(pattern string) ([]string, error) {
+	return nil, fs.ErrPermission
+}
+
+func (fs Fs) Lstat(name string) (ihfs.FileInfo, error) {
+	return fs.LstatFunc(name)
+}
+
+func defaultLstatFunc(name string) (ihfs.FileInfo, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+	return fs.OpenFileFunc(name, flag, perm)
+}
+
+func defaultOpenFileFunc(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+	return nil, fs.ErrPermission
+}
+
+func (fs Fs) ReadDirNames(name string) ([]string, error) {
+	return fs.ReadDirNamesFunc(name)
+}
+
+func defaultReadDirNamesFunc(name string) ([]string, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) ReadFile(name string) ([]byte, error) {
+	return fs.ReadFileFunc(name)
+}
+
+func defaultReadFileFunc(name string) ([]byte, error) {
+	return nil, fs.ErrPermission
+}
+
+func (fs Fs) ReadLink(name string) (string, error) {
+	return fs.ReadLinkFunc(name)
+}
+
+func defaultReadLinkFunc(name string) (string, error) {
+	return "", fs.ErrInvalid
+}
+
+func (fs Fs) Rename(oldpath, newpath string) error {
+	return fs.RenameFunc(oldpath, newpath)
+}
+
+func defaultRenameFunc(oldpath, newpath string) error {
+	return fs.ErrPermission
+}
+
+func (fs Fs) Sub(dir string) (ihfs.FS, error) {
+	return fs.SubFunc(dir)
+}
+
+func defaultSubFunc(dir string) (ihfs.FS, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (fs Fs) Symlink(oldname, newname string) error {
+	return fs.SymlinkFunc(oldname, newname)
+}
+
+func defaultSymlinkFunc(oldname, newname string) error {
+	return fs.ErrPermission
+}
+
+func (fs Fs) TempFile(dir, pattern string) (string, error) {
+	return fs.TempFileFunc(dir, pattern)
+}
+
+func defaultTempFileFunc(dir, pattern string) (string, error) {
+	return "", fs.ErrPermission
 }

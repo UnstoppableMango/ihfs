@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
@@ -69,6 +70,216 @@ var _ = Describe("File", func() {
 			Expect(err).To(MatchError("test error"))
 			Expect(n).To(Equal(69))
 			Expect(actualData).To(Equal([]byte("hello")))
+		})
+	})
+
+	Describe("ReadAt", func() {
+		It("should return an error when file does not support ReadAt", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.ReadAt(f, nil, 0)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call ReadAt on the underlying file when supported", func() {
+			var actualData []byte
+			var actualOff int64
+
+			f := &testfs.File{
+				ReadAtFunc: func(p []byte, off int64) (int, error) {
+					actualData = p
+					actualOff = off
+					return 42, errors.New("test error")
+				},
+			}
+
+			buf := make([]byte, 10)
+			n, err := try.ReadAt(f, buf, 100)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(n).To(Equal(42))
+			Expect(actualData).To(Equal(buf))
+			Expect(actualOff).To(Equal(int64(100)))
+		})
+	})
+
+	Describe("WriteAt", func() {
+		It("should return an error when file does not support WriteAt", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.WriteAt(f, nil, 0)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call WriteAt on the underlying file when supported", func() {
+			var actualData []byte
+			var actualOff int64
+
+			f := &testfs.File{
+				WriteAtFunc: func(p []byte, off int64) (int, error) {
+					actualData = p
+					actualOff = off
+					return 42, errors.New("test error")
+				},
+			}
+
+			n, err := try.WriteAt(f, []byte("hello"), 100)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(n).To(Equal(42))
+			Expect(actualData).To(Equal([]byte("hello")))
+			Expect(actualOff).To(Equal(int64(100)))
+		})
+	})
+
+	Describe("WriteString", func() {
+		It("should return an error when file does not support WriteString", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.WriteString(f, "hello")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call WriteString on the underlying file when supported", func() {
+			var actualString string
+
+			f := &testfs.File{
+				WriteStringFunc: func(s string) (int, error) {
+					actualString = s
+					return 42, errors.New("test error")
+				},
+			}
+
+			n, err := try.WriteString(f, "hello")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(n).To(Equal(42))
+			Expect(actualString).To(Equal("hello"))
+		})
+	})
+
+	Describe("Sync", func() {
+		It("should return an error when file does not support Sync", func() {
+			f := &testfs.BoringFile{}
+
+			err := try.Sync(f)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call Sync on the underlying file when supported", func() {
+			var called bool
+
+			f := &testfs.File{
+				SyncFunc: func() error {
+					called = true
+					return errors.New("test error")
+				},
+			}
+
+			err := try.Sync(f)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(called).To(BeTrue())
+		})
+	})
+
+	Describe("Truncate", func() {
+		It("should return an error when file does not support Truncate", func() {
+			f := &testfs.BoringFile{}
+
+			err := try.Truncate(f, 100)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call Truncate on the underlying file when supported", func() {
+			var actualSize int64
+
+			f := &testfs.File{
+				TruncateFunc: func(size int64) error {
+					actualSize = size
+					return errors.New("test error")
+				},
+			}
+
+			err := try.Truncate(f, 100)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(actualSize).To(Equal(int64(100)))
+		})
+	})
+
+	Describe("ReadDirFile", func() {
+		It("should return an error when file does not support ReadDir", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.ReadDirFile(f, 0)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call ReadDir on the underlying file when supported", func() {
+			var actualN int
+
+			entry := testfs.NewDirEntry("file.txt", false)
+			f := &testfs.File{
+				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+					actualN = n
+					return []ihfs.DirEntry{entry}, errors.New("test error")
+				},
+			}
+
+			entries, err := try.ReadDirFile(f, 10)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0]).To(Equal(entry))
+			Expect(actualN).To(Equal(10))
+		})
+	})
+
+	Describe("ReadDirNamesFile", func() {
+		It("should return an error when file does not support ReadDirNames", func() {
+			f := &testfs.BoringFile{}
+
+			_, err := try.ReadDirNamesFile(f, 0)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(try.ErrNotSupported))
+		})
+
+		It("should call ReadDirNames on the underlying file when supported", func() {
+			var actualN int
+
+			f := &testfs.File{
+				ReadDirNamesFunc: func(n int) ([]string, error) {
+					actualN = n
+					return []string{"file1.txt", "file2.txt"}, errors.New("test error")
+				},
+			}
+
+			names, err := try.ReadDirNamesFile(f, 10)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("test error"))
+			Expect(names).To(Equal([]string{"file1.txt", "file2.txt"}))
+			Expect(actualN).To(Equal(10))
 		})
 	})
 })

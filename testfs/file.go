@@ -9,12 +9,18 @@ import (
 type File struct {
 	name string
 
-	CloseFunc   func() error
-	ReadFunc    func(p []byte) (n int, err error)
-	StatFunc    func() (ihfs.FileInfo, error)
-	SeekFunc    func(offset int64, whence int) (int64, error)
-	WriteFunc   func(p []byte) (n int, err error)
-	ReadDirFunc func(n int) ([]ihfs.DirEntry, error)
+	CloseFunc        func() error
+	ReadFunc         func(p []byte) (n int, err error)
+	StatFunc         func() (ihfs.FileInfo, error)
+	SeekFunc         func(offset int64, whence int) (int64, error)
+	WriteFunc        func(p []byte) (n int, err error)
+	ReadDirFunc      func(n int) ([]ihfs.DirEntry, error)
+	ReadAtFunc       func(p []byte, off int64) (int, error)
+	WriteAtFunc      func(p []byte, off int64) (int, error)
+	WriteStringFunc  func(s string) (int, error)
+	SyncFunc         func() error
+	TruncateFunc     func(size int64) error
+	ReadDirNamesFunc func(n int) ([]string, error)
 }
 
 func (f *File) Close() error {
@@ -58,6 +64,48 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		return f.ReadDirFunc(n)
 	}
 	return nil, fmt.Errorf("readdir: %w", ErrNotImplemented)
+}
+
+func (f *File) ReadAt(p []byte, off int64) (int, error) {
+	if f.ReadAtFunc != nil {
+		return f.ReadAtFunc(p, off)
+	}
+	return 0, fmt.Errorf("readat: %w", ErrNotImplemented)
+}
+
+func (f *File) WriteAt(p []byte, off int64) (int, error) {
+	if f.WriteAtFunc != nil {
+		return f.WriteAtFunc(p, off)
+	}
+	return 0, fmt.Errorf("writeat: %w", ErrNotImplemented)
+}
+
+func (f *File) WriteString(s string) (int, error) {
+	if f.WriteStringFunc != nil {
+		return f.WriteStringFunc(s)
+	}
+	return 0, fmt.Errorf("writestring: %w", ErrNotImplemented)
+}
+
+func (f *File) Sync() error {
+	if f.SyncFunc != nil {
+		return f.SyncFunc()
+	}
+	return fmt.Errorf("sync: %w", ErrNotImplemented)
+}
+
+func (f *File) Truncate(size int64) error {
+	if f.TruncateFunc != nil {
+		return f.TruncateFunc(size)
+	}
+	return fmt.Errorf("truncate: %w", ErrNotImplemented)
+}
+
+func (f *File) ReadDirNames(n int) ([]string, error) {
+	if f.ReadDirNamesFunc != nil {
+		return f.ReadDirNamesFunc(n)
+	}
+	return nil, fmt.Errorf("readdirnames: %w", ErrNotImplemented)
 }
 
 type DirEntry struct {

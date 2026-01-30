@@ -142,8 +142,8 @@ type OpenFileFS interface {
 	OpenFile(name string, flag int, perm FileMode) (File, error)
 }
 
-// ReadDirNameFS is the interface implemented by a file system that supports an optimized version of reading directory entry names.
-type ReadDirNameFS interface {
+// ReadDirNamesFS is the interface implemented by a file system that supports an optimized version of reading directory entry names.
+type ReadDirNamesFS interface {
 	FS
 
 	// ReadDirNames reads the names of the entries in the named directory.
