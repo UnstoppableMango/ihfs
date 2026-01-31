@@ -24,7 +24,6 @@ require (
 	github.com/nix-community/go-nix v0.0.0-20220612195009-5f5614f7ca47 // indirect
 	github.com/nix-community/gomod2nix v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
