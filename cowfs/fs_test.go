@@ -12,6 +12,7 @@ import (
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/cowfs"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"github.com/unstoppablemango/ihfs/union"
 )
 
 var _ = Describe("Fs", func() {
@@ -300,6 +301,36 @@ var _ = Describe("Fs", func() {
 			cfs := cowfs.New(base, testfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Options", func() {
+		It("should apply WithMergeStrategy option", func() {
+			base := testfs.New()
+			layer := testfs.New()
+
+			// Note: cowfs.New expects union.Option, not cowfs.Option,
+			// so we test the option function directly
+			cfs := cowfs.New(base, layer)
+			opt := cowfs.WithMergeStrategy(union.DefaultMergeStrategy)
+			opt(cfs)
+
+			// Just verify the function can be called
+			Expect(cfs).ToNot(BeNil())
+		})
+
+		It("should apply WithDefaultMergeStrategy option", func() {
+			base := testfs.New()
+			layer := testfs.New()
+
+			// Note: cowfs.New expects union.Option, not cowfs.Option,
+			// so we test the option function directly
+			cfs := cowfs.New(base, layer)
+			opt := cowfs.WithDefaultMergeStrategy()
+			opt(cfs)
+
+			// Just verify the function can be called
+			Expect(cfs).ToNot(BeNil())
 		})
 	})
 })

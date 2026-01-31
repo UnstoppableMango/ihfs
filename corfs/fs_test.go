@@ -12,6 +12,7 @@ import (
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/corfs"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"github.com/unstoppablemango/ihfs/union"
 )
 
 // nonCreateFS is a filesystem that doesn't implement CreateFS
@@ -43,6 +44,13 @@ func (m minimalFS) Open(name string) (ihfs.File, error) {
 
 func (m minimalFS) Stat(name string) (ihfs.FileInfo, error) {
 	return nil, fs.ErrNotExist
+}
+
+// minimalFSWithMkdirAll implements MkdirAll but not Create
+type minimalFSWithMkdirAll struct{ minimalFS }
+
+func (m minimalFSWithMkdirAll) MkdirAll(name string, perm ihfs.FileMode) error {
+	return nil
 }
 
 var _ = Describe("Fs", func() {
@@ -93,11 +101,17 @@ var _ = Describe("Fs", func() {
 					}
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					fileCreated = true
 					return layerFile, nil
 				}),
 				testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
 					return nil
 				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
@@ -148,6 +162,12 @@ var _ = Describe("Fs", func() {
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -181,6 +201,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -198,6 +224,12 @@ var _ = Describe("Fs", func() {
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -240,6 +272,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return oldTime }
 					return fi, nil
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -286,6 +324,12 @@ var _ = Describe("Fs", func() {
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -301,6 +345,12 @@ var _ = Describe("Fs", func() {
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -343,6 +393,12 @@ var _ = Describe("Fs", func() {
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer) // Zero cache time
@@ -375,6 +431,12 @@ var _ = Describe("Fs", func() {
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -446,12 +508,18 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to create layer file"))
+			Expect(err.Error()).To(ContainSubstring("permission denied"))
 		})
 
 		It("should fail when write fails", func() {
@@ -490,6 +558,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return failingWriterFile, nil
 				}),
@@ -502,7 +576,7 @@ var _ = Describe("Fs", func() {
 			cfs := corfs.New(base, layer)
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to copy file contents"))
+			Expect(err.Error()).To(ContainSubstring("write error"))
 			Expect(removeCalled).To(BeTrue())
 		})
 
@@ -541,6 +615,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
 				}),
@@ -571,6 +651,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -592,6 +678,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now().Add(1 * time.Hour) }
 					return fi, nil
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -646,6 +738,12 @@ var _ = Describe("Fs", func() {
 					fi.ModTimeFunc = func() time.Time { return oldTime }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer, corfs.WithCacheTime(1*time.Hour))
@@ -672,6 +770,12 @@ var _ = Describe("Fs", func() {
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -735,6 +839,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return oldTime }
 					return fi, nil
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -804,7 +914,7 @@ var _ = Describe("Fs", func() {
 			cfs := corfs.New(base, minimalFS{})
 			_, err := cfs.Open("path")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not support MkdirAll"))
+			Expect(err.Error()).To(ContainSubstring("mkdir all: operation not supported"))
 		})
 
 		It("should handle when layer doesn't support Create", func() {
@@ -827,10 +937,10 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			cfs := corfs.New(base, minimalFS{})
+			cfs := corfs.New(base, minimalFSWithMkdirAll{})
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not support Create"))
+			Expect(err.Error()).To(ContainSubstring("create: operation not supported"))
 		})
 
 		It("should handle layer file Close error in copyToLayer", func() {
@@ -845,6 +955,7 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModeFunc = func() ihfs.FileMode { return 0644 }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
+					fi.SizeFunc = func() int64 { return int64(len(baseContent)) }
 					return fi, nil
 				},
 			}
@@ -893,6 +1004,9 @@ var _ = Describe("Fs", func() {
 				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
 					return nil
 				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					fileCreated = true
 					return layerFile, nil
@@ -909,12 +1023,11 @@ var _ = Describe("Fs", func() {
 			)
 
 			cfs := corfs.New(base, layer)
-			// This should trigger the defer's Close error handling path
-			// However, since the function doesn't have named returns,
-			// the error won't actually be returned - this is a code smell in the implementation
+			// Close error should be returned because the file copy completes
+			// but the layer file Close() fails
 			_, err := cfs.Open("test.txt")
-			// The function succeeds despite Close failing (due to missing named return)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("close error"))
 		})
 
 		It("should handle file that doesn't support Write interface", func() {
@@ -953,6 +1066,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return nonWriterFile, nil
 				}),
@@ -965,7 +1084,7 @@ var _ = Describe("Fs", func() {
 			cfs := corfs.New(base, layer)
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not support Write"))
+			Expect(err.Error()).To(ContainSubstring("operation not supported"))
 			Expect(removeCalled).To(BeTrue())
 		})
 
@@ -1004,6 +1123,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
 				}),
@@ -1016,9 +1141,9 @@ var _ = Describe("Fs", func() {
 			)
 
 			cfs := corfs.New(base, layer)
-			file, err := cfs.Open("test.txt")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(file).ToNot(BeNil())
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("chtimes error"))
 		})
 
 		It("should handle cacheStatus error", func() {
@@ -1026,6 +1151,12 @@ var _ = Describe("Fs", func() {
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, errors.New("stat error")
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -1059,6 +1190,12 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
 					return nil, fs.ErrNotExist
 				}),
@@ -1085,6 +1222,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return now.Add(1 * time.Hour) }
 					return fi, nil
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -1119,6 +1262,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -1152,6 +1301,12 @@ var _ = Describe("Fs", func() {
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 			)
 
@@ -1189,6 +1344,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer)
@@ -1210,6 +1371,7 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModeFunc = func() ihfs.FileMode { return 0644 }
 					fi.ModTimeFunc = func() time.Time { return now }
+					fi.SizeFunc = func() int64 { return 11 } // "new content" length
 					return fi, nil
 				},
 			}
@@ -1247,6 +1409,12 @@ var _ = Describe("Fs", func() {
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return now }
 					return fi, nil
+				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					fileCreated = true
@@ -1308,12 +1476,38 @@ var _ = Describe("Fs", func() {
 					fi.ModTimeFunc = func() time.Time { return oldTime }
 					return fi, nil
 				}),
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithRemove(func(name string) error {
+					return nil
+				}),
 			)
 
 			cfs := corfs.New(base, layer, corfs.WithCacheTime(1*time.Hour))
 			file, err := cfs.Open("dir")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(file).ToNot(BeNil())
+		})
+	})
+
+	Describe("Options", func() {
+		It("should apply WithMergeStrategy option", func() {
+			base := testfs.New()
+			layer := testfs.New()
+
+			// Just test that the option can be applied without error
+			cfs := corfs.New(base, layer, corfs.WithMergeStrategy(union.DefaultMergeStrategy))
+			Expect(cfs).ToNot(BeNil())
+		})
+
+		It("should apply WithDefaultMergeStrategy option", func() {
+			base := testfs.New()
+			layer := testfs.New()
+
+			// Just test that the option can be applied without error
+			cfs := corfs.New(base, layer, corfs.WithDefaultMergeStrategy())
+			Expect(cfs).ToNot(BeNil())
 		})
 	})
 })
