@@ -7,15 +7,11 @@ import (
 	"github.com/unmango/go/slices"
 )
 
-type (
-	// WalkFunc is an alias for [fs.WalkDirFunc].
-	WalkFunc = fs.WalkDirFunc
-)
+// WalkFunc is an alias for [fs.WalkDirFunc].
+type WalkFunc = fs.WalkDirFunc
 
-var (
-	// SkipDir is an alias for [fs.SkipDir].
-	SkipDir = fs.SkipDir
-)
+// SkipDir is an alias for [fs.SkipDir].
+var SkipDir = fs.SkipDir
 
 // Catch iterates over seq until an error occurs and returns the error and
 // a Seq iterating over all paths and directory entries found before the error.
