@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/union"
@@ -22,8 +23,10 @@ type Fs struct {
 }
 
 // New creates a new copy-on-write filesystem with the given base and layer.
-func New(base, layer ihfs.FS, options ...union.Option) *Fs {
-	return &Fs{base, layer, options}
+func New(base, layer ihfs.FS, options ...Option) *Fs {
+	f := &Fs{base: base, layer: layer}
+	fopt.ApplyAll(f, options)
+	return f
 }
 
 // Open implements [fs.FS].

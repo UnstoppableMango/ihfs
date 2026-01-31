@@ -26,6 +26,7 @@ import (
 //   - The copy operation fails
 //   - File metadata cannot be retrieved or set
 func CopyToLayer(base, layer ihfs.FS, name string) error {
+	// TODO: Check for ihfs.CopyFS interface and use that if available
 	file, err := base.Open(name)
 	if err != nil {
 		return err
