@@ -105,10 +105,6 @@ func (m *Fs) MkdirAll(name string, perm os.FileMode) error {
 	current := string(filepath.Separator)
 	
 	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-		
 		current = filepath.Join(current, part)
 		
 		if _, exists := m.getData()[current]; !exists {
@@ -148,9 +144,7 @@ func (m *Fs) Remove(name string) error {
 		}
 	}
 	
-	if err := m.unregisterWithParent(name); err != nil {
-		return err
-	}
+	m.unregisterWithParent(name)
 	
 	delete(m.getData(), name)
 	return nil
@@ -176,9 +170,7 @@ func (m *Fs) RemoveAll(name string) error {
 	}
 	
 	// Unregister with parent
-	if err := m.unregisterWithParent(name); err != nil {
-		return err
-	}
+	m.unregisterWithParent(name)
 	
 	// Remove the target
 	delete(m.getData(), name)
@@ -203,9 +195,7 @@ func (m *Fs) Rename(oldName, newName string) error {
 	}
 	
 	// Unregister from old parent
-	if err := m.unregisterWithParent(oldName); err != nil {
-		return err
-	}
+	m.unregisterWithParent(oldName)
 	
 	// Update name
 	file.Lock()
@@ -351,10 +341,6 @@ func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 func (m *Fs) registerWithParent(file *FileData) error {
 	parent := m.findParent(file)
 	if parent == nil {
-		// Root has no parent
-		if file.name == string(filepath.Separator) {
-			return nil
-		}
 		return &ihfs.PathError{Op: "register", Path: file.name, Err: fs.ErrNotExist}
 	}
 	
@@ -371,16 +357,12 @@ func (m *Fs) registerWithParent(file *FileData) error {
 	return nil
 }
 
-func (m *Fs) unregisterWithParent(name string) error {
-	file, ok := m.getData()[name]
-	if !ok {
-		return &ihfs.PathError{Op: "unregister", Path: name, Err: fs.ErrNotExist}
-	}
-	
+func (m *Fs) unregisterWithParent(name string) {
+	file := m.getData()[name]
 	parent := m.findParent(file)
 	if parent == nil {
 		// Root has no parent
-		return nil
+		return
 	}
 	
 	parent.dir.Lock()
@@ -388,8 +370,6 @@ func (m *Fs) unregisterWithParent(name string) error {
 	
 	baseName := filepath.Base(name)
 	delete(parent.dir.children, baseName)
-	
-	return nil
 }
 
 func (m *Fs) findParent(file *FileData) *FileData {

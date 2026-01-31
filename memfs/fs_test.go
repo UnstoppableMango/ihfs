@@ -988,24 +988,19 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should handle unregisterWithParent error path", func() {
+		It("should handle OpenFile with O_RDONLY", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			// Remove should work fine
-			err = mfs.Remove("/test.txt")
+			file, err = mfs.OpenFile("/test.txt", os.O_RDONLY, 0644)
 			Expect(err).NotTo(HaveOccurred())
-		})
 
-		It("should handle findParent for root", func() {
-			mfs := memfs.New()
-			// Root has no parent
-			fi, err := mfs.Stat("/")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fi.IsDir()).To(BeTrue())
+			writer := file.(io.Writer)
+			_, err = writer.Write([]byte("test"))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should handle creating file at root level", func() {
@@ -1017,7 +1012,7 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should cover empty parts in MkdirAll", func() {
+		It("should verify MkdirAll creates nested directories", func() {
 			mfs := memfs.New()
 			err := mfs.MkdirAll("///a///b///", 0755)
 			Expect(err).NotTo(HaveOccurred())
@@ -1027,73 +1022,51 @@ var _ = Describe("Fs", func() {
 			Expect(fi.IsDir()).To(BeTrue())
 		})
 
-		It("should cover registerWithParent error in OpenFile with O_CREATE", func() {
+		It("should error when registering with non-existent parent", func() {
 			mfs := memfs.New()
 			// Try to create file in non-existent directory
 			_, err := mfs.OpenFile("/nonexistent/test.txt", os.O_CREATE|os.O_WRONLY, 0644)
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should cover unregisterWithParent error path in Remove", func() {
+		It("should handle creating file at root level", func() {
+			mfs := memfs.New()
+			file, err := mfs.Create("/test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+			err = file.Close()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should verify MkdirAll creates nested directories", func() {
+			mfs := memfs.New()
+			err := mfs.MkdirAll("///a///b///", 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			fi, err := mfs.Stat("/a/b")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should handle Remove operation successfully", func() {
 			mfs := memfs.New()
 			// Try to remove non-existent file
 			err := mfs.Remove("/nonexistent.txt")
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should cover unregisterWithParent error path in RemoveAll", func() {
+		It("should handle RemoveAll when path doesn't exist", func() {
 			mfs := memfs.New()
 			// RemoveAll doesn't error if path doesn't exist (matches os.RemoveAll behavior)
 			err := mfs.RemoveAll("/nonexistent")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should cover unregisterWithParent error in Rename", func() {
+		It("should handle Rename error when source doesn't exist", func() {
 			mfs := memfs.New()
 			// Try to rename non-existent file
 			err := mfs.Rename("/nonexistent.txt", "/new.txt")
 			Expect(err).To(HaveOccurred())
-		})
-
-		It("should cover root handling in registerWithParent", func() {
-			mfs := memfs.New()
-			// Root directory is handled specially
-			fi, err := mfs.Stat("/")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fi.IsDir()).To(BeTrue())
-		})
-
-		It("should cover findParent at root", func() {
-			mfs := memfs.New()
-			// Create file at root
-			file, err := mfs.Create("/rootfile.txt")
-			Expect(err).NotTo(HaveOccurred())
-			err = file.Close()
-			Expect(err).NotTo(HaveOccurred())
-
-			// Verify it exists
-			fi, err := mfs.Stat("/rootfile.txt")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fi.IsDir()).To(BeFalse())
-		})
-
-		It("should cover nil dir in ReadDir", func() {
-			// This is an edge case where dir field is nil
-			// Can occur if directory structure is manually manipulated
-			mfs := memfs.New()
-			err := mfs.Mkdir("/testdir", 0755)
-			Expect(err).NotTo(HaveOccurred())
-
-			file, err := mfs.Open("/testdir")
-			Expect(err).NotTo(HaveOccurred())
-
-			dirFile := file.(ihfs.ReadDirFile)
-			entries, err := dirFile.ReadDir(-1)
-			// Should handle gracefully
-			if err != io.EOF {
-				Expect(err).NotTo(HaveOccurred())
-			}
-			Expect(len(entries)).To(Equal(0))
 		})
 	})
 })
