@@ -73,7 +73,7 @@ func CreateDir(name string) *FileData {
 func (f *File) Close() error {
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	f.closed = true
 	if !f.readOnly {
 		f.data.modTime = time.Now()
@@ -85,20 +85,20 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (int, error) {
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	if f.closed {
 		return 0, ihfs.ErrClosed
 	}
-	
+
 	if f.data.isDir {
 		return 0, &ihfs.PathError{Op: "read", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	at := atomic.LoadInt64(&f.at)
 	if at >= int64(len(f.data.content)) {
 		return 0, io.EOF
 	}
-	
+
 	n := copy(p, f.data.content[at:])
 	atomic.AddInt64(&f.at, int64(n))
 	return n, nil
@@ -114,35 +114,35 @@ func (f *File) Write(p []byte) (int, error) {
 	if f.readOnly {
 		return 0, &ihfs.PathError{Op: "write", Path: f.data.name, Err: os.ErrPermission}
 	}
-	
+
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	if f.closed {
 		return 0, ihfs.ErrClosed
 	}
-	
+
 	if f.data.isDir {
 		return 0, &ihfs.PathError{Op: "write", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	at := atomic.LoadInt64(&f.at)
-	
+
 	// Expand content if necessary
 	if at > int64(len(f.data.content)) {
 		f.data.content = append(f.data.content, make([]byte, at-int64(len(f.data.content)))...)
 	}
-	
+
 	// Overwrite or append
 	if at+int64(len(p)) > int64(len(f.data.content)) {
 		f.data.content = append(f.data.content[:at], p...)
 	} else {
 		copy(f.data.content[at:], p)
 	}
-	
+
 	atomic.AddInt64(&f.at, int64(len(p)))
 	f.data.modTime = time.Now()
-	
+
 	return len(p), nil
 }
 
@@ -150,27 +150,27 @@ func (f *File) Write(p []byte) (int, error) {
 func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	if f.closed {
 		return nil, ihfs.ErrClosed
 	}
-	
+
 	if !f.data.isDir {
 		return nil, &ihfs.PathError{Op: "readdir", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	f.data.dir.Lock()
 	defer f.data.dir.Unlock()
-	
+
 	// Collect entries
 	var entries []ihfs.DirEntry
 	for _, child := range f.data.dir.children {
 		entries = append(entries, &FileInfo{data: child})
 	}
-	
+
 	// Sort by name
 	sortDirEntries(entries)
-	
+
 	// Handle pagination
 	count := atomic.LoadInt64(&f.readDirCount)
 	if n <= 0 {
@@ -182,18 +182,18 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		atomic.StoreInt64(&f.readDirCount, int64(len(entries)))
 		return result, nil
 	}
-	
+
 	// Return n entries
 	start := int(count)
 	if start >= len(entries) {
 		return nil, io.EOF
 	}
-	
+
 	end := start + n
 	if end > len(entries) {
 		end = len(entries)
 	}
-	
+
 	atomic.StoreInt64(&f.readDirCount, int64(end))
 	return entries[start:end], nil
 }
@@ -202,11 +202,11 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	if f.closed {
 		return 0, ihfs.ErrClosed
 	}
-	
+
 	var newPos int64
 	switch whence {
 	case io.SeekStart:
@@ -218,11 +218,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	default:
 		return 0, &ihfs.PathError{Op: "seek", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	if newPos < 0 {
 		return 0, &ihfs.PathError{Op: "seek", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	atomic.StoreInt64(&f.at, newPos)
 	return newPos, nil
 }
@@ -232,25 +232,25 @@ func (f *File) Truncate(size int64) error {
 	if f.readOnly {
 		return &ihfs.PathError{Op: "truncate", Path: f.data.name, Err: os.ErrPermission}
 	}
-	
+
 	f.data.Lock()
 	defer f.data.Unlock()
-	
+
 	if f.closed {
 		return ihfs.ErrClosed
 	}
-	
+
 	if size < 0 {
 		return &ihfs.PathError{Op: "truncate", Path: f.data.name, Err: os.ErrInvalid}
 	}
-	
+
 	if size > int64(len(f.data.content)) {
 		// Extend with zeros
 		f.data.content = append(f.data.content, make([]byte, size-int64(len(f.data.content)))...)
 	} else {
 		f.data.content = f.data.content[:size]
 	}
-	
+
 	f.data.modTime = time.Now()
 	return nil
 }

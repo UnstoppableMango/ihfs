@@ -23,7 +23,7 @@ func (fi *FileInfo) Name() string {
 func (fi *FileInfo) Size() int64 {
 	fi.data.Lock()
 	defer fi.data.Unlock()
-	
+
 	if fi.data.isDir {
 		return 0
 	}

@@ -19,7 +19,7 @@ var _ = Describe("Fs", func() {
 			file, err := mfs.Open("/")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
-			
+
 			fi, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fi.IsDir()).To(BeTrue())
@@ -178,7 +178,7 @@ var _ = Describe("Fs", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/old.txt")
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			writer := file.(io.Writer)
 			_, err = writer.Write([]byte("content"))
 			Expect(err).NotTo(HaveOccurred())
@@ -272,7 +272,7 @@ var _ = Describe("Fs", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			writer := file.(io.Writer)
 			_, err = writer.Write([]byte("original content"))
 			Expect(err).NotTo(HaveOccurred())
@@ -300,7 +300,7 @@ var _ = Describe("Fs", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			writer := file.(io.Writer)
 			_, err = writer.Write([]byte("0123456789"))
 			Expect(err).NotTo(HaveOccurred())
@@ -326,7 +326,7 @@ var _ = Describe("Fs", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			writer := file.(io.Writer)
 			_, err = writer.Write([]byte("0123456789"))
 			Expect(err).NotTo(HaveOccurred())
