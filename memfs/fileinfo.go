@@ -2,6 +2,7 @@ package memfs
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
@@ -16,7 +17,7 @@ type FileInfo struct {
 func (fi *FileInfo) Name() string {
 	fi.data.Lock()
 	defer fi.data.Unlock()
-	return fi.data.name
+	return filepath.Base(fi.data.name)
 }
 
 // Size implements ihfs.FileInfo.
