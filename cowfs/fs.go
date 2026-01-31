@@ -16,9 +16,9 @@ import (
 //
 // The implementation is based heavily on [afero.CopyOnWriteFs].
 type Fs struct {
-	base    ihfs.FS
-	layer   ihfs.FS
-	options []union.Option
+	base  ihfs.FS
+	layer ihfs.FS
+	fopts []union.Option
 }
 
 // New creates a new copy-on-write filesystem with the given base and layer.
@@ -48,7 +48,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	lFile, lErr := f.layer.Open(name)
 
 	if bErr == nil && lErr == nil {
-		return union.NewFile(bFile, lFile, f.options...), nil
+		return union.NewFile(bFile, lFile, f.fopts...), nil
 	}
 
 	// TODO: possible file handle leaking

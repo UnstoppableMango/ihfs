@@ -50,16 +50,16 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	}
 
 	// Create the file on the overlay
-	lfh, err := try.Create(layer, name)
+	lFile, err := try.Create(layer, name)
 	if err != nil {
 		return err
 	}
 
 	// Ensure the file supports writing
-	writer, ok := lfh.(io.Writer)
+	writer, ok := lFile.(io.Writer)
 	if !ok {
-		lfh.Close()
 		try.Remove(layer, name)
+		lFile.Close()
 		return &ihfs.PathError{
 			Op:   "copy",
 			Path: name,
@@ -71,32 +71,32 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	n, err := io.Copy(writer, file)
 	if err != nil {
 		// If anything fails, clean up the file
-		lfh.Close()
 		try.Remove(layer, name)
+		lFile.Close()
 		return err
 	}
 
 	// Verify the copy was complete
-	bfi, err := file.Stat()
+	bFile, err := file.Stat()
 	if err != nil {
-		lfh.Close()
 		try.Remove(layer, name)
+		lFile.Close()
 		return err
 	}
 
-	if bfi.Size() != n {
-		lfh.Close()
+	if bFile.Size() != n {
 		try.Remove(layer, name)
+		lFile.Close()
 		return syscall.EIO
 	}
 
 	// Close the file before setting times
-	err = lfh.Close()
+	err = lFile.Close()
 	if err != nil {
 		try.Remove(layer, name)
 		return err
 	}
 
 	// Preserve modification time
-	return try.Chtimes(layer, name, bfi.ModTime(), bfi.ModTime())
+	return try.Chtimes(layer, name, bFile.ModTime(), bFile.ModTime())
 }
