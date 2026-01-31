@@ -42,3 +42,11 @@ for path, dirEntry := range seq {
     // ./foo/bar.txt
 }
 ```
+
+## Attribution
+
+Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically the `corfs`, `cowfs`, and `union` packages.
+
+> Imitation is the sincerest form of flattery
+
+- Charles Caleb Colton (often misattributed to [Oscar Wilde](https://shkspr.mobi/blog/2024/01/no-oscar-wilde-did-not-say-imitation-is-the-sincerest-form-of-flattery-that-mediocrity-can-pay-to-greatness/))
