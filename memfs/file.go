@@ -159,10 +159,6 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		return nil, &ihfs.PathError{Op: "readdir", Path: f.data.name, Err: os.ErrInvalid}
 	}
 	
-	if f.data.dir == nil {
-		return []ihfs.DirEntry{}, nil
-	}
-	
 	f.data.dir.Lock()
 	defer f.data.dir.Unlock()
 	
