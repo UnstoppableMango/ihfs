@@ -32,6 +32,14 @@ type FileData struct {
 	gid     int
 }
 
+func (fd *FileData) error(op string, err error) error {
+	return &ihfs.PathError{
+		Op:   op,
+		Path: fd.name,
+		Err:  err,
+	}
+}
+
 // Dir represents a directory with its children.
 type Dir struct {
 	sync.Mutex
@@ -91,7 +99,7 @@ func (f *File) Read(p []byte) (int, error) {
 	}
 
 	if f.data.isDir {
-		return 0, &ihfs.PathError{Op: "read", Path: f.data.name, Err: os.ErrInvalid}
+		return 0, f.data.error("read", os.ErrInvalid)
 	}
 
 	at := atomic.LoadInt64(&f.at)
@@ -112,7 +120,7 @@ func (f *File) Stat() (ihfs.FileInfo, error) {
 // Write implements io.Writer.
 func (f *File) Write(p []byte) (int, error) {
 	if f.readOnly {
-		return 0, &ihfs.PathError{Op: "write", Path: f.data.name, Err: os.ErrPermission}
+		return 0, f.data.error("write", os.ErrPermission)
 	}
 
 	f.data.Lock()
@@ -123,7 +131,7 @@ func (f *File) Write(p []byte) (int, error) {
 	}
 
 	if f.data.isDir {
-		return 0, &ihfs.PathError{Op: "write", Path: f.data.name, Err: os.ErrInvalid}
+		return 0, f.data.error("write", os.ErrInvalid)
 	}
 
 	at := atomic.LoadInt64(&f.at)
@@ -156,7 +164,7 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	}
 
 	if !f.data.isDir {
-		return nil, &ihfs.PathError{Op: "readdir", Path: f.data.name, Err: os.ErrInvalid}
+		return nil, f.data.error("readdir", os.ErrInvalid)
 	}
 
 	f.data.dir.Lock()
@@ -189,11 +197,7 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		return nil, io.EOF
 	}
 
-	end := start + n
-	if end > len(entries) {
-		end = len(entries)
-	}
-
+	end := min(start+n, len(entries))
 	atomic.StoreInt64(&f.readDirCount, int64(end))
 	return entries[start:end], nil
 }
@@ -216,11 +220,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		newPos = int64(len(f.data.content)) + offset
 	default:
-		return 0, &ihfs.PathError{Op: "seek", Path: f.data.name, Err: os.ErrInvalid}
+		return 0, f.error("seek", os.ErrInvalid)
 	}
 
 	if newPos < 0 {
-		return 0, &ihfs.PathError{Op: "seek", Path: f.data.name, Err: os.ErrInvalid}
+		return 0, f.error("seek", os.ErrInvalid)
 	}
 
 	atomic.StoreInt64(&f.at, newPos)
@@ -230,7 +234,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Truncate implements ihfs truncation.
 func (f *File) Truncate(size int64) error {
 	if f.readOnly {
-		return &ihfs.PathError{Op: "truncate", Path: f.data.name, Err: os.ErrPermission}
+		return f.error("truncate", os.ErrPermission)
 	}
 
 	f.data.Lock()
@@ -241,7 +245,7 @@ func (f *File) Truncate(size int64) error {
 	}
 
 	if size < 0 {
-		return &ihfs.PathError{Op: "truncate", Path: f.data.name, Err: os.ErrInvalid}
+		return f.error("truncate", os.ErrInvalid)
 	}
 
 	if size > int64(len(f.data.content)) {
@@ -258,6 +262,10 @@ func (f *File) Truncate(size int64) error {
 // Sync implements file synchronization (no-op for in-memory).
 func (f *File) Sync() error {
 	return nil
+}
+
+func (f *File) error(op string, err error) error {
+	return f.data.error(op, err)
 }
 
 func sortDirEntries(entries []ihfs.DirEntry) {
