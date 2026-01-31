@@ -146,7 +146,7 @@ nix fmt
   - Changes only affect the layer
   - Reads prioritize layer over base
   - Directories from both layers are merged
-  - Constructor: `cowfs.New(base, layer ihfs.FS, options ...Option) *Fs`
+  - Constructor: `cowfs.New(base, layer ihfs.FS, options ...union.Option) *Fs`
 - **corfs**: Cache-on-read filesystem (based on afero.CacheOnReadFs)
   - Files are cached from base to layer on first read
   - Future reads come from cached version
