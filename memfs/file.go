@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
@@ -12,6 +11,7 @@ import (
 
 // File represents a file in the memory filesystem.
 type File struct {
+	sync.Mutex   // protects file position fields (at, readDirCount) and closed state
 	at           int64
 	readDirCount int64
 	closed       bool
@@ -61,7 +61,7 @@ func CreateFile(name string) *FileData {
 	return &FileData{
 		name:    name,
 		content: []byte{},
-		mode:    os.ModeTemporary,
+		mode:    0644,
 		modTime: time.Now(),
 	}
 }
@@ -79,6 +79,9 @@ func CreateDir(name string) *FileData {
 
 // Close implements ihfs.File.
 func (f *File) Close() error {
+	f.Lock()
+	defer f.Unlock()
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
@@ -91,6 +94,9 @@ func (f *File) Close() error {
 
 // Read implements ihfs.File.
 func (f *File) Read(p []byte) (int, error) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
@@ -102,13 +108,12 @@ func (f *File) Read(p []byte) (int, error) {
 		return 0, f.data.error("read", os.ErrInvalid)
 	}
 
-	at := atomic.LoadInt64(&f.at)
-	if at >= int64(len(f.data.content)) {
+	if f.at >= int64(len(f.data.content)) {
 		return 0, io.EOF
 	}
 
-	n := copy(p, f.data.content[at:])
-	atomic.AddInt64(&f.at, int64(n))
+	n := copy(p, f.data.content[f.at:])
+	f.at += int64(n)
 	return n, nil
 }
 
@@ -123,6 +128,9 @@ func (f *File) Write(p []byte) (int, error) {
 		return 0, f.data.error("write", os.ErrPermission)
 	}
 
+	f.Lock()
+	defer f.Unlock()
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
@@ -134,21 +142,19 @@ func (f *File) Write(p []byte) (int, error) {
 		return 0, f.data.error("write", os.ErrInvalid)
 	}
 
-	at := atomic.LoadInt64(&f.at)
-
 	// Expand content if necessary
-	if at > int64(len(f.data.content)) {
-		f.data.content = append(f.data.content, make([]byte, at-int64(len(f.data.content)))...)
+	if f.at > int64(len(f.data.content)) {
+		f.data.content = append(f.data.content, make([]byte, f.at-int64(len(f.data.content)))...)
 	}
 
 	// Overwrite or append
-	if at+int64(len(p)) > int64(len(f.data.content)) {
-		f.data.content = append(f.data.content[:at], p...)
+	if f.at+int64(len(p)) > int64(len(f.data.content)) {
+		f.data.content = append(f.data.content[:f.at], p...)
 	} else {
-		copy(f.data.content[at:], p)
+		copy(f.data.content[f.at:], p)
 	}
 
-	atomic.AddInt64(&f.at, int64(len(p)))
+	f.at += int64(len(p))
 	f.data.modTime = time.Now()
 
 	return len(p), nil
@@ -156,6 +162,9 @@ func (f *File) Write(p []byte) (int, error) {
 
 // ReadDir implements fs.ReadDirFile.
 func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
@@ -170,37 +179,46 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	f.data.dir.Lock()
 	defer f.data.dir.Unlock()
 
-	var entries []ihfs.DirEntry
+	// Collect children into a slice first to avoid non-deterministic map iteration
+	children := make([]*FileData, 0, len(f.data.dir.children))
 	for _, child := range f.data.dir.children {
-		entries = append(entries, &FileInfo{data: child})
+		children = append(children, child)
+	}
+
+	// Create directory entries
+	entries := make([]ihfs.DirEntry, len(children))
+	for i, child := range children {
+		entries[i] = &FileInfo{data: child}
 	}
 
 	sortDirEntries(entries)
 
-	count := atomic.LoadInt64(&f.readDirCount)
 	if n <= 0 {
 		// Return all remaining entries
-		if count >= int64(len(entries)) {
+		if f.readDirCount >= int64(len(entries)) {
 			return nil, io.EOF
 		}
-		result := entries[count:]
-		atomic.StoreInt64(&f.readDirCount, int64(len(entries)))
+		result := entries[f.readDirCount:]
+		f.readDirCount = int64(len(entries))
 		return result, nil
 	}
 
 	// Return n entries
-	start := int(count)
+	start := int(f.readDirCount)
 	if start >= len(entries) {
 		return nil, io.EOF
 	}
 
 	end := min(start+n, len(entries))
-	atomic.StoreInt64(&f.readDirCount, int64(end))
+	f.readDirCount = int64(end)
 	return entries[start:end], nil
 }
 
 // Seek implements io.Seeker.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
@@ -213,7 +231,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekStart:
 		newPos = offset
 	case io.SeekCurrent:
-		newPos = atomic.LoadInt64(&f.at) + offset
+		newPos = f.at + offset
 	case io.SeekEnd:
 		newPos = int64(len(f.data.content)) + offset
 	default:
@@ -224,7 +242,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, f.error("seek", os.ErrInvalid)
 	}
 
-	atomic.StoreInt64(&f.at, newPos)
+	f.at = newPos
 	return newPos, nil
 }
 
