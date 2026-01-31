@@ -22,7 +22,7 @@ var _ = Describe("Fs", func() {
 					return copy(p, []byte("base content")), io.EOF
 				},
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					fi.ModeFunc = func() ihfs.FileMode { return 0644 }
@@ -35,7 +35,7 @@ var _ = Describe("Fs", func() {
 					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -73,7 +73,7 @@ var _ = Describe("Fs", func() {
 					return copy(p, []byte("cached content")), io.EOF
 				},
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -84,7 +84,7 @@ var _ = Describe("Fs", func() {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -103,7 +103,7 @@ var _ = Describe("Fs", func() {
 		It("should open directories from base when not cached", func() {
 			baseDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -113,7 +113,7 @@ var _ = Describe("Fs", func() {
 					return baseDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				}),
@@ -156,7 +156,7 @@ var _ = Describe("Fs", func() {
 					return copy(p, []byte("new content")), io.EOF
 				},
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return now }
 					fi.ModeFunc = func() ihfs.FileMode { return 0644 }
@@ -169,7 +169,7 @@ var _ = Describe("Fs", func() {
 					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return now }
 					return fi, nil
@@ -178,7 +178,7 @@ var _ = Describe("Fs", func() {
 
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return oldTime }
 					return fi, nil
@@ -194,7 +194,7 @@ var _ = Describe("Fs", func() {
 		It("should handle merged directories", func() {
 			baseDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -204,7 +204,7 @@ var _ = Describe("Fs", func() {
 					return baseDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -213,7 +213,7 @@ var _ = Describe("Fs", func() {
 
 			layerDir := &testfs.File{
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
 				},
@@ -223,7 +223,7 @@ var _ = Describe("Fs", func() {
 					return layerDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -269,7 +269,7 @@ var _ = Describe("Fs", func() {
 					return copy(p, []byte("cached")), io.EOF
 				},
 				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -280,7 +280,7 @@ var _ = Describe("Fs", func() {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					fi.ModTimeFunc = func() time.Time { return time.Now() }
 					return fi, nil
@@ -310,7 +310,7 @@ var _ = Describe("Fs", func() {
 					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo()
+					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return false }
 					return fi, nil
 				}),
