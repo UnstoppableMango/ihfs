@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/union"
@@ -16,14 +17,16 @@ import (
 //
 // The implementation is based heavily on [afero.CopyOnWriteFs].
 type Fs struct {
-	base    ihfs.FS
-	layer   ihfs.FS
-	options []union.Option
+	base  ihfs.FS
+	layer ihfs.FS
+	fopts []union.Option
 }
 
 // New creates a new copy-on-write filesystem with the given base and layer.
-func New(base, layer ihfs.FS, options ...union.Option) *Fs {
-	return &Fs{base, layer, options}
+func New(base, layer ihfs.FS, options ...Option) *Fs {
+	f := &Fs{base: base, layer: layer}
+	fopt.ApplyAll(f, options)
+	return f
 }
 
 // Open implements [fs.FS].
@@ -48,7 +51,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	lFile, lErr := f.layer.Open(name)
 
 	if bErr == nil && lErr == nil {
-		return union.NewFile(bFile, lFile, f.options...), nil
+		return union.NewFile(bFile, lFile, f.fopts...), nil
 	}
 
 	// TODO: possible file handle leaking

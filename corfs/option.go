@@ -1,8 +1,18 @@
-package cowfs
+package corfs
 
-import "github.com/unstoppablemango/ihfs/union"
+import (
+	"time"
+
+	"github.com/unstoppablemango/ihfs/union"
+)
 
 type Option func(*Fs)
+
+func WithCacheTime(cacheTime time.Duration) Option {
+	return func(f *Fs) {
+		f.cacheTime = cacheTime
+	}
+}
 
 func WithMergeStrategy(strategy union.MergeStrategy) Option {
 	return func(f *Fs) {

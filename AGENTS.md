@@ -41,8 +41,9 @@ nix fmt
 - Test files follow `*_test.go` convention
 - Suite tests use `*_suite_test.go` pattern
 - Run tests recursively with `ginkgo -r`
-- Maintain test coverage (check with `make cover`)
+- **Aim for 100% test coverage on all implementation packages** (check with `make cover`)
 - Test data goes in `testdata/` directory
+- Note: `codecov.yml` exists for CI purposes but the project standard is 100% coverage for implementation code
 
 ## Code Conventions
 
@@ -90,8 +91,10 @@ nix fmt
 1. Make changes to Go source files
 2. Run `make test` to ensure tests pass
 3. Run `make fmt` to format code
-4. Check coverage with `make cover` if modifying core logic
+4. **Check coverage with `make cover` - aim for 100% on implementation packages**
 5. Update `go.mod` if adding dependencies, then run `go tool gomod2nix`
+
+**Note**: While `codecov.yml` sets a minimum threshold of 60% for CI purposes, the project standard is to maintain 100% coverage for all implementation code. The lower threshold in codecov.yml is only to prevent CI failures during development of new features.
 
 ## Codebase Map
 
@@ -109,16 +112,27 @@ nix fmt
 #### Implementation Packages
 - **`osfs/fs.go`**: OS filesystem implementation (wraps `github.com/unmango/go/os`)
 - **`cowfs/`**: Copy-on-write filesystem implementation
-  - `fs.go`: Copy-on-write filesystem (base + overlay layers)
-  - `file.go`: Copy-on-write file implementation
-  - `bsds.go`: BSD-specific constants (EBADF)
-  - `win_unix.go`: Windows/Unix-specific constants (EBADFD)
+  - `fs.go`: Copy-on-write filesystem (base + layer)
+  - `option.go`: Configuration options
   - `doc.go`: Package documentation
+- **`corfs/`**: Cache-on-read filesystem implementation (based on afero.CacheOnReadFs)
+  - `fs.go`: Cache-on-read filesystem (base + layer with caching)
+  - `option.go`: Configuration options (cache time)
+  - `doc.go`: Package documentation
+- **`union/`**: Union filesystem utilities
+  - `copy.go`: File copying utilities for layered filesystems
+  - `file.go`: Union file implementation (merges base and layer files)
+  - `merge.go`: Directory entry merging strategies
+  - `option.go`: Configuration options (merge strategy)
+  - `bsds.go`: BSD-specific constants (BADFD)
+  - `win_unix.go`: Windows/Unix-specific constants (BADFD)
 - **`testfs/`**: Test filesystem utilities
   - `fs.go`: Test filesystem implementation
   - `file.go`: Test file implementation
   - `fileinfo.go`: Test FileInfo implementation
   - `option.go`: Option pattern for test setup
+  - `boring.go`: Boring implementation helpers
+  - `testfs.go`: Additional test utilities
 - **`tarfs/`**: Tar filesystem implementation
   - `fs.go`: Tar filesystem implementation
   - `file.go`: Tar file implementation
@@ -127,11 +141,21 @@ nix fmt
 
 ##### Filesystem Implementation Overview
 - **osfs**: Wraps the OS filesystem for standard file operations
-- **cowfs**: Copy-on-write filesystem with base and overlay layers (based on afero.CopyOnWriteFs)
-  - Changes only affect the overlay layer
-  - Reads prioritize overlay over base
+  - Simple wrapper around `github.com/unmango/go/os`
+- **cowfs**: Copy-on-write filesystem with base and layer (based on afero.CopyOnWriteFs)
+  - Changes only affect the layer
+  - Reads prioritize layer over base
   - Directories from both layers are merged
-  - Constructor: `cowfs.New(base, layer ihfs.FS) *Fs`
+  - Constructor: `cowfs.New(base, layer ihfs.FS, options ...union.Option) *Fs`
+- **corfs**: Cache-on-read filesystem (based on afero.CacheOnReadFs)
+  - Files are cached from base to layer on first read
+  - Future reads come from cached version
+  - Configurable cache expiration time
+  - Constructor: `corfs.New(base, layer ihfs.FS, options ...Option) *Fs`
+- **union**: Utilities for union/layered filesystems
+  - `CopyToLayer`: Copies files from base to layer with metadata preservation
+  - `NewFile`: Creates union file that merges base and layer file operations
+  - `mergeDirEntries`: Strategies for merging directory entries from multiple layers
 - **tarfs**: Read-only filesystem backed by tar archives
 - **testfs**: Mock filesystem for testing with configurable behavior
 
@@ -156,7 +180,9 @@ nix fmt
 - **Root (`ihfs_test`)**: `ihfs_suite_test.go`, `iter_test.go`
 - **fsutil (`fsutil_test`)**: `fsutil_suite_test.go`, `fs_test.go`
 - **fsutil/try (`try_test`)**: `try_suite_test.go`, `fs_test.go`, `file_test.go`
-- **cowfs (`cowfs_test`)**: `cowfs_suite_test.go`, `fs_test.go`, `file_test.go`
+- **cowfs (`cowfs_test`)**: `cowfs_suite_test.go`, `fs_test.go`
+- **corfs (`corfs_test`)**: `corfs_suite_test.go`, `fs_test.go`
+- **union (`union_test`)**: `union_suite_test.go`, `copy_test.go`, `file_test.go`, `merge_test.go`
 - **tarfs (`tarfs_test`)**: `tarfs_suite_test.go`, `fs_test.go`, `file_test.go`
 
 #### Test Data
@@ -172,8 +198,9 @@ nix fmt
 
 ### Package Naming Conventions
 - **Main package**: `ihfs` (core library code)
-- **Tests**: `ihfs_test`, `fsutil_test`, `try_test`, `cowfs_test` (external test packages)
-- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `tarfs`, `testfs`)
+- **Tests**: `ihfs_test`, `fsutil_test`, `try_test`, `cowfs_test`, `corfs_test`, `union_test`, `tarfs_test` (external test packages)
+- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `corfs`, `tarfs`, `testfs`)
+- **Utilities**: `union` for layered filesystem utilities, `fsutil` for general helpers
 - **Test suites**: Follow `*_suite_test.go` pattern
 - **Test files**: Follow `*_test.go` pattern
 
@@ -200,11 +227,20 @@ nix fmt
 ├── osfs/              # OS filesystem implementation
 │   └── fs.go          # OS filesystem wrapper
 ├── cowfs/             # Copy-on-write filesystem implementation
-│   ├── fs.go          # Copy-on-write filesystem (base + overlay layers)
-│   ├── file.go        # Copy-on-write file implementation
-│   ├── bsds.go        # BSD-specific constants
-│   ├── win_unix.go    # Windows/Unix-specific constants
+│   ├── fs.go          # Copy-on-write filesystem (base + layer)
+│   ├── option.go      # Configuration options
 │   └── doc.go         # Package documentation
+├── corfs/             # Cache-on-read filesystem implementation
+│   ├── fs.go          # Cache-on-read filesystem (base + layer with caching)
+│   ├── option.go      # Configuration options (cache time)
+│   └── doc.go         # Package documentation
+├── union/             # Union filesystem utilities
+│   ├── copy.go        # File copying utilities for layered filesystems
+│   ├── file.go        # Union file implementation (merges base and layer files)
+│   ├── merge.go       # Directory entry merging strategies
+│   ├── option.go      # Configuration options (merge strategy)
+│   ├── bsds.go        # BSD-specific constants (BADFD)
+│   └── win_unix.go    # Windows/Unix-specific constants (BADFD)
 ├── tarfs/             # Tar filesystem implementation
 │   ├── fs.go          # Tar filesystem
 │   ├── file.go        # Tar file implementation
@@ -214,10 +250,12 @@ nix fmt
 │   ├── fs.go          # Test filesystem
 │   ├── file.go        # Test file implementation
 │   ├── fileinfo.go    # Test FileInfo
-│   └── option.go      # Test setup options
+│   ├── option.go      # Test setup options
+│   ├── boring.go      # Boring implementation helpers
+│   └── testfs.go      # Additional test utilities
 └── testdata/          # Test data files
     ├── 2-files/       # Test fixture with two files
-    └── test.tar       # Tar archive for testing
+    └── test.tar       # Tar archive for testing tar filesystem
 ```
 
 ## Common Tasks
@@ -281,8 +319,20 @@ When working with this codebase, agents should self-correct and improve document
 
 This section contains repository-specific practices learned from user feedback:
 
-- Test coverage should be maintained at 100% when possible
+- **Test coverage must be 100% for all implementation packages**
 - Use mock implementations in tests rather than complex test fixtures
+- **Coverage targets by package type:**
+  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, fsutil, fsutil/try): 100% coverage required**
+  - Utility packages (op, osfs, testfs): Coverage not required - these are simple wrappers or test helpers that don't contain business logic
+- When creating tests for filesystem implementations:
+  - Use `testfs.New()` with `testfs.With*` options to create configurable mocks
+  - Test both success paths and all error paths
+  - For interface type assertions (e.g., checking if file implements `io.Writer`), create custom types that don't implement the interface
+  - Always test cleanup on error (e.g., file removal when copy fails)
+- When fixing failing tests:
+  - First understand what the code actually does, not what the test expects
+  - Update test expectations to match actual behavior, not the other way around (unless it's a bug)
+  - Test the happy path first, then add error cases
 
 ## Important Notes
 

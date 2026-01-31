@@ -24,7 +24,10 @@ type File struct {
 }
 
 func (f *File) Close() error {
-	return f.CloseFunc()
+	if f.CloseFunc != nil {
+		return f.CloseFunc()
+	}
+	return nil
 }
 
 func (f *File) Name() string {
