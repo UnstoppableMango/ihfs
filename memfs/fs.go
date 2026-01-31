@@ -292,13 +292,11 @@ func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 
 	file, exists := m.getData()[name]
 
-	// Handle creation flags
 	if !exists {
 		if flag&os.O_CREATE == 0 {
 			return nil, &ihfs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 		}
 
-		// Create new file
 		file = CreateFile(name)
 		file.mode = perm
 		m.getData()[name] = file
@@ -311,24 +309,19 @@ func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 		return nil, &ihfs.PathError{Op: "open", Path: name, Err: fs.ErrExist}
 	}
 
-	// Handle truncation
 	if flag&os.O_TRUNC != 0 && !file.isDir {
 		file.Lock()
 		file.content = []byte{}
 		file.Unlock()
 	}
 
-	// Create file handle
 	handle := NewFile(file)
-
-	// Set position for append
 	if flag&os.O_APPEND != 0 {
 		file.Lock()
 		atomic.StoreInt64(&handle.at, int64(len(file.content)))
 		file.Unlock()
 	}
 
-	// Check read-only
 	if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
 		handle.readOnly = true
 	}
