@@ -11,7 +11,7 @@ import (
 
 // File represents a file in the memory filesystem.
 type File struct {
-	sync.Mutex
+	sync.Mutex   // protects file position fields (at, readDirCount) and closed state
 	at           int64
 	readDirCount int64
 	closed       bool
