@@ -59,8 +59,8 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	// Ensure the file supports writing
 	writer, ok := lFile.(io.Writer)
 	if !ok {
-		try.Remove(layer, name)
 		lFile.Close()
+		try.Remove(layer, name)
 		return &ihfs.PathError{
 			Op:   "copy",
 			Path: name,
@@ -72,28 +72,27 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	n, err := io.Copy(writer, file)
 	if err != nil {
 		// If anything fails, clean up the file
-		try.Remove(layer, name)
 		lFile.Close()
+		try.Remove(layer, name)
 		return err
 	}
 
 	// Verify the copy was complete
 	bFile, err := file.Stat()
 	if err != nil {
-		try.Remove(layer, name)
 		lFile.Close()
+		try.Remove(layer, name)
 		return err
 	}
 
 	if bFile.Size() != n {
-		try.Remove(layer, name)
 		lFile.Close()
+		try.Remove(layer, name)
 		return syscall.EIO
 	}
 
 	// Close the file before setting times
-	err = lFile.Close()
-	if err != nil {
+	if err = lFile.Close(); err != nil {
 		try.Remove(layer, name)
 		return err
 	}
