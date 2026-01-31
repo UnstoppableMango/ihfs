@@ -15,14 +15,14 @@
 // # Example Usage
 //
 //	fs := memfs.New()
-//	
+//
 //	// Create a file
 //	file, err := fs.Create("/hello.txt")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	defer file.Close()
-//	
+//
 //	// Write data
 //	_, err = file.Write([]byte("Hello, World!"))
 //	if err != nil {
