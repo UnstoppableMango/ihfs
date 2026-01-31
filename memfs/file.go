@@ -170,16 +170,13 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	f.data.dir.Lock()
 	defer f.data.dir.Unlock()
 
-	// Collect entries
 	var entries []ihfs.DirEntry
 	for _, child := range f.data.dir.children {
 		entries = append(entries, &FileInfo{data: child})
 	}
 
-	// Sort by name
 	sortDirEntries(entries)
 
-	// Handle pagination
 	count := atomic.LoadInt64(&f.readDirCount)
 	if n <= 0 {
 		// Return all remaining entries
