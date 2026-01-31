@@ -49,4 +49,4 @@ Much of the implementation is lifted from [afero](https://github.com/spf13/afero
 
 > Imitation is the sincerest form of flattery
 
-- Charles Cable Colton, [Oscar Wilde, et al](https://shkspr.mobi/blog/2024/01/no-oscar-wilde-did-not-say-imitation-is-the-sincerest-form-of-flattery-that-mediocrity-can-pay-to-greatness/)
+- Charles Caleb Colton (often misattributed to [Oscar Wilde](https://shkspr.mobi/blog/2024/01/no-oscar-wilde-did-not-say-imitation-is-the-sincerest-form-of-flattery-that-mediocrity-can-pay-to-greatness/))
