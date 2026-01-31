@@ -45,7 +45,7 @@ for path, dirEntry := range seq {
 
 ## Attribution
 
-Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically `corfs`, `cowfs`, and `union`.
+Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically the `corfs`, `cowfs`, and `union` packages.
 
 > Imitation is the sincerest form of flattery
 
