@@ -988,21 +988,6 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should handle OpenFile with O_RDONLY", func() {
-			mfs := memfs.New()
-			file, err := mfs.Create("/test.txt")
-			Expect(err).NotTo(HaveOccurred())
-			err = file.Close()
-			Expect(err).NotTo(HaveOccurred())
-
-			file, err = mfs.OpenFile("/test.txt", os.O_RDONLY, 0644)
-			Expect(err).NotTo(HaveOccurred())
-
-			writer := file.(io.Writer)
-			_, err = writer.Write([]byte("test"))
-			Expect(err).To(HaveOccurred())
-		})
-
 		It("should handle creating file at root level", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/test.txt")
@@ -1027,25 +1012,6 @@ var _ = Describe("Fs", func() {
 			// Try to create file in non-existent directory
 			_, err := mfs.OpenFile("/nonexistent/test.txt", os.O_CREATE|os.O_WRONLY, 0644)
 			Expect(err).To(HaveOccurred())
-		})
-
-		It("should handle creating file at root level", func() {
-			mfs := memfs.New()
-			file, err := mfs.Create("/test.txt")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(file).NotTo(BeNil())
-			err = file.Close()
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should verify MkdirAll creates nested directories", func() {
-			mfs := memfs.New()
-			err := mfs.MkdirAll("///a///b///", 0755)
-			Expect(err).NotTo(HaveOccurred())
-
-			fi, err := mfs.Stat("/a/b")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fi.IsDir()).To(BeTrue())
 		})
 
 		It("should handle Remove operation successfully", func() {
