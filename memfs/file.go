@@ -252,16 +252,16 @@ func (f *File) Truncate(size int64) error {
 	f.Lock()
 	defer f.Unlock()
 
+	if f.closed {
+		return ihfs.ErrClosed
+	}
+
 	if f.readOnly {
 		return f.error("truncate", os.ErrPermission)
 	}
 
 	f.data.Lock()
 	defer f.data.Unlock()
-
-	if f.closed {
-		return ihfs.ErrClosed
-	}
 
 	if size < 0 {
 		return f.error("truncate", os.ErrInvalid)
