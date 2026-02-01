@@ -3,6 +3,7 @@ package memfs
 import (
 	"io"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -124,12 +125,12 @@ func (f *File) Stat() (ihfs.FileInfo, error) {
 
 // Write implements io.Writer.
 func (f *File) Write(p []byte) (int, error) {
+	f.Lock()
+	defer f.Unlock()
+
 	if f.readOnly {
 		return 0, f.data.error("write", os.ErrPermission)
 	}
-
-	f.Lock()
-	defer f.Unlock()
 
 	f.data.Lock()
 	defer f.data.Unlock()
@@ -248,6 +249,9 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Truncate implements ihfs truncation.
 func (f *File) Truncate(size int64) error {
+	f.Lock()
+	defer f.Unlock()
+
 	if f.readOnly {
 		return f.error("truncate", os.ErrPermission)
 	}
@@ -284,13 +288,7 @@ func (f *File) error(op string, err error) error {
 }
 
 func sortDirEntries(entries []ihfs.DirEntry) {
-	// Simple bubble sort by name
-	n := len(entries)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
-			if entries[j].Name() > entries[j+1].Name() {
-				entries[j], entries[j+1] = entries[j+1], entries[j]
-			}
-		}
-	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
 }

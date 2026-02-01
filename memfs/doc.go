@@ -1,6 +1,6 @@
 // Package memfs provides an in-memory filesystem implementation.
 //
-// The memory-mapped filesystem (MemFS) stores all file data in memory,
+// The in-memory filesystem (MemFS) stores all file data in memory,
 // making it ideal for testing, temporary storage, or scenarios where
 // persistence is not required.
 //
@@ -10,7 +10,7 @@
 //   - Full filesystem operations (create, read, write, delete, etc.)
 //   - Directory hierarchy support
 //   - File metadata (permissions, timestamps, ownership)
-//   - No external dependencies beyond the standard library
+//   - No third-party dependencies beyond ihfs and the standard library
 //
 // # Example Usage
 //
