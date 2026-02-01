@@ -14,8 +14,8 @@ type (
 
 var None Filter = none
 
-func (p Predicate) Filter(_ *FS, f ihfs.Operation) error {
-	if p(f) {
+func (p Predicate) Filter(_ *FS, op ihfs.Operation) error {
+	if p(op) {
 		return nil
 	}
 	return ihfs.ErrPermission
@@ -27,6 +27,9 @@ type FS struct {
 }
 
 func With(fsys ihfs.FS, filters ...Filter) *FS {
+	if fsys == nil {
+		panic("filter: fsys cannot be nil")
+	}
 	return &FS{fs: fsys, filter: flat(filters)}
 }
 
@@ -59,9 +62,9 @@ func flat(filters []Filter) Filter {
 		return filters[0]
 	}
 
-	return func(fsys *FS, operation ihfs.Operation) error {
+	return func(fsys *FS, op ihfs.Operation) error {
 		for _, filter := range filters {
-			if err := filter(fsys, operation); err != nil {
+			if err := filter(fsys, op); err != nil {
 				return err
 			}
 		}
