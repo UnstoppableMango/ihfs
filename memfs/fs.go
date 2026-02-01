@@ -105,6 +105,9 @@ func (m *Fs) MkdirAll(name string, perm os.FileMode) error {
 	current := string(filepath.Separator)
 
 	for _, part := range parts {
+		if part == "" {
+			continue
+		}
 		current = filepath.Join(current, part)
 
 		if _, exists := m.getData()[current]; !exists {
