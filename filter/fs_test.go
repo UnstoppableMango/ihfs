@@ -10,8 +10,14 @@ import (
 )
 
 var _ = Describe("Fs", func() {
+	It("should panic on nil fsys", func() {
+		Expect(func() {
+			filter.With(nil)
+		}).To(Panic())
+	})
+
 	It("should have a name", func() {
-		fsys := filter.With(nil)
+		fsys := filter.With(testfs.BoringFs{})
 
 		Expect(fsys.Name()).To(Equal("filter"))
 	})
