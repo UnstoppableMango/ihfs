@@ -24,7 +24,8 @@
 //	defer file.Close()
 //
 //	// Write data
-//	_, err = file.Write([]byte("Hello, World!"))
+//	writer := file.(io.Writer)
+//	_, err = writer.Write([]byte("Hello, World!"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
