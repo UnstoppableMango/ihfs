@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
@@ -321,7 +320,7 @@ func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 	handle := NewFile(file)
 	if flag&os.O_APPEND != 0 {
 		file.Lock()
-		atomic.StoreInt64(&handle.at, int64(len(file.content)))
+		handle.at = int64(len(file.content))
 		file.Unlock()
 	}
 
