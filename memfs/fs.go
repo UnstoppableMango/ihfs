@@ -198,6 +198,20 @@ func (f *Fs) Rename(oldName, newName string) error {
 		return perror("rename", newName, ihfs.ErrExist)
 	}
 
+	// Validate new parent directory exists and is a directory BEFORE making any changes
+	// This prevents leaving the filesystem in an inconsistent state if validation fails
+	newParentPath := filepath.Dir(newName)
+	if newParentPath != "/" {
+		newParent, exists := f.getData()[newParentPath]
+		if !exists {
+			return perror("rename", newName, ihfs.ErrNotExist)
+		}
+		if !newParent.isDir {
+			return perror("rename", newName, ihfs.ErrInvalid)
+		}
+	}
+
+	// Now that validation is complete, we can safely make changes
 	f.unregisterWithParent(oldName)
 
 	file.Lock()
