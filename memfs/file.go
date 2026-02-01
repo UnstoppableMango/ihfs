@@ -3,7 +3,7 @@ package memfs
 import (
 	"io"
 	"os"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -288,7 +288,13 @@ func (f *File) error(op string, err error) error {
 }
 
 func sortDirEntries(entries []ihfs.DirEntry) {
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name() < entries[j].Name()
+	slices.SortFunc(entries, func(a, b ihfs.DirEntry) int {
+		if a.Name() < b.Name() {
+			return -1
+		} else if a.Name() > b.Name() {
+			return 1
+		} else {
+			return 0
+		}
 	})
 }
