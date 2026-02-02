@@ -41,6 +41,15 @@ for path, dirEntry := range seq {
     // ./foo
     // ./foo/bar.txt
 }
+
+// Filtering
+filtered := ihfs.Where(fs, func(o ihfs.Operation) bool {
+    return strings.Contains(o.Subject(), "bar.txt")
+})
+
+for path, err := range ihfs.IterPaths(filtered) {
+    // ./foo/bar.txt
+}
 ```
 
 ## Attribution
