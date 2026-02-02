@@ -68,7 +68,7 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.DirExists(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -113,7 +113,7 @@ var _ = Describe("Try Util", func() {
 			exists, err := try.Exists(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -162,7 +162,7 @@ var _ = Describe("Try Util", func() {
 			info, err := try.Stat(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(info).To(BeNil())
 		})
 	})
@@ -208,7 +208,7 @@ var _ = Describe("Try Util", func() {
 			isDir, err := try.IsDir(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(isDir).To(BeFalse())
 		})
 	})
@@ -231,7 +231,7 @@ var _ = Describe("Try Util", func() {
 			entries, err := try.ReadDir(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(entries).To(BeNil())
 		})
 	})
@@ -252,7 +252,7 @@ var _ = Describe("Try Util", func() {
 			names, err := try.ReadDirNames(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(names).To(BeNil())
 		})
 	})
@@ -275,13 +275,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedMode).To(Equal(ihfs.FileMode(0o644)))
 		})
 
-		It("should return ErrNotSupported when fs does not support Chmod", func() {
+		It("should return ErrNotImplemented when fs does not support Chmod", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Chmod(fsys, "file.txt", 0o644)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -305,13 +305,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedGid).To(Equal(1000))
 		})
 
-		It("should return ErrNotSupported when fs does not support Chown", func() {
+		It("should return ErrNotImplemented when fs does not support Chown", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Chown(fsys, "file.txt", 1000, 1000)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -337,13 +337,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedMtime).To(Equal(mtime))
 		})
 
-		It("should return ErrNotSupported when fs does not support Chtimes", func() {
+		It("should return ErrNotImplemented when fs does not support Chtimes", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Chtimes(fsys, "file.txt", time.Time{}, time.Time{})
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -366,13 +366,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedSrc).To(Equal(srcFs))
 		})
 
-		It("should return ErrNotSupported when fs does not support Copy", func() {
+		It("should return ErrNotImplemented when fs does not support Copy", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Copy(fsys, "dest", osfs.New())
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -394,13 +394,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedMode).To(Equal(ihfs.FileMode(0o755)))
 		})
 
-		It("should return ErrNotSupported when fs does not support Mkdir", func() {
+		It("should return ErrNotImplemented when fs does not support Mkdir", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Mkdir(fsys, "newdir", 0o755)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -422,13 +422,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedMode).To(Equal(ihfs.FileMode(0o755)))
 		})
 
-		It("should return ErrNotSupported when fs does not support MkdirAll", func() {
+		It("should return ErrNotImplemented when fs does not support MkdirAll", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.MkdirAll(fsys, "path/to/dir", 0o755)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -450,13 +450,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPattern).To(Equal("test*"))
 		})
 
-		It("should return ErrNotSupported when fs does not support MkdirTemp", func() {
+		It("should return ErrNotImplemented when fs does not support MkdirTemp", func() {
 			fsys := testfs.BoringFs{}
 
 			name, err := try.MkdirTemp(fsys, "/tmp", "test*")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(name).To(BeEmpty())
 		})
 	})
@@ -476,13 +476,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedName).To(Equal("file.txt"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Remove", func() {
+		It("should return ErrNotImplemented when fs does not support Remove", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Remove(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -501,13 +501,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedName).To(Equal("dir"))
 		})
 
-		It("should return ErrNotSupported when fs does not support RemoveAll", func() {
+		It("should return ErrNotImplemented when fs does not support RemoveAll", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.RemoveAll(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -532,13 +532,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o644)))
 		})
 
-		It("should return ErrNotSupported when fs does not support WriteFile", func() {
+		It("should return ErrNotImplemented when fs does not support WriteFile", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.WriteFile(fsys, "file.txt", []byte("content"), 0o644)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -559,13 +559,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedName).To(Equal("file.txt"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Create", func() {
+		It("should return ErrNotImplemented when fs does not support Create", func() {
 			fsys := testfs.BoringFs{}
 
 			file, err := try.Create(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(file).To(BeNil())
 		})
 	})
@@ -589,13 +589,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPattern).To(Equal("prefix-*"))
 		})
 
-		It("should return ErrNotSupported when fs does not support CreateTemp", func() {
+		It("should return ErrNotImplemented when fs does not support CreateTemp", func() {
 			fsys := testfs.BoringFs{}
 
 			file, err := try.CreateTemp(fsys, "/tmp", "prefix-*")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(file).To(BeNil())
 		})
 	})
@@ -616,13 +616,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPattern).To(Equal("*.txt"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Glob", func() {
+		It("should return ErrNotImplemented when fs does not support Glob", func() {
 			fsys := testfs.BoringFs{}
 
 			matches, err := try.Glob(fsys, "*.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(matches).To(BeNil())
 		})
 	})
@@ -650,13 +650,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o755)))
 		})
 
-		It("should return ErrNotSupported when fs does not support OpenFile", func() {
+		It("should return ErrNotImplemented when fs does not support OpenFile", func() {
 			fsys := testfs.BoringFs{}
 
 			file, err := try.OpenFile(fsys, "file.txt", 0, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(file).To(BeNil())
 		})
 	})
@@ -677,13 +677,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedName).To(Equal("file.txt"))
 		})
 
-		It("should return ErrNotSupported when fs does not support ReadFile", func() {
+		It("should return ErrNotImplemented when fs does not support ReadFile", func() {
 			fsys := testfs.BoringFs{}
 
 			data, err := try.ReadFile(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(data).To(BeNil())
 		})
 	})
@@ -706,13 +706,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedName).To(Equal("symlink"))
 		})
 
-		It("should return ErrNotSupported when fs does not support ReadLink", func() {
+		It("should return ErrNotImplemented when fs does not support ReadLink", func() {
 			fsys := testfs.BoringFs{}
 
 			target, err := try.ReadLink(fsys, "symlink")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(target).To(Equal(""))
 		})
 	})
@@ -734,13 +734,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedNewpath).To(Equal("new.txt"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Rename", func() {
+		It("should return ErrNotImplemented when fs does not support Rename", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Rename(fsys, "old.txt", "new.txt")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -761,13 +761,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedDir).To(Equal("subdir"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Sub", func() {
+		It("should return ErrNotImplemented when fs does not support Sub", func() {
 			fsys := testfs.BoringFs{}
 
 			subFS, err := try.Sub(fsys, "subdir")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(subFS).To(BeNil())
 		})
 	})
@@ -789,13 +789,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedNewname).To(Equal("link"))
 		})
 
-		It("should return ErrNotSupported when fs does not support Symlink", func() {
+		It("should return ErrNotImplemented when fs does not support Symlink", func() {
 			fsys := testfs.BoringFs{}
 
 			err := try.Symlink(fsys, "target", "link")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 	})
 
@@ -817,13 +817,13 @@ var _ = Describe("Try Util", func() {
 			Expect(capturedPattern).To(Equal("prefix-*"))
 		})
 
-		It("should return ErrNotSupported when fs does not support TempFile", func() {
+		It("should return ErrNotImplemented when fs does not support TempFile", func() {
 			fsys := testfs.BoringFs{}
 
 			name, err := try.TempFile(fsys, "/tmp", "prefix-*")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 			Expect(name).To(Equal(""))
 		})
 	})

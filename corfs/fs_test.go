@@ -914,7 +914,7 @@ var _ = Describe("Fs", func() {
 			cfs := corfs.New(base, minimalFS{})
 			_, err := cfs.Open("path")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("mkdir all: operation not supported"))
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should handle when layer doesn't support Create", func() {
@@ -940,7 +940,7 @@ var _ = Describe("Fs", func() {
 			cfs := corfs.New(base, minimalFSWithMkdirAll{})
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("create: operation not supported"))
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should handle layer file Close error in copyToLayer", func() {

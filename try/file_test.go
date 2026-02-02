@@ -19,7 +19,7 @@ var _ = Describe("File", func() {
 			_, err := try.Seek(f, 0, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call Seek on the underlying file when supported", func() {
@@ -51,7 +51,7 @@ var _ = Describe("File", func() {
 			_, err := try.Write(f, nil)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call Write on the underlying file when supported", func() {
@@ -80,7 +80,7 @@ var _ = Describe("File", func() {
 			_, err := try.ReadAt(f, nil, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call ReadAt on the underlying file when supported", func() {
@@ -113,7 +113,7 @@ var _ = Describe("File", func() {
 			_, err := try.WriteAt(f, nil, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call WriteAt on the underlying file when supported", func() {
@@ -145,7 +145,7 @@ var _ = Describe("File", func() {
 			_, err := try.WriteString(f, "hello")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call WriteString on the underlying file when supported", func() {
@@ -174,7 +174,7 @@ var _ = Describe("File", func() {
 			err := try.Sync(f)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call Sync on the underlying file when supported", func() {
@@ -202,7 +202,7 @@ var _ = Describe("File", func() {
 			err := try.Truncate(f, 100)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call Truncate on the underlying file when supported", func() {
@@ -230,7 +230,7 @@ var _ = Describe("File", func() {
 			_, err := try.ReadDirFile(f, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call ReadDir on the underlying file when supported", func() {
@@ -261,7 +261,7 @@ var _ = Describe("File", func() {
 			_, err := try.ReadDirNamesFile(f, 0)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should call ReadDirNames on the underlying file when supported", func() {
