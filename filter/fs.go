@@ -4,6 +4,7 @@ import (
 	"io/fs"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/op"
 )
 
@@ -44,6 +45,14 @@ func (f *FS) Open(name string) (fs.File, error) {
 		return nil, err
 	}
 	return f.fs.Open(name)
+}
+
+func (f *FS) Stat(name string) (fs.FileInfo, error) {
+	op := op.Stat{Name: name}
+	if err := f.filter(f, op); err != nil {
+		return nil, err
+	}
+	return try.Stat(f.fs, name)
 }
 
 func Where(fsys ihfs.FS, predicates ...Predicate) *FS {

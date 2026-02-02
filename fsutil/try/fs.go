@@ -227,9 +227,9 @@ func Rename(fsys ihfs.FS, oldpath, newpath string) error {
 // Stat attempts to call Stat on the given FS.
 // If the FS does not implement [ihfs.StatFS], Stat returns
 // an error that can be checked with [errors.Is] for [ErrNotSupported].
-func Stat(fsys ihfs.FS, path string) (ihfs.FileInfo, error) {
+func Stat(fsys ihfs.FS, name string) (ihfs.FileInfo, error) {
 	if stat, ok := fsys.(ihfs.StatFS); ok {
-		return stat.Stat(path)
+		return stat.Stat(name)
 	}
 	return nil, fmt.Errorf("stat: %w", ErrNotSupported)
 }

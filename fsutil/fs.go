@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 
 	"github.com/unstoppablemango/ihfs"
 )
@@ -44,6 +45,32 @@ func IsDir(fsys ihfs.StatFS, path string) (bool, error) {
 	}
 }
 
+// Glob returns the names of all files matching pattern or nil
+// if there is no matching file. The syntax of patterns is the same
+// as in [path.Match]. The pattern may describe hierarchical names such as
+// usr/*/bin/ed.
+//
+// Glob ignores file system errors such as I/O errors reading directories.
+// The only possible returned error is [path.ErrBadPattern], reporting that
+// the pattern is malformed.
+//
+// If fs implements [ihfs.GlobFS], Glob calls fs.Glob.
+// Otherwise, Glob uses [ReadDir] to traverse the directory tree
+// and look for matches for the pattern.
+func Glob(fsys ihfs.ReadDirFS, pattern string) ([]string, error) {
+	return fs.Glob(fsys, pattern)
+}
+
+// ReadDir reads the named directory
+// and returns a list of directory entries sorted by filename.
+//
+// If fs implements [ihfs.ReadDirFS], ReadDir calls fs.ReadDir.
+// Otherwise ReadDir calls fs.Open and uses ReadDir and Close
+// on the returned file.
+func ReadDir(fsys ihfs.FS, name string) ([]fs.DirEntry, error) {
+	return fs.ReadDir(fsys, name)
+}
+
 // ReadDirNames reads the named directory and returns a list of names.
 func ReadDirNames(f ihfs.ReadDirFS, name string) ([]string, error) {
 	entries, err := f.ReadDir(name)
@@ -56,6 +83,14 @@ func ReadDirNames(f ihfs.ReadDirFS, name string) ([]string, error) {
 		names[i] = entry.Name()
 	}
 	return names, nil
+}
+
+// Stat returns a [ihfs.FileInfo] describing the named file from the file system.
+//
+// If fs implements [ihfs.StatFS], Stat calls fs.Stat.
+// Otherwise, Stat opens the [ihfs.File] to stat it.
+func Stat(fsys ihfs.FS, name string) (ihfs.FileInfo, error) {
+	return fs.Stat(fsys, name)
 }
 
 // WriteReader reads all data from r and writes it to name in fsys using WriteFile.
