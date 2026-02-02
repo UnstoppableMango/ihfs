@@ -36,7 +36,7 @@ func (f *FilterFS) Name() string {
 	return "filter"
 }
 
-// Stat implements [fs.FS].
+// Stat implements [StatFS].
 func (f *FilterFS) Stat(name string) (FileInfo, error) {
 	op := op.Stat{Name: name}
 	if err := f.filter(f, op); err != nil {
@@ -45,7 +45,7 @@ func (f *FilterFS) Stat(name string) (FileInfo, error) {
 	return Stat(f.fs, name)
 }
 
-// Open implements [fs.FS].
+// Open implements [FS].
 func (f *FilterFS) Open(name string) (File, error) {
 	op := op.Open{Name: name}
 	if err := f.filter(f, op); err != nil {
