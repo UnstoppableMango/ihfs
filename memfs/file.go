@@ -12,7 +12,8 @@ import (
 
 // File represents a file in the memory filesystem.
 type File struct {
-	sync.Mutex   // protects file position fields (at, readDirCount) and closed state
+	sync.Mutex
+
 	at           int64
 	readDirCount int64
 	closed       bool
@@ -23,6 +24,7 @@ type File struct {
 // FileData holds the actual file data and metadata.
 type FileData struct {
 	sync.Mutex
+
 	name    string
 	content []byte
 	dir     *Dir
@@ -44,6 +46,7 @@ func (fd *FileData) error(op string, err error) error {
 // Dir represents a directory with its children.
 type Dir struct {
 	sync.Mutex
+
 	children map[string]*FileData
 }
 
@@ -83,11 +86,10 @@ func (f *File) Close() error {
 	f.Lock()
 	defer f.Unlock()
 
-	f.data.Lock()
-	defer f.data.Unlock()
-
 	f.closed = true
 	if !f.readOnly {
+		f.data.Lock()
+		defer f.data.Unlock()
 		f.data.modTime = time.Now()
 	}
 	return nil
@@ -98,15 +100,15 @@ func (f *File) Read(p []byte) (int, error) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.data.Lock()
-	defer f.data.Unlock()
-
 	if f.closed {
 		return 0, ihfs.ErrClosed
 	}
 
+	f.data.Lock()
+	defer f.data.Unlock()
+
 	if f.data.isDir {
-		return 0, f.data.error("read", os.ErrInvalid)
+		return 0, f.error("read", ihfs.ErrInvalid)
 	}
 
 	if f.at >= int64(len(f.data.content)) {
@@ -129,18 +131,17 @@ func (f *File) Write(p []byte) (int, error) {
 	defer f.Unlock()
 
 	if f.readOnly {
-		return 0, f.data.error("write", os.ErrPermission)
+		return 0, f.error("write", ihfs.ErrPermission)
+	}
+	if f.closed {
+		return 0, f.error("write", ihfs.ErrClosed)
 	}
 
 	f.data.Lock()
 	defer f.data.Unlock()
 
-	if f.closed {
-		return 0, ihfs.ErrClosed
-	}
-
 	if f.data.isDir {
-		return 0, f.data.error("write", os.ErrInvalid)
+		return 0, f.error("write", ihfs.ErrInvalid)
 	}
 
 	// Expand content if necessary
@@ -166,15 +167,15 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	f.Lock()
 	defer f.Unlock()
 
+	if f.closed {
+		return nil, f.error("readdir", ihfs.ErrClosed)
+	}
+
 	f.data.Lock()
 	defer f.data.Unlock()
 
-	if f.closed {
-		return nil, ihfs.ErrClosed
-	}
-
 	if !f.data.isDir {
-		return nil, f.data.error("readdir", os.ErrInvalid)
+		return nil, f.error("readdir", ihfs.ErrInvalid)
 	}
 
 	f.data.dir.Lock()
@@ -212,6 +213,7 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 
 	end := min(start+n, len(entries))
 	f.readDirCount = int64(end)
+
 	return entries[start:end], nil
 }
 
@@ -224,7 +226,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	defer f.data.Unlock()
 
 	if f.closed {
-		return 0, ihfs.ErrClosed
+		return 0, f.error("seek", ihfs.ErrClosed)
 	}
 
 	var newPos int64
@@ -236,11 +238,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		newPos = int64(len(f.data.content)) + offset
 	default:
-		return 0, f.error("seek", os.ErrInvalid)
+		return 0, f.error("seek", ihfs.ErrInvalid)
 	}
 
 	if newPos < 0 {
-		return 0, f.error("seek", os.ErrInvalid)
+		return 0, f.error("seek", ihfs.ErrInvalid)
 	}
 
 	f.at = newPos
@@ -253,18 +255,17 @@ func (f *File) Truncate(size int64) error {
 	defer f.Unlock()
 
 	if f.readOnly {
-		return f.error("truncate", os.ErrPermission)
+		return f.error("truncate", ihfs.ErrPermission)
 	}
 
 	f.data.Lock()
 	defer f.data.Unlock()
 
 	if f.closed {
-		return ihfs.ErrClosed
+		return f.error("truncate", ihfs.ErrClosed)
 	}
-
 	if size < 0 {
-		return f.error("truncate", os.ErrInvalid)
+		return f.error("truncate", ihfs.ErrInvalid)
 	}
 
 	if size > int64(len(f.data.content)) {

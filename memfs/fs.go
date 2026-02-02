@@ -1,7 +1,6 @@
 package memfs
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,78 +22,82 @@ func New() *Fs {
 	return &Fs{}
 }
 
-func (m *Fs) getData() map[string]*FileData {
-	m.init.Do(func() {
-		m.data = make(map[string]*FileData)
+func (f *Fs) getData() map[string]*FileData {
+	f.init.Do(func() {
+		f.data = make(map[string]*FileData)
 		// Root should always exist
 		root := CreateDir(string(filepath.Separator))
-		m.data[string(filepath.Separator)] = root
+		f.data[string(filepath.Separator)] = root
 	})
-	return m.data
+	return f.data
 }
 
 // Open implements ihfs.FS.
-func (m *Fs) Open(name string) (ihfs.File, error) {
+func (f *Fs) Open(name string) (ihfs.File, error) {
 	name = normalizePath(name)
 
-	m.mu.RLock()
-	file, ok := m.getData()[name]
-	m.mu.RUnlock()
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
 
 	if !ok {
-		return nil, &ihfs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+		return nil, perror("open", name, ihfs.ErrNotExist)
 	}
 
 	return NewReadOnlyFile(file), nil
 }
 
 // Create implements ihfs.CreateFS.
-func (m *Fs) Create(name string) (ihfs.File, error) {
+func (f *Fs) Create(name string) (ihfs.File, error) {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	file := CreateFile(name)
-	m.getData()[name] = file
+	f.getData()[name] = file
 
-	if err := m.registerWithParent(file); err != nil {
-		delete(m.getData(), name)
-		return nil, err
+	if err := f.registerWithParent(file); err != nil {
+		delete(f.getData(), name)
+		return nil, perror("create", name, err)
 	}
 
 	return NewFile(file), nil
 }
 
 // Mkdir implements ihfs.MkdirFS.
-func (m *Fs) Mkdir(name string, perm os.FileMode) error {
+func (f *Fs) Mkdir(name string, perm os.FileMode) error {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	if _, exists := m.getData()[name]; exists {
-		return &ihfs.PathError{Op: "mkdir", Path: name, Err: fs.ErrExist}
+	if _, exists := f.getData()[name]; exists {
+		return perror("mkdir", name, ihfs.ErrExist)
 	}
 
 	dir := CreateDir(name)
 	dir.mode = os.ModeDir | perm
-	m.getData()[name] = dir
+	f.getData()[name] = dir
 
-	return m.registerWithParent(dir)
+	if err := f.registerWithParent(dir); err != nil {
+		return perror("mkdir", name, err)
+	}
+
+	return nil
 }
 
 // MkdirAll implements ihfs.MkdirAllFS.
-func (m *Fs) MkdirAll(name string, perm os.FileMode) error {
+func (f *Fs) MkdirAll(name string, perm os.FileMode) error {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	// Check if it already exists
-	if file, exists := m.getData()[name]; exists {
+	if file, exists := f.getData()[name]; exists {
 		if !file.isDir {
-			return &ihfs.PathError{Op: "mkdir", Path: name, Err: fs.ErrExist}
+			return perror("mkdirall", name, ihfs.ErrExist)
 		}
 		return nil
 	}
@@ -107,15 +110,15 @@ func (m *Fs) MkdirAll(name string, perm os.FileMode) error {
 		if part == "" {
 			continue
 		}
-		current = filepath.Join(current, part)
 
-		if _, exists := m.getData()[current]; !exists {
+		current = filepath.Join(current, part)
+		if _, exists := f.getData()[current]; !exists {
 			dir := CreateDir(current)
 			dir.mode = os.ModeDir | perm
-			m.getData()[current] = dir
+			f.getData()[current] = dir
 
-			if err := m.registerWithParent(dir); err != nil {
-				return err
+			if err := f.registerWithParent(dir); err != nil {
+				return perror("mkdirall", name, err)
 			}
 		}
 	}
@@ -124,15 +127,15 @@ func (m *Fs) MkdirAll(name string, perm os.FileMode) error {
 }
 
 // Remove implements ihfs.RemoveFS.
-func (m *Fs) Remove(name string) error {
+func (f *Fs) Remove(name string) error {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	file, ok := m.getData()[name]
+	file, ok := f.getData()[name]
 	if !ok {
-		return &ihfs.PathError{Op: "remove", Path: name, Err: fs.ErrNotExist}
+		return perror("remove", name, ihfs.ErrNotExist)
 	}
 
 	// Check if directory is empty
@@ -142,101 +145,114 @@ func (m *Fs) Remove(name string) error {
 		file.dir.Unlock()
 
 		if !isEmpty {
-			return &ihfs.PathError{Op: "remove", Path: name, Err: os.ErrInvalid}
+			return perror("remove", name, ihfs.ErrInvalid)
 		}
 	}
 
-	m.unregisterWithParent(name)
+	f.unregisterWithParent(name)
 
-	delete(m.getData(), name)
+	delete(f.getData(), name)
 	return nil
 }
 
 // RemoveAll implements ihfs.RemoveAllFS.
-func (m *Fs) RemoveAll(name string) error {
+func (f *Fs) RemoveAll(name string) error {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	if _, ok := m.getData()[name]; !ok {
+	if _, ok := f.getData()[name]; !ok {
 		return nil // RemoveAll doesn't error if path doesn't exist
 	}
 
 	// Find all descendants
-	descendants := m.findDescendants(name)
+	descendants := f.findDescendants(name)
 
 	// Remove descendants first (depth-first)
 	for i := len(descendants) - 1; i >= 0; i-- {
-		delete(m.getData(), descendants[i].name)
+		delete(f.getData(), descendants[i].name)
 	}
 
 	// Unregister with parent
-	m.unregisterWithParent(name)
+	f.unregisterWithParent(name)
 
 	// Remove the target
-	delete(m.getData(), name)
+	delete(f.getData(), name)
 	return nil
 }
 
 // Rename implements ihfs.RenameFS.
-func (m *Fs) Rename(oldName, newName string) error {
+func (f *Fs) Rename(oldName, newName string) error {
 	oldName = normalizePath(oldName)
 	newName = normalizePath(newName)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	file, ok := m.getData()[oldName]
+	file, ok := f.getData()[oldName]
 	if !ok {
-		return &ihfs.PathError{Op: "rename", Path: oldName, Err: fs.ErrNotExist}
+		return perror("rename", oldName, ihfs.ErrNotExist)
+	}
+	if _, exists := f.getData()[newName]; exists {
+		return perror("rename", newName, ihfs.ErrExist)
 	}
 
-	if _, exists := m.getData()[newName]; exists {
-		return &ihfs.PathError{Op: "rename", Path: newName, Err: fs.ErrExist}
+	// Validate new parent directory exists and is a directory BEFORE making any changes
+	// This prevents leaving the filesystem in an inconsistent state if validation fails
+	newParentPath := filepath.Dir(newName)
+	if newParentPath != "/" {
+		newParent, exists := f.getData()[newParentPath]
+		if !exists {
+			return perror("rename", newName, ihfs.ErrNotExist)
+		}
+		if !newParent.isDir {
+			return perror("rename", newName, ihfs.ErrInvalid)
+		}
 	}
 
-	// Unregister from old parent
-	m.unregisterWithParent(oldName)
+	// Now that validation is complete, we can safely make changes
+	f.unregisterWithParent(oldName)
 
-	// Update name
 	file.Lock()
 	file.name = newName
 	file.Unlock()
 
-	// Update map
-	delete(m.getData(), oldName)
-	m.getData()[newName] = file
+	delete(f.getData(), oldName)
+	f.getData()[newName] = file
 
-	// Register with new parent
-	return m.registerWithParent(file)
+	if err := f.registerWithParent(file); err != nil {
+		return perror("rename", newName, err)
+	}
+
+	return nil
 }
 
 // Stat implements ihfs.StatFS.
-func (m *Fs) Stat(name string) (ihfs.FileInfo, error) {
+func (f *Fs) Stat(name string) (ihfs.FileInfo, error) {
 	name = normalizePath(name)
 
-	m.mu.RLock()
-	file, ok := m.getData()[name]
-	m.mu.RUnlock()
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
 
 	if !ok {
-		return nil, &ihfs.PathError{Op: "stat", Path: name, Err: fs.ErrNotExist}
+		return nil, perror("stat", name, ihfs.ErrNotExist)
 	}
 
 	return &FileInfo{data: file}, nil
 }
 
 // Chmod implements ihfs.ChmodFS.
-func (m *Fs) Chmod(name string, mode os.FileMode) error {
+func (f *Fs) Chmod(name string, mode os.FileMode) error {
 	name = normalizePath(name)
 
-	m.mu.RLock()
-	file, ok := m.getData()[name]
-	m.mu.RUnlock()
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
 
 	if !ok {
-		return &ihfs.PathError{Op: "chmod", Path: name, Err: fs.ErrNotExist}
+		return perror("chmod", name, ihfs.ErrNotExist)
 	}
 
 	file.Lock()
@@ -247,15 +263,15 @@ func (m *Fs) Chmod(name string, mode os.FileMode) error {
 }
 
 // Chown implements ihfs.ChownFS.
-func (m *Fs) Chown(name string, uid, gid int) error {
+func (f *Fs) Chown(name string, uid, gid int) error {
 	name = normalizePath(name)
 
-	m.mu.RLock()
-	file, ok := m.getData()[name]
-	m.mu.RUnlock()
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
 
 	if !ok {
-		return &ihfs.PathError{Op: "chown", Path: name, Err: fs.ErrNotExist}
+		return perror("chown", name, ihfs.ErrNotExist)
 	}
 
 	file.Lock()
@@ -267,15 +283,15 @@ func (m *Fs) Chown(name string, uid, gid int) error {
 }
 
 // Chtimes implements ihfs.ChtimesFS.
-func (m *Fs) Chtimes(name string, atime, mtime time.Time) error {
+func (f *Fs) Chtimes(name string, atime, mtime time.Time) error {
 	name = normalizePath(name)
 
-	m.mu.RLock()
-	file, ok := m.getData()[name]
-	m.mu.RUnlock()
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
 
 	if !ok {
-		return &ihfs.PathError{Op: "chtimes", Path: name, Err: fs.ErrNotExist}
+		return perror("chtimes", name, ihfs.ErrNotExist)
 	}
 
 	file.Lock()
@@ -286,29 +302,29 @@ func (m *Fs) Chtimes(name string, atime, mtime time.Time) error {
 }
 
 // OpenFile implements ihfs.OpenFileFS.
-func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error) {
+func (f *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error) {
 	name = normalizePath(name)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	file, exists := m.getData()[name]
+	file, exists := f.getData()[name]
 
 	if !exists {
 		if flag&os.O_CREATE == 0 {
-			return nil, &ihfs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+			return nil, perror("open", name, ihfs.ErrNotExist)
 		}
 
 		file = CreateFile(name)
 		file.mode = perm
-		m.getData()[name] = file
+		f.getData()[name] = file
 
-		if err := m.registerWithParent(file); err != nil {
-			delete(m.getData(), name)
-			return nil, err
+		if err := f.registerWithParent(file); err != nil {
+			delete(f.getData(), name)
+			return nil, perror("open", name, err)
 		}
 	} else if flag&os.O_EXCL != 0 {
-		return nil, &ihfs.PathError{Op: "open", Path: name, Err: fs.ErrExist}
+		return nil, perror("open", name, ihfs.ErrExist)
 	}
 
 	if flag&os.O_TRUNC != 0 && !file.isDir {
@@ -331,14 +347,13 @@ func (m *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 	return handle, nil
 }
 
-func (m *Fs) registerWithParent(file *FileData) error {
-	parent := m.findParent(file)
+func (f *Fs) registerWithParent(file *FileData) error {
+	parent := f.findParent(file)
 	if parent == nil {
-		return &ihfs.PathError{Op: "register", Path: file.name, Err: fs.ErrNotExist}
+		return ihfs.ErrNotExist
 	}
-
 	if !parent.isDir {
-		return &ihfs.PathError{Op: "register", Path: file.name, Err: os.ErrInvalid}
+		return ihfs.ErrInvalid
 	}
 
 	parent.dir.Lock()
@@ -350,9 +365,9 @@ func (m *Fs) registerWithParent(file *FileData) error {
 	return nil
 }
 
-func (m *Fs) unregisterWithParent(name string) {
-	file := m.getData()[name]
-	parent := m.findParent(file)
+func (f *Fs) unregisterWithParent(name string) {
+	file := f.getData()[name]
+	parent := f.findParent(file)
 	if parent == nil {
 		// Root has no parent
 		return
@@ -365,21 +380,21 @@ func (m *Fs) unregisterWithParent(name string) {
 	delete(parent.dir.children, baseName)
 }
 
-func (m *Fs) findParent(file *FileData) *FileData {
+func (f *Fs) findParent(file *FileData) *FileData {
 	parentPath := filepath.Dir(file.name)
 	if parentPath == file.name {
 		// We're at root
 		return nil
 	}
 
-	return m.getData()[parentPath]
+	return f.getData()[parentPath]
 }
 
-func (m *Fs) findDescendants(name string) []*FileData {
+func (f *Fs) findDescendants(name string) []*FileData {
 	var descendants []*FileData
 	prefix := name + string(filepath.Separator)
 
-	for path, file := range m.getData() {
+	for path, file := range f.getData() {
 		if strings.HasPrefix(path, prefix) {
 			descendants = append(descendants, file)
 		}
@@ -399,4 +414,12 @@ func normalizePath(path string) string {
 	}
 
 	return path
+}
+
+func perror(op, path string, err error) error {
+	return &ihfs.PathError{
+		Op:   op,
+		Path: path,
+		Err:  err,
+	}
 }
