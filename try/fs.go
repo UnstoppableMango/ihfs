@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil"
 )
 
 var ErrNotSupported = errors.New("operation not supported")
@@ -76,7 +75,7 @@ func CreateTemp(fsys ihfs.FS, dir, pattern string) (ihfs.File, error) {
 // an error that can be checked with [errors.Is] for [ErrNotSupported].
 func DirExists(fsys ihfs.FS, path string) (bool, error) {
 	if stat, ok := fsys.(ihfs.StatFS); ok {
-		return fsutil.DirExists(stat, path)
+		return ihfs.DirExists(stat, path)
 	}
 	return false, fmt.Errorf("stat: %w", ErrNotSupported)
 }
@@ -86,7 +85,7 @@ func DirExists(fsys ihfs.FS, path string) (bool, error) {
 // an error that can be checked with [errors.Is] for [ErrNotSupported].
 func Exists(fsys ihfs.FS, path string) (bool, error) {
 	if stat, ok := fsys.(ihfs.StatFS); ok {
-		return fsutil.Exists(stat, path)
+		return ihfs.Exists(stat, path)
 	}
 	return false, fmt.Errorf("stat: %w", ErrNotSupported)
 }
@@ -106,7 +105,7 @@ func Glob(fsys ihfs.FS, pattern string) ([]string, error) {
 // an error that can be checked with [errors.Is] for [ErrNotSupported].
 func IsDir(fsys ihfs.FS, path string) (bool, error) {
 	if stat, ok := fsys.(ihfs.StatFS); ok {
-		return fsutil.IsDir(stat, path)
+		return ihfs.IsDir(stat, path)
 	}
 	return false, fmt.Errorf("stat: %w", ErrNotSupported)
 }
@@ -169,7 +168,7 @@ func ReadDirNames(fsys ihfs.FS, path string) ([]string, error) {
 		return dirfs.ReadDirNames(path)
 	}
 	if dirfs, ok := fsys.(ihfs.ReadDirFS); ok {
-		return fsutil.ReadDirNames(dirfs, path)
+		return ihfs.ReadDirNames(dirfs, path)
 	}
 	return nil, fmt.Errorf("read dir: %w", ErrNotSupported)
 }

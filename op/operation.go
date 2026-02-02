@@ -1,8 +1,6 @@
 package op
 
-import (
-	"github.com/unstoppablemango/ihfs"
-)
+import "io/fs"
 
 // Open represents an operation to open a file.
 type Open struct {
@@ -78,7 +76,7 @@ func (s Stat) Subject() string {
 type WriteFile struct {
 	Name string
 	Data []byte
-	Perm ihfs.FileMode
+	Perm fs.FileMode
 }
 
 // Subject implements [ihfs.Operation].

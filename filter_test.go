@@ -1,23 +1,22 @@
-package filter_test
+package ihfs_test
 
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/filter"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Fs", func() {
 	It("should panic on nil fsys", func() {
 		Expect(func() {
-			filter.With(nil)
+			ihfs.Filter(nil)
 		}).To(Panic())
 	})
 
 	It("should have a name", func() {
-		fsys := filter.With(testfs.BoringFs{})
+		fsys := ihfs.Filter(testfs.BoringFs{})
 
 		Expect(fsys.Name()).To(Equal("filter"))
 	})
@@ -28,7 +27,7 @@ var _ = Describe("Fs", func() {
 			return file, nil
 		}))
 
-		filtered := filter.With(fsys)
+		filtered := ihfs.Filter(fsys)
 
 		f, err := filtered.Open("somefile.txt")
 		Expect(err).To(BeNil())
@@ -42,7 +41,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := filter.With(fsys, func(f *filter.FS, o ihfs.Operation) error {
+			filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
 				if o.Subject() == "forbidden.txt" {
 					return ihfs.ErrPermission
 				}
@@ -62,14 +61,14 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := filter.With(fsys,
-				func(f *filter.FS, o ihfs.Operation) error {
+			filtered := ihfs.Filter(fsys,
+				func(f *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden1.txt" {
 						return ihfs.ErrPermission
 					}
 					return nil
 				},
-				func(f *filter.FS, o ihfs.Operation) error {
+				func(f *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden2.txt" {
 						return ihfs.ErrPermission
 					}
@@ -94,7 +93,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := filter.Where(fsys, func(o ihfs.Operation) bool {
+			filtered := ihfs.Where(fsys, func(o ihfs.Operation) bool {
 				return o.Subject() != "forbidden.txt"
 			})
 
@@ -111,7 +110,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := filter.Where(fsys,
+			filtered := ihfs.Where(fsys,
 				func(o ihfs.Operation) bool {
 					return o.Subject() != "forbidden1.txt"
 				},

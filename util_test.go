@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
@@ -34,7 +33,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: true}, nil
 			}))
 
-			exists, err := fsutil.DirExists(fsys, "dir")
+			exists, err := ihfs.DirExists(fsys, "dir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -45,7 +44,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: false}, nil
 			}))
 
-			exists, err := fsutil.DirExists(fsys, "file.txt")
+			exists, err := ihfs.DirExists(fsys, "file.txt")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
@@ -56,7 +55,7 @@ var _ = Describe("Util", func() {
 				return nil, fs.ErrNotExist
 			}))
 
-			exists, err := fsutil.DirExists(fsys, "nonexistent")
+			exists, err := ihfs.DirExists(fsys, "nonexistent")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
@@ -68,7 +67,7 @@ var _ = Describe("Util", func() {
 				return nil, testErr
 			}))
 
-			exists, err := fsutil.DirExists(fsys, "dir")
+			exists, err := ihfs.DirExists(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(testErr))
@@ -82,7 +81,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: false}, nil
 			}))
 
-			exists, err := fsutil.Exists(fsys, "file.txt")
+			exists, err := ihfs.Exists(fsys, "file.txt")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -93,7 +92,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: true}, nil
 			}))
 
-			exists, err := fsutil.Exists(fsys, "dir")
+			exists, err := ihfs.Exists(fsys, "dir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -104,7 +103,7 @@ var _ = Describe("Util", func() {
 				return nil, fs.ErrNotExist
 			}))
 
-			exists, err := fsutil.Exists(fsys, "nonexistent")
+			exists, err := ihfs.Exists(fsys, "nonexistent")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
@@ -116,7 +115,7 @@ var _ = Describe("Util", func() {
 				return nil, testErr
 			}))
 
-			exists, err := fsutil.Exists(fsys, "file.txt")
+			exists, err := ihfs.Exists(fsys, "file.txt")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(testErr))
@@ -130,7 +129,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: true}, nil
 			}))
 
-			isDir, err := fsutil.IsDir(fsys, "dir")
+			isDir, err := ihfs.IsDir(fsys, "dir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isDir).To(BeTrue())
@@ -141,7 +140,7 @@ var _ = Describe("Util", func() {
 				return mockFileInfo{name: s, isDir: false}, nil
 			}))
 
-			isDir, err := fsutil.IsDir(fsys, "file.txt")
+			isDir, err := ihfs.IsDir(fsys, "file.txt")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isDir).To(BeFalse())
@@ -152,7 +151,7 @@ var _ = Describe("Util", func() {
 				return nil, fs.ErrNotExist
 			}))
 
-			isDir, err := fsutil.IsDir(fsys, "nonexistent")
+			isDir, err := ihfs.IsDir(fsys, "nonexistent")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(fs.ErrNotExist))
@@ -165,7 +164,7 @@ var _ = Describe("Util", func() {
 				return nil, testErr
 			}))
 
-			isDir, err := fsutil.IsDir(fsys, "dir")
+			isDir, err := ihfs.IsDir(fsys, "dir")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(testErr))
@@ -177,7 +176,7 @@ var _ = Describe("Util", func() {
 		It("should read directory entry names", func() {
 			fsys := osfs.New()
 
-			names, err := fsutil.ReadDirNames(fsys, "./testdata/2-files")
+			names, err := ihfs.ReadDirNames(fsys, "./testdata/2-files")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(names).To(ConsistOf("one.txt", "two.txt"))
@@ -186,7 +185,7 @@ var _ = Describe("Util", func() {
 		It("should return error when directory does not exist", func() {
 			fsys := osfs.New()
 
-			names, err := fsutil.ReadDirNames(fsys, "./nonexistent")
+			names, err := ihfs.ReadDirNames(fsys, "./nonexistent")
 
 			Expect(err).To(HaveOccurred())
 			Expect(names).To(BeNil())
@@ -207,7 +206,7 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := bytes.NewReader([]byte("test content"))
-			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+			err := ihfs.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(capturedName).To(Equal("test.txt"))
@@ -221,7 +220,7 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := &errorReader{err: errors.New("read error")}
-			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+			err := ihfs.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("reading"))
@@ -235,7 +234,7 @@ var _ = Describe("Util", func() {
 			}))
 
 			reader := bytes.NewReader([]byte("test content"))
-			err := fsutil.WriteReader(fsys, "test.txt", reader, 0x644)
+			err := ihfs.WriteReader(fsys, "test.txt", reader, 0x644)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(writeErr))
