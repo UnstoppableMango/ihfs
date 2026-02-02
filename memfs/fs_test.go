@@ -87,6 +87,21 @@ var _ = Describe("Fs", func() {
 			err = mfs.Mkdir("/testdir", 0755)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("should error if parent directory does not exist", func() {
+			mfs := memfs.New()
+			err := mfs.Mkdir("/nonexistent/testdir", 0755)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error if parent is not a directory", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.Mkdir("/file.txt/testdir", 0755)
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("MkdirAll", func() {
@@ -107,6 +122,44 @@ var _ = Describe("Fs", func() {
 
 			err = mfs.MkdirAll("/testdir", 0755)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should handle paths with empty parts", func() {
+			mfs := memfs.New()
+			err := mfs.MkdirAll("//a///b//c//", 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			fi, err := mfs.Stat("/a/b/c")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should not error when calling MkdirAll on root", func() {
+			mfs := memfs.New()
+			err := mfs.MkdirAll("/", 0755)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should create remaining directories when some already exist", func() {
+			mfs := memfs.New()
+			err := mfs.Mkdir("/a", 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.MkdirAll("/a/b/c", 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			fi, err := mfs.Stat("/a/b/c")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should error if intermediate path component is a file", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.MkdirAll("/file.txt/subdir", 0755)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -171,6 +224,19 @@ var _ = Describe("Fs", func() {
 			err := mfs.RemoveAll("/nonexistent")
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("should handle RemoveAll on root directory", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.RemoveAll("/")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Root should be removed from the map, filesystem essentially empty
+			_, err = mfs.Stat("/")
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("Rename", func() {
@@ -198,6 +264,12 @@ var _ = Describe("Fs", func() {
 			Expect(string(content)).To(Equal("content"))
 		})
 
+		It("should error if old file does not exist", func() {
+			mfs := memfs.New()
+			err := mfs.Rename("/nonexistent.txt", "/new.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should error if new name exists", func() {
 			mfs := memfs.New()
 			_, err := mfs.Create("/file1.txt")
@@ -207,6 +279,58 @@ var _ = Describe("Fs", func() {
 
 			err = mfs.Rename("/file1.txt", "/file2.txt")
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error if new parent directory is not a directory", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = mfs.Create("/old.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.Rename("/old.txt", "/file.txt/new.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error if new parent directory does not exist", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/old.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.Rename("/old.txt", "/nonexistent/new.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle renaming root directory children", func() {
+			mfs := memfs.New()
+			_, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.Rename("/file.txt", "/renamed.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = mfs.Stat("/file.txt")
+			Expect(err).To(HaveOccurred())
+
+			_, err = mfs.Stat("/renamed.txt")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should rename to nested directory", func() {
+			mfs := memfs.New()
+			err := mfs.Mkdir("/dir", 0755)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.Rename("/file.txt", "/dir/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = mfs.Stat("/file.txt")
+			Expect(err).To(HaveOccurred())
+
+			_, err = mfs.Stat("/dir/file.txt")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 

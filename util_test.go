@@ -240,6 +240,37 @@ var _ = Describe("Util", func() {
 			Expect(err).To(Equal(writeErr))
 		})
 	})
+
+	Describe("WriteFile", func() {
+		It("should call underlying WriteFile when implemented", func() {
+			var capturedName string
+			var capturedData []byte
+			var capturedPerm ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+				capturedName = name
+				capturedData = data
+				capturedPerm = perm
+				return nil
+			}))
+
+			err := ihfs.WriteFile(fsys, "test.txt", []byte("content"), 0x644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("test.txt"))
+			Expect(capturedData).To(Equal([]byte("content")))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0x644)))
+		})
+
+		It("should return ErrNotImplemented when WriteFileFS not implemented", func() {
+			fsys := testfs.BoringFs{}
+
+			err := ihfs.WriteFile(fsys, "test.txt", []byte("content"), 0x644)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
 })
 
 type errorReader struct {

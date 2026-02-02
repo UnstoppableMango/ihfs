@@ -1,6 +1,7 @@
 package memfs
 
 import (
+	"cmp"
 	"io"
 	"os"
 	"slices"
@@ -290,12 +291,6 @@ func (f *File) error(op string, err error) error {
 
 func sortDirEntries(entries []ihfs.DirEntry) {
 	slices.SortFunc(entries, func(a, b ihfs.DirEntry) int {
-		if a.Name() < b.Name() {
-			return -1
-		} else if a.Name() > b.Name() {
-			return 1
-		} else {
-			return 0
-		}
+		return cmp.Compare(a.Name(), b.Name())
 	})
 }

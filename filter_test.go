@@ -21,6 +21,43 @@ var _ = Describe("Fs", func() {
 		Expect(fsys.Name()).To(Equal("filter"))
 	})
 
+	It("should call Stat on the underlying filesystem", func() {
+		called := false
+		info := testfs.NewFileInfo("test.txt")
+		fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+			called = true
+			Expect(name).To(Equal("test.txt"))
+			return info, nil
+		}))
+
+		filtered := ihfs.Filter(fsys)
+		result, err := filtered.Stat("test.txt")
+
+		Expect(err).To(BeNil())
+		Expect(result).To(BeIdenticalTo(info))
+		Expect(called).To(BeTrue())
+	})
+
+	It("should apply filters to Stat", func() {
+		info := testfs.NewFileInfo("allowed.txt")
+		fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+			return info, nil
+		}))
+
+		filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
+			if o.Subject() == "forbidden.txt" {
+				return ihfs.ErrPermission
+			}
+			return nil
+		})
+
+		_, err := filtered.Stat("forbidden.txt")
+		Expect(err).To(MatchError(ihfs.ErrPermission))
+		result, err := filtered.Stat("allowed.txt")
+		Expect(err).To(BeNil())
+		Expect(result).To(BeIdenticalTo(info))
+	})
+
 	It("should pass through opens without filters", func() {
 		file := &testfs.BoringFile{}
 		fsys := testfs.New(testfs.WithOpen(func(string) (ihfs.File, error) {
