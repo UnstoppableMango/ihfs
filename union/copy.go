@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil/try"
+	"github.com/unstoppablemango/ihfs/try"
 )
 
 // CopyToLayer copies a file from the base filesystem to the layer filesystem.

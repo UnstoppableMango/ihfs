@@ -4,8 +4,8 @@ import (
 	"io/fs"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/op"
+	"github.com/unstoppablemango/ihfs/try"
 )
 
 type (

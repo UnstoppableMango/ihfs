@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil/try"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"github.com/unstoppablemango/ihfs/try"
 )
 
 type mockFileInfo struct {
@@ -217,7 +217,7 @@ var _ = Describe("Try Util", func() {
 		It("should read directory entries", func() {
 			fsys := osfs.New()
 
-			entries, err := try.ReadDir(fsys, "../../testdata/2-files")
+			entries, err := try.ReadDir(fsys, "../testdata/2-files")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(entries).To(HaveLen(2))
@@ -240,7 +240,7 @@ var _ = Describe("Try Util", func() {
 		It("should read directory entry names", func() {
 			fsys := osfs.New()
 
-			names, err := try.ReadDirNames(fsys, "../../testdata/2-files")
+			names, err := try.ReadDirNames(fsys, "../testdata/2-files")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(names).To(ConsistOf("one.txt", "two.txt"))
