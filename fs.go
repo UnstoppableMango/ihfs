@@ -93,6 +93,14 @@ type CreateTempFS interface {
 	CreateTemp(dir, pattern string) (File, error)
 }
 
+// Decorator is the interface implemented by a file system that wraps another file system.
+type Decorator[T FS] interface {
+	FS
+
+	// Base returns the underlying file system being wrapped.
+	Base() T
+}
+
 // LinkerFS is the interface implemented by a file system that supports creating and reading symbolic links.
 type LinkerFS interface {
 	SymlinkFS

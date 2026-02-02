@@ -16,11 +16,14 @@ func (p Predicate) Filter(_ *FilterFS, op Operation) error {
 	return ErrPermission
 }
 
+// FilterFS is a file system that applies filter functions to operations
+// before delegating them to the underlying file system.
 type FilterFS struct {
 	fs     FS
 	filter FilterFunc
 }
 
+// Filter creates a new [FilterFS] that wraps the given file system with the provided filter functions.
 func Filter(fsys FS, filters ...FilterFunc) *FilterFS {
 	if fsys == nil {
 		panic("filter: fsys cannot be nil")
@@ -30,6 +33,11 @@ func Filter(fsys FS, filters ...FilterFunc) *FilterFS {
 		fs:     fsys,
 		filter: flat(filters),
 	}
+}
+
+// Base implements [Decorator].
+func (f *FilterFS) Base() FS {
+	return f.fs
 }
 
 func (f *FilterFS) Name() string {
@@ -54,6 +62,8 @@ func (f *FilterFS) Open(name string) (File, error) {
 	return f.fs.Open(name)
 }
 
+// Where creates a new [FilterFS] that applies the given predicates to
+// operations before delegating them to the underlying file system.
 func Where(fsys FS, predicates ...Predicate) *FilterFS {
 	var filters []FilterFunc
 	for _, p := range predicates {
