@@ -650,7 +650,7 @@ var _ = Describe("File", func() {
 			Expect(n).To(Equal(4))
 			Expect(string(layerData)).To(Equal("test"))
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should handle base not supporting write when only base exists", func() {
@@ -659,7 +659,7 @@ var _ = Describe("File", func() {
 			n, err := file.Write([]byte("data"))
 			Expect(n).To(Equal(0))
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(try.ErrNotSupported))
+			Expect(err).To(MatchError(try.ErrNotImplemented))
 		})
 
 		It("should handle large writes", func() {
