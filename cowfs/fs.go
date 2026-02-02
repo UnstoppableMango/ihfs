@@ -7,7 +7,7 @@ import (
 
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/fsutil/try"
+	"github.com/unstoppablemango/ihfs/try"
 	"github.com/unstoppablemango/ihfs/union"
 )
 

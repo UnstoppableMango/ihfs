@@ -17,9 +17,9 @@ import (
     "os"
     "io/fs"
 
-    "github.com/unstoppablemango/ihfs/osfs/fsutil/try"
-    "github.com/unstoppablemango/ihfs/osfs"
     "github.com/unstoppablemango/ihfs"
+    "github.com/unstoppablemango/ihfs/osfs"
+    "github.com/unstoppablemango/ihfs/try"
 )
 
 // Built around [io/fs]
