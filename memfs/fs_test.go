@@ -953,11 +953,71 @@ var _ = Describe("Fs", func() {
 			mfs := memfs.New()
 			file, err := mfs.Create("/file.txt")
 			Expect(err).NotTo(HaveOccurred())
+			writer, ok := file.(ihfs.Writer)
+			Expect(ok).To(BeTrue())
+			_, err = writer.Write([]byte("test content"))
+			Expect(err).NotTo(HaveOccurred())
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Try to rename to non-existent directory
 			err = mfs.Rename("/file.txt", "/nonexistent/file.txt")
+			Expect(err).To(HaveOccurred())
+
+			// Verify original file still exists and is accessible
+			info, err := mfs.Stat("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Name()).To(Equal("file.txt"))
+
+			// Verify we can still read the original file
+			file, err = mfs.Open("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+			content := make([]byte, 12)
+			n, err := file.Read(content)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(n).To(Equal(12))
+			Expect(string(content)).To(Equal("test content"))
+
+			// Verify new path does not exist
+			_, err = mfs.Stat("/nonexistent/file.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when renaming to a path where parent is a file", func() {
+			mfs := memfs.New()
+			// Create a file
+			file, err := mfs.Create("/parent.txt")
+			Expect(err).NotTo(HaveOccurred())
+			err = file.Close()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create another file to rename
+			file, err = mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			writer, ok := file.(ihfs.Writer)
+			Expect(ok).To(BeTrue())
+			_, err = writer.Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			err = file.Close()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to rename to a path where parent is a file (not a directory)
+			err = mfs.Rename("/file.txt", "/parent.txt/child.txt")
+			Expect(err).To(HaveOccurred())
+
+			// Verify original file still exists and is accessible
+			info, err := mfs.Stat("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Name()).To(Equal("file.txt"))
+
+			// Verify parent file is still a file
+			info, err = mfs.Stat("/parent.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeFalse())
+
+			// Verify new path does not exist
+			_, err = mfs.Stat("/parent.txt/child.txt")
 			Expect(err).To(HaveOccurred())
 		})
 
