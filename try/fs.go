@@ -7,7 +7,11 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-var ErrNotImplemented = ihfs.ErrNotImplemented
+var (
+	// Deprecated: use ErrNotImplemented instead.
+	ErrNotSupported   = ihfs.ErrNotImplemented
+	ErrNotImplemented = ihfs.ErrNotImplemented
+)
 
 // Chmod attempts to call Chmod on the given FS.
 // If the FS does not implement [ihfs.ChmodFS], Chmod returns
