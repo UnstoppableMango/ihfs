@@ -3,7 +3,7 @@ GOMOD2NIX ?= go tool gomod2nix
 GINKGO    ?= go tool ginkgo
 
 build:
-	nix build .#ihfs
+	nix build .#
 
 test:
 	$(GINKGO) -r
