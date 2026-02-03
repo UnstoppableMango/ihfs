@@ -36,8 +36,8 @@
       perSystem =
         {
           inputs',
-          lib,
           pkgs,
+          lib,
           ...
         }:
         let
@@ -60,10 +60,12 @@
 =======
             modules = ./gomod2nix.toml;
 
-            src = with lib; cleanSourceWith {
-              src = cleanSource ./.;
-              filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
-            };
+            src =
+              with lib;
+              cleanSourceWith {
+                src = cleanSource ./.;
+                filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
+              };
           };
         in
         {
