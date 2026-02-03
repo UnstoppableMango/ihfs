@@ -1,12 +1,7 @@
-GO        ?= go
-GOMOD2NIX ?= go tool gomod2nix
-GINKGO    ?= go tool ginkgo
+include ./go.mk
 
 build:
 	nix build .#
-
-test:
-	$(GINKGO) -r
 
 clean:
 	find . -name '*cover*' -delete
@@ -16,3 +11,7 @@ format fmt:
 
 validate:
 	curl --data-binary @codecov.yml https://codecov.io/validate
+
+.PHONY: ghfs
+ghfs:
+	$(MAKE) -C ghfs
