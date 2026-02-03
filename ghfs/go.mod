@@ -1,6 +1,6 @@
 module github.com/unstoppablemango/ihfs/ghfs
 
-go 1.25.6
+go 1.25.5
 
 tool (
 	github.com/nix-community/gomod2nix
