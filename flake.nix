@@ -30,6 +30,7 @@
       imports = [
         inputs.treefmt-nix.flakeModule
         ./mockfs
+        ./ghfs
       ];
 
       perSystem =
@@ -43,9 +44,8 @@
           inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
 
           goEnv = mkGoEnv { pwd = ./.; };
-        in
-        {
-          packages.default = buildGoApplication {
+
+          ihfs = buildGoApplication {
             pname = "ihfs";
             version = "0.0.1";
 
@@ -56,6 +56,22 @@
                 lib.cleanSourceFilter path type
                 && !(lib.any (prefix: lib.hasPrefix prefix path) (map toString [ ./mockfs ]));
             };
+<<<<<<< HEAD
+=======
+            modules = ./gomod2nix.toml;
+
+            src = with lib; cleanSourceWith {
+              src = cleanSource ./.;
+              filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
+            };
+          };
+        in
+        {
+          packages = {
+            inherit ihfs;
+            default = ihfs;
+          };
+>>>>>>> cc302f5 (Nix and more ghfs stubbing)
 
             modules = ./gomod2nix.toml;
           };
