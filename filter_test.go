@@ -21,6 +21,13 @@ var _ = Describe("Fs", func() {
 		Expect(fsys.Name()).To(Equal("filter"))
 	})
 
+	It("should return the base fsys", func() {
+		base := &testfs.BoringFs{}
+		fsys := ihfs.Filter(base)
+
+		Expect(fsys.Base()).To(BeIdenticalTo(base))
+	})
+
 	It("should call Stat on the underlying filesystem", func() {
 		called := false
 		info := testfs.NewFileInfo("test.txt")
