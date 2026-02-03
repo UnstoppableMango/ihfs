@@ -29,6 +29,15 @@ func New(base, layer ihfs.FS, options ...Option) *Fs {
 	return f
 }
 
+// Base implements [ihfs.Decorator].
+func (f *Fs) Base() ihfs.FS {
+	return f.base
+}
+
+func (f *Fs) Name() string {
+	return "cowfs"
+}
+
 // Open implements [fs.FS].
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	if inBase, err := f.isInBase(name); err != nil {

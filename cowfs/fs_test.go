@@ -16,6 +16,20 @@ import (
 )
 
 var _ = Describe("Fs", func() {
+	It("should return the base filesystem", func() {
+		fsys := &testfs.BoringFs{}
+
+		cfs := cowfs.New(fsys, &testfs.BoringFs{})
+
+		Expect(cfs.Base()).To(BeIdenticalTo(fsys))
+	})
+
+	It("should have a name", func() {
+		cfs := cowfs.New(&testfs.BoringFs{}, &testfs.BoringFs{})
+
+		Expect(cfs.Name()).To(Equal("cowfs"))
+	})
+
 	Describe("Open", func() {
 		It("should open file from base", func() {
 			baseFile := &testfs.File{

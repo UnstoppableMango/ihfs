@@ -91,6 +91,15 @@ func (f *Fs) copyToLayer(name string) error {
 	return union.CopyToLayer(f.base, f.layer, name)
 }
 
+// Base implements [ihfs.Decorator].
+func (f *Fs) Base() ihfs.FS {
+	return f.base
+}
+
+func (f *Fs) Name() string {
+	return "corfs"
+}
+
 // Open implements [fs.FS].
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	status, fi, err := f.cacheStatus(name)

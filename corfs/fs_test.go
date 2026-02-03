@@ -54,6 +54,20 @@ func (m minimalFSWithMkdirAll) MkdirAll(name string, perm ihfs.FileMode) error {
 }
 
 var _ = Describe("Fs", func() {
+	It("should return the base filesystem", func() {
+		fsys := &testfs.BoringFs{}
+
+		cfs := corfs.New(fsys, &testfs.BoringFs{})
+
+		Expect(cfs.Base()).To(BeIdenticalTo(fsys))
+	})
+
+	It("should have a name", func() {
+		cfs := corfs.New(&testfs.BoringFs{}, &testfs.BoringFs{})
+
+		Expect(cfs.Name()).To(Equal("corfs"))
+	})
+
 	Describe("Open", func() {
 		It("should cache file from base on first read", func() {
 			baseFile := &testfs.File{

@@ -16,7 +16,7 @@ import (
 // Entries are accessed in order and cached as they are read, so random access may be inefficient.
 type TarFile struct {
 	name   string
-	cache  *cache
+	cache  *cache // TODO: corfs with infinite timeout?
 	mux    sync.Mutex
 	tar    io.ReadCloser
 	tr     *tar.Reader
