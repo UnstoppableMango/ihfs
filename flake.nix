@@ -33,7 +33,12 @@
       ];
 
       perSystem =
-        { inputs', pkgs, lib, ... }:
+        {
+          inputs',
+          pkgs,
+          lib,
+          ...
+        }:
         let
           inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
 
@@ -44,10 +49,12 @@
             version = "0.0.1";
             modules = ./gomod2nix.toml;
 
-            src = with lib; cleanSourceWith {
-              src = cleanSource ./.;
-              filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
-            };
+            src =
+              with lib;
+              cleanSourceWith {
+                src = cleanSource ./.;
+                filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
+              };
           };
         in
         {

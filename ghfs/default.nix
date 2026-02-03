@@ -1,6 +1,11 @@
 {
   perSystem =
-    { inputs', pkgs, lib, ... }:
+    {
+      inputs',
+      pkgs,
+      lib,
+      ...
+    }:
     let
       inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix;
     in
