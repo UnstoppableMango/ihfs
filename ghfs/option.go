@@ -23,3 +23,12 @@ func WithContextFunc(fn ContextFunc) Option {
 		f.ctxFn = fn
 	}
 }
+
+func WithAuthToken(token string) Option {
+	return func(f *Fs) {
+		if f.client == nil {
+			f.client = github.NewClient(nil)
+		}
+		f.setAuthToken(token)
+	}
+}

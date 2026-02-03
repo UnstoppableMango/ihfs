@@ -11,6 +11,7 @@ require (
 	github.com/google/go-github/v82 v82.0.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
+	github.com/unmango/go v0.15.1
 	github.com/unstoppablemango/ihfs v0.0.0-20260203034502-ce416846ed79
 )
 
@@ -28,7 +29,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/unmango/go v0.15.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
