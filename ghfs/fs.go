@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/go-github/v82/github"
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 )
 
@@ -16,11 +17,14 @@ type Fs struct {
 	ctxFn  ContextFunc
 }
 
-func New() *Fs {
-	return &Fs{
+func New(options ...Option) *Fs {
+	f := &Fs{
 		client: github.NewClient(nil),
 		ctxFn:  background,
 	}
+
+	fopt.ApplyAll(f, options)
+	return f
 }
 
 func (*Fs) Name() string {
@@ -29,6 +33,10 @@ func (*Fs) Name() string {
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	return nil, nil
+}
+
+func (f *Fs) setAuthToken(token string) {
+	f.client = f.client.WithAuthToken(token)
 }
 
 func (f *Fs) context(op ihfs.Operation) context.Context {
