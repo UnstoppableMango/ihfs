@@ -43,10 +43,16 @@ for path, dirEntry := range seq {
 }
 ```
 
+## GitHub FS
+
+Package `ghfs` contains an implementation of `io/fs` for the GitHub API.
+
+[Documentation](./ghfs/README.md)
+
 ## Attribution
 
 Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically the `corfs`, `cowfs`, and `union` packages.
 
 > Imitation is the sincerest form of flattery
 
-- Charles Caleb Colton (often misattributed to [Oscar Wilde](https://shkspr.mobi/blog/2024/01/no-oscar-wilde-did-not-say-imitation-is-the-sincerest-form-of-flattery-that-mediocrity-can-pay-to-greatness/))
+- [Charles Caleb Colton](https://shkspr.mobi/blog/2024/01/no-oscar-wilde-did-not-say-imitation-is-the-sincerest-form-of-flattery-that-mediocrity-can-pay-to-greatness/)
