@@ -45,6 +45,12 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			owner: parts[0],
 			name:  parts[1],
 		}, nil
+	case 4:
+		return &Branch{
+			owner:      parts[0],
+			repository: parts[1],
+			name:       parts[3],
+		}, nil
 	case 5:
 		return &Release{
 			owner:      parts[0],

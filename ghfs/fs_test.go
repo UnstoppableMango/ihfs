@@ -102,5 +102,26 @@ var _ = Describe("Fs", func() {
 			Entry(nil, "raw.githubusercontent.com/UnstoppableMango/ihfs/releases/download/v0.1.0/asset.tar.gz"),
 			Entry(nil, "UnstoppableMango/ihfs/releases/download/v0.1.0/asset.tar.gz"),
 		)
+
+		DescribeTable("should parse a branch path",
+			func(path string) {
+				fsys := ghfs.New()
+
+				f, err := fsys.Open(path)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(f).To(BeAssignableToTypeOf(&ghfs.Branch{}))
+				o := f.(*ghfs.Branch)
+				Expect(o.Owner()).To(Equal("UnstoppableMango"))
+				Expect(o.Repository()).To(Equal("ihfs"))
+				Expect(o.Name()).To(Equal("main"))
+			},
+			Entry(nil, "https://api.github.com/UnstoppableMango/ihfs/tree/main"),
+			Entry(nil, "https://github.com/UnstoppableMango/ihfs/tree/main"),
+			Entry(nil, "github.com/UnstoppableMango/ihfs/tree/main"),
+			Entry(nil, "api.github.com/UnstoppableMango/ihfs/tree/main"),
+			Entry(nil, "raw.githubusercontent.com/UnstoppableMango/ihfs/tree/main"),
+			Entry(nil, "UnstoppableMango/ihfs/tree/main"),
+		)
 	})
 })
