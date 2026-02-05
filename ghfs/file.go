@@ -125,3 +125,36 @@ func (a *Asset) Read([]byte) (int, error) {
 func (a *Asset) Stat() (ihfs.FileInfo, error) {
 	return nil, nil
 }
+
+type Branch struct {
+	name       string
+	owner      string
+	repository string
+}
+
+// Close implements [fs.File].
+func (b *Branch) Close() error {
+	return nil
+}
+
+func (b *Branch) Name() string {
+	return b.name
+}
+
+func (b *Branch) Owner() string {
+	return b.owner
+}
+
+// Read implements [fs.File].
+func (b *Branch) Read([]byte) (int, error) {
+	return 0, nil
+}
+
+func (b *Branch) Repository() string {
+	return b.repository
+}
+
+// Stat implements [fs.File].
+func (b *Branch) Stat() (ihfs.FileInfo, error) {
+	return nil, nil
+}
