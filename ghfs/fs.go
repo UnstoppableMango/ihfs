@@ -2,6 +2,7 @@ package ghfs
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/go-github/v82/github"
 	"github.com/unmango/go/fopt"
@@ -32,7 +33,34 @@ func (*Fs) Name() string {
 }
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
-	return nil, nil
+	parts := strings.Split(clean(name), "/")
+
+	switch len(parts) {
+	case 1:
+		return &Owner{
+			name: parts[0],
+		}, nil
+	case 2:
+		return &Repository{
+			owner: parts[0],
+			name:  parts[1],
+		}, nil
+	case 5:
+		return &Release{
+			owner:      parts[0],
+			repository: parts[1],
+			name:       parts[4],
+		}, nil
+	case 6:
+		return &Asset{
+			owner:      parts[0],
+			repository: parts[1],
+			release:    parts[4],
+			name:       parts[5],
+		}, nil
+	default:
+		return nil, ihfs.ErrNotExist
+	}
 }
 
 func (f *Fs) setAuthToken(token string) {
