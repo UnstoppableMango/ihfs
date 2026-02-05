@@ -52,6 +52,15 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			name:       parts[3],
 		}, nil
 	case 5:
+		if parts[2] == "blob" {
+			return &Content{
+				owner:      parts[0],
+				repository: parts[1],
+				branch:     parts[3],
+				name:       parts[4],
+			}, nil
+		}
+
 		return &Release{
 			owner:      parts[0],
 			repository: parts[1],
