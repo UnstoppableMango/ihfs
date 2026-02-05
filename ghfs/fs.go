@@ -33,7 +33,7 @@ func (*Fs) Name() string {
 }
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
-	parts := strings.Split(clean(name), "/")
+	parts := strings.SplitN(clean(name), "/", 6)
 
 	switch len(parts) {
 	case 1:
@@ -67,10 +67,19 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			name:       parts[4],
 		}, nil
 	case 6:
-		return &Asset{
+		if parts[2] == "releases" {
+			return &Asset{
+				owner:      parts[0],
+				repository: parts[1],
+				release:    parts[4],
+				name:       parts[5],
+			}, nil
+		}
+
+		return &Content{
 			owner:      parts[0],
 			repository: parts[1],
-			release:    parts[4],
+			branch:     parts[3],
 			name:       parts[5],
 		}, nil
 	}
