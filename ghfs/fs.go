@@ -73,9 +73,9 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			release:    parts[4],
 			name:       parts[5],
 		}, nil
-	default:
-		return nil, ihfs.ErrNotExist
 	}
+
+	return nil, ihfs.ErrNotExist
 }
 
 func (f *Fs) setAuthToken(token string) {
