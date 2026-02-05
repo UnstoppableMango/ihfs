@@ -2,6 +2,7 @@ package ghfs
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -27,7 +28,7 @@ type ghpath struct {
 
 func parse(path string) (*ghpath, error) {
 	var p ghpath
-	var prev string
+	// var prev string
 
 	for i, seg := range strings.Split(path, "/") {
 		switch i {
@@ -38,7 +39,7 @@ func parse(path string) (*ghpath, error) {
 		case 2:
 			switch seg {
 			case "releases", "tree", "refs":
-				prev = seg
+				// prev = seg
 				continue
 			default:
 				return nil, fmt.Errorf("expected one of 'releases', 'tree', or 'refs', got: %s", seg)
@@ -59,4 +60,21 @@ func parse(path string) (*ghpath, error) {
 	}
 
 	return &p, nil
+}
+
+var hosts = []string{
+	"github.com",
+	"api.github.com",
+	"raw.githubusercontent.com",
+}
+
+func clean(path string) string {
+	if u, err := url.Parse(path); err == nil {
+		path = u.Path
+	}
+	for _, h := range hosts {
+		path = strings.TrimPrefix(path, h)
+	}
+
+	return strings.TrimLeft(path, "/")
 }
