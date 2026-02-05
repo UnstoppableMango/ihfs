@@ -123,5 +123,27 @@ var _ = Describe("Fs", func() {
 			Entry(nil, "raw.githubusercontent.com/UnstoppableMango/ihfs/tree/main"),
 			Entry(nil, "UnstoppableMango/ihfs/tree/main"),
 		)
+
+		DescribeTable("should parse a content path",
+			func(path string) {
+				fsys := ghfs.New()
+
+				f, err := fsys.Open(path)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
+				o := f.(*ghfs.Content)
+				Expect(o.Owner()).To(Equal("UnstoppableMango"))
+				Expect(o.Repository()).To(Equal("ihfs"))
+				Expect(o.Branch()).To(Equal("main"))
+				Expect(o.Name()).To(Equal("README.md"))
+			},
+			Entry(nil, "https://api.github.com/UnstoppableMango/ihfs/blob/main/README.md"),
+			Entry(nil, "https://github.com/UnstoppableMango/ihfs/blob/main/README.md"),
+			Entry(nil, "github.com/UnstoppableMango/ihfs/blob/main/README.md"),
+			Entry(nil, "api.github.com/UnstoppableMango/ihfs/blob/main/README.md"),
+			Entry(nil, "raw.githubusercontent.com/UnstoppableMango/ihfs/blob/main/README.md"),
+			Entry(nil, "UnstoppableMango/ihfs/blob/main/README.md"),
+		)
 	})
 })

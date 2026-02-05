@@ -158,3 +158,41 @@ func (b *Branch) Repository() string {
 func (b *Branch) Stat() (ihfs.FileInfo, error) {
 	return nil, nil
 }
+
+type Content struct {
+	name       string
+	owner      string
+	repository string
+	branch     string
+}
+
+// Close implements [fs.File].
+func (c *Content) Close() error {
+	return nil
+}
+
+func (c *Content) Name() string {
+	return c.name
+}
+
+func (c *Content) Owner() string {
+	return c.owner
+}
+
+func (c *Content) Repository() string {
+	return c.repository
+}
+
+func (c *Content) Branch() string {
+	return c.branch
+}
+
+// Read implements [fs.File].
+func (c *Content) Read([]byte) (int, error) {
+	return 0, nil
+}
+
+// Stat implements [fs.File].
+func (c *Content) Stat() (ihfs.FileInfo, error) {
+	return nil, nil
+}
