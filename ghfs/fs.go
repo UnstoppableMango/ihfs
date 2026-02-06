@@ -33,24 +33,15 @@ func (*Fs) Name() string {
 }
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
-	parts := strings.SplitN(clean(name), "/", 6)
+	parts := strings.Split(clean(name), "/")
 
 	switch len(parts) {
 	case 1:
-		return &Owner{
-			name: parts[0],
-		}, nil
+		return f.openOwner(parts[0])
 	case 2:
-		return &Repository{
-			owner: parts[0],
-			name:  parts[1],
-		}, nil
+		return f.openRepository(parts[0], parts[1])
 	case 4:
-		return &Branch{
-			owner:      parts[0],
-			repository: parts[1],
-			name:       parts[3],
-		}, nil
+		return f.openBranch(parts[0], parts[1], parts[3])
 	case 5:
 		if parts[2] == "blob" {
 			return &Content{
@@ -66,7 +57,9 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			repository: parts[1],
 			name:       parts[4],
 		}, nil
-	case 6:
+	}
+
+	if len(parts) >= 6 {
 		if parts[2] == "releases" {
 			return &Asset{
 				owner:      parts[0],
@@ -80,11 +73,15 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			owner:      parts[0],
 			repository: parts[1],
 			branch:     parts[3],
-			name:       parts[5],
+			name:       strings.Join(parts[4:], "/"),
 		}, nil
 	}
 
-	return nil, ihfs.ErrNotExist
+	return nil, &ihfs.PathError{
+		Op:   "open",
+		Path: name,
+		Err:  ihfs.ErrNotExist,
+	}
 }
 
 func (f *Fs) setAuthToken(token string) {
@@ -93,6 +90,27 @@ func (f *Fs) setAuthToken(token string) {
 
 func (f *Fs) context(op ihfs.Operation) context.Context {
 	return f.ctxFn(f, op)
+}
+
+func (f *Fs) openOwner(name string) (*Owner, error) {
+	return &Owner{
+		name: name,
+	}, nil
+}
+
+func (f *Fs) openRepository(owner, name string) (*Repository, error) {
+	return &Repository{
+		owner: owner,
+		name:  name,
+	}, nil
+}
+
+func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
+	return &Branch{
+		owner:      owner,
+		repository: repository,
+		name:       name,
+	}, nil
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
