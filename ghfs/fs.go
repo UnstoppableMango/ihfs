@@ -66,7 +66,9 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			repository: parts[1],
 			name:       parts[4],
 		}, nil
-	case 6:
+	}
+
+	if len(parts) >= 6 {
 		if parts[2] == "releases" {
 			return &Asset{
 				owner:      parts[0],

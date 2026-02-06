@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/ghfs"
 )
 
@@ -40,9 +41,9 @@ var _ = Describe("Fs", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Repository{}))
-				o := f.(*ghfs.Repository)
-				Expect(o.Owner()).To(Equal("UnstoppableMango"))
-				Expect(o.Name()).To(Equal("ihfs"))
+				r := f.(*ghfs.Repository)
+				Expect(r.Owner()).To(Equal("UnstoppableMango"))
+				Expect(r.Name()).To(Equal("ihfs"))
 			})
 
 			DescribeTable("should parse a release path",
@@ -53,10 +54,10 @@ var _ = Describe("Fs", func() {
 
 					Expect(err).NotTo(HaveOccurred())
 					Expect(f).To(BeAssignableToTypeOf(&ghfs.Release{}))
-					o := f.(*ghfs.Release)
-					Expect(o.Owner()).To(Equal("UnstoppableMango"))
-					Expect(o.Repository()).To(Equal("ihfs"))
-					Expect(o.Name()).To(Equal("v0.1.0"))
+					r := f.(*ghfs.Release)
+					Expect(r.Owner()).To(Equal("UnstoppableMango"))
+					Expect(r.Repository()).To(Equal("ihfs"))
+					Expect(r.Name()).To(Equal("v0.1.0"))
 				},
 				Entry(nil, "UnstoppableMango/ihfs/releases/tag/v0.1.0"),
 				Entry(nil, "UnstoppableMango/ihfs/releases/download/v0.1.0"),
@@ -70,11 +71,11 @@ var _ = Describe("Fs", func() {
 
 					Expect(err).NotTo(HaveOccurred())
 					Expect(f).To(BeAssignableToTypeOf(&ghfs.Asset{}))
-					o := f.(*ghfs.Asset)
-					Expect(o.Owner()).To(Equal("UnstoppableMango"))
-					Expect(o.Repository()).To(Equal("ihfs"))
-					Expect(o.Release()).To(Equal("v0.1.0"))
-					Expect(o.Name()).To(Equal("asset.tar.gz"))
+					a := f.(*ghfs.Asset)
+					Expect(a.Owner()).To(Equal("UnstoppableMango"))
+					Expect(a.Repository()).To(Equal("ihfs"))
+					Expect(a.Release()).To(Equal("v0.1.0"))
+					Expect(a.Name()).To(Equal("asset.tar.gz"))
 				},
 				Entry(nil, "UnstoppableMango/ihfs/releases/tag/v0.1.0/asset.tar.gz"),
 				Entry(nil, "UnstoppableMango/ihfs/releases/download/v0.1.0/asset.tar.gz"),
@@ -87,10 +88,10 @@ var _ = Describe("Fs", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Branch{}))
-				o := f.(*ghfs.Branch)
-				Expect(o.Owner()).To(Equal("UnstoppableMango"))
-				Expect(o.Repository()).To(Equal("ihfs"))
-				Expect(o.Name()).To(Equal("main"))
+				b := f.(*ghfs.Branch)
+				Expect(b.Owner()).To(Equal("UnstoppableMango"))
+				Expect(b.Repository()).To(Equal("ihfs"))
+				Expect(b.Name()).To(Equal("main"))
 			})
 
 			It("should parse a content path", func() {
@@ -100,11 +101,11 @@ var _ = Describe("Fs", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
-				o := f.(*ghfs.Content)
-				Expect(o.Owner()).To(Equal("UnstoppableMango"))
-				Expect(o.Repository()).To(Equal("ihfs"))
-				Expect(o.Branch()).To(Equal("main"))
-				Expect(o.Name()).To(Equal("README.md"))
+				c := f.(*ghfs.Content)
+				Expect(c.Owner()).To(Equal("UnstoppableMango"))
+				Expect(c.Repository()).To(Equal("ihfs"))
+				Expect(c.Branch()).To(Equal("main"))
+				Expect(c.Name()).To(Equal("README.md"))
 			})
 
 			It("should parse a nested content path", func() {
@@ -114,11 +115,20 @@ var _ = Describe("Fs", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
-				o := f.(*ghfs.Content)
-				Expect(o.Owner()).To(Equal("UnstoppableMango"))
-				Expect(o.Repository()).To(Equal("ihfs"))
-				Expect(o.Branch()).To(Equal("main"))
-				Expect(o.Name()).To(Equal(".github/renovate.json"))
+				c := f.(*ghfs.Content)
+				Expect(c.Owner()).To(Equal("UnstoppableMango"))
+				Expect(c.Repository()).To(Equal("ihfs"))
+				Expect(c.Branch()).To(Equal("main"))
+				Expect(c.Name()).To(Equal(".github/renovate.json"))
+			})
+
+			It("should return an error for a path with 3 segments", func() {
+				fsys := ghfs.New()
+
+				_, err := fsys.Open(prefix + "UnstoppableMango/ihfs/invalid")
+
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ihfs.ErrNotExist))
 			})
 		},
 	)
