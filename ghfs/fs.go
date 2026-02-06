@@ -33,7 +33,7 @@ func (*Fs) Name() string {
 }
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
-	parts := strings.SplitN(clean(name), "/", 6)
+	parts := strings.Split(clean(name), "/")
 
 	switch len(parts) {
 	case 1:
@@ -80,11 +80,15 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			owner:      parts[0],
 			repository: parts[1],
 			branch:     parts[3],
-			name:       parts[5],
+			name:       strings.Join(parts[4:], "/"),
 		}, nil
 	}
 
-	return nil, ihfs.ErrNotExist
+	return nil, &ihfs.PathError{
+		Op:   "open",
+		Path: name,
+		Err:  ihfs.ErrNotExist,
+	}
 }
 
 func (f *Fs) setAuthToken(token string) {
