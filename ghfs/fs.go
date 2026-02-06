@@ -37,20 +37,11 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 
 	switch len(parts) {
 	case 1:
-		return &Owner{
-			name: parts[0],
-		}, nil
+		return f.openOwner(parts[0])
 	case 2:
-		return &Repository{
-			owner: parts[0],
-			name:  parts[1],
-		}, nil
+		return f.openRepository(parts[0], parts[1])
 	case 4:
-		return &Branch{
-			owner:      parts[0],
-			repository: parts[1],
-			name:       parts[3],
-		}, nil
+		return f.openBranch(parts[0], parts[1], parts[3])
 	case 5:
 		if parts[2] == "blob" {
 			return &Content{
@@ -99,6 +90,27 @@ func (f *Fs) setAuthToken(token string) {
 
 func (f *Fs) context(op ihfs.Operation) context.Context {
 	return f.ctxFn(f, op)
+}
+
+func (f *Fs) openOwner(name string) (*Owner, error) {
+	return &Owner{
+		name: name,
+	}, nil
+}
+
+func (f *Fs) openRepository(owner, name string) (*Repository, error) {
+	return &Repository{
+		owner: owner,
+		name:  name,
+	}, nil
+}
+
+func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
+	return &Branch{
+		owner:      owner,
+		repository: repository,
+		name:       name,
+	}, nil
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
