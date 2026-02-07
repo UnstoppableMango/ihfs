@@ -159,7 +159,12 @@ func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
 }
 
 func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
-	escapedPath := url.PathEscape(name)
+	// Escape each path segment individually to preserve forward slashes
+	pathSegments := strings.Split(name, "/")
+	for i, segment := range pathSegments {
+		pathSegments[i] = url.PathEscape(segment)
+	}
+	escapedPath := strings.Join(pathSegments, "/")
 	escapedRef := url.QueryEscape(branch)
 	apiURL := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, escapedPath, escapedRef)
 	file, err := f.open(name, apiURL)
