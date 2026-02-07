@@ -147,7 +147,7 @@ func (f *Fs) openContent(owner, repository, branch, name string) (*Content, erro
 }
 
 func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
-	url := fmt.Sprintf("repos/%v/%v/releases/%v", owner, repository, name)
+	url := fmt.Sprintf("repos/%v/%v/releases/tags/%v", owner, repository, name)
 	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
