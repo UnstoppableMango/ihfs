@@ -44,37 +44,18 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return f.openBranch(parts[0], parts[1], parts[3])
 	case 5:
 		if parts[2] == "blob" {
-			return &Content{
-				owner:      parts[0],
-				repository: parts[1],
-				branch:     parts[3],
-				name:       parts[4],
-			}, nil
+			return f.openContent(parts[0], parts[1], parts[3], parts[4])
 		}
-
-		return &Release{
-			owner:      parts[0],
-			repository: parts[1],
-			name:       parts[4],
-		}, nil
+		return f.openRelease(parts[0], parts[1], parts[4])
 	}
 
 	if len(parts) >= 6 {
 		if parts[2] == "releases" {
-			return &Asset{
-				owner:      parts[0],
-				repository: parts[1],
-				release:    parts[4],
-				name:       parts[5],
-			}, nil
+			return f.openAsset(parts[0], parts[1], parts[4], parts[5])
 		}
-
-		return &Content{
-			owner:      parts[0],
-			repository: parts[1],
-			branch:     parts[3],
-			name:       strings.Join(parts[4:], "/"),
-		}, nil
+		return f.openContent(parts[0], parts[1], parts[3],
+			strings.Join(parts[4:], "/"),
+		)
 	}
 
 	return nil, &ihfs.PathError{
@@ -109,6 +90,32 @@ func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
 	return &Branch{
 		owner:      owner,
 		repository: repository,
+		name:       name,
+	}, nil
+}
+
+func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
+	return &Content{
+		owner:      owner,
+		repository: repository,
+		branch:     branch,
+		name:       name,
+	}, nil
+}
+
+func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
+	return &Release{
+		owner:      owner,
+		repository: repository,
+		name:       name,
+	}, nil
+}
+
+func (f *Fs) openAsset(owner, repository, release, name string) (*Asset, error) {
+	return &Asset{
+		owner:      owner,
+		repository: repository,
+		release:    release,
 		name:       name,
 	}, nil
 }
