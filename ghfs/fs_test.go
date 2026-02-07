@@ -52,6 +52,12 @@ var _ = Describe("Fs", func() {
 						mock.GetReposReleasesTagsByOwnerByRepoByTag,
 						github.RepositoryRelease{
 							Name: github.Ptr("test-release"),
+							Assets: []*github.ReleaseAsset{
+								{
+									ID:   github.Ptr(int64(1)),
+									Name: github.Ptr("asset.tar.gz"),
+								},
+							},
 						},
 					),
 					mock.WithRequestMatch(
