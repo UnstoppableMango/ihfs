@@ -15,9 +15,9 @@ type file struct {
 	name string
 }
 
-func (f *file) IsDir() bool                  { panic("unimplemented") }
-func (f *file) ModTime() time.Time           { panic("unimplemented") }
-func (f *file) Mode() fs.FileMode            { panic("unimplemented") }
+func (f *file) IsDir() bool                  { return false }
+func (f *file) ModTime() time.Time           { return time.Time{} }
+func (f *file) Mode() fs.FileMode            { return 0444 } // read-only mode
 func (f *file) Size() int64                  { return int64(f.Len()) }
 func (f *file) Sys() any                     { return f.Reader }
 func (f *file) Close() error                 { return nil }
@@ -25,6 +25,9 @@ func (f *file) Name() string                 { return f.name }
 func (f *file) Stat() (ihfs.FileInfo, error) { return f, nil }
 
 func (f *file) dec(v any) error {
+	if _, err := f.Reader.Seek(0, 0); err != nil {
+		return err
+	}
 	return json.NewDecoder(f.Reader).Decode(v)
 }
 
