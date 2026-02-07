@@ -24,12 +24,12 @@ type Fs struct {
 }
 
 func New(options ...Option) *Fs {
-	f := &Fs{
-		client: github.NewClient(nil),
-		ctxFn:  background,
+	f := &Fs{ctxFn: background}
+	fopt.ApplyAll(f, options)
+	if f.client == nil {
+		f.client = github.NewClient(nil)
 	}
 
-	fopt.ApplyAll(f, options)
 	return f
 }
 
@@ -91,7 +91,7 @@ func (f *Fs) openOwner(name string) (*Owner, error) {
 	buf := &bytes.Buffer{}
 	ctx := f.context(op.Open{Name: name})
 
-	_, err := f.do(ctx, fmt.Sprintf("user/%v", name), buf)
+	_, err := f.do(ctx, fmt.Sprintf("users/%v", name), buf)
 	if err != nil {
 		return nil, err
 	}
