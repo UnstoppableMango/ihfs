@@ -161,10 +161,11 @@ func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
 func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
 	// Escape each path segment individually to preserve forward slashes
 	pathSegments := strings.Split(name, "/")
+	escapedSegments := make([]string, len(pathSegments))
 	for i, segment := range pathSegments {
-		pathSegments[i] = url.PathEscape(segment)
+		escapedSegments[i] = url.PathEscape(segment)
 	}
-	escapedPath := strings.Join(pathSegments, "/")
+	escapedPath := strings.Join(escapedSegments, "/")
 	escapedRef := url.QueryEscape(branch)
 	apiURL := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, escapedPath, escapedRef)
 	file, err := f.open(name, apiURL)
@@ -197,14 +198,14 @@ func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
 func (f *Fs) openAsset(owner, repository, releaseTag, assetName string) (*Asset, error) {
 	// First, fetch the release to get its assets
 	releaseURL := fmt.Sprintf("repos/%v/%v/releases/tags/%v", owner, repository, releaseTag)
-	releaseReader, err := f.do(f.context(op.Open{Name: releaseTag}), releaseURL)
+	releaseBody, err := f.do(f.context(op.Open{Name: releaseTag}), releaseURL)
 	if err != nil {
 		return nil, err
 	}
 
 	// Decode the release to get the assets list
 	var release github.RepositoryRelease
-	if err := json.NewDecoder(releaseReader).Decode(&release); err != nil {
+	if err := json.NewDecoder(releaseBody).Decode(&release); err != nil {
 		return nil, err
 	}
 
