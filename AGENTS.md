@@ -107,6 +107,8 @@ nix fmt
 - **`fs.go`**: Type aliases for `io/fs` interfaces + standard error aliases + `Operation` interface definition + custom FS interfaces (Chmod, Chown, Chtimes, Copy, Mkdir, etc.)
 - **`file.go`**: Type aliases for file-related interfaces (`File`, `FileInfo`, `DirEntry`, `FileMode`, `PathError`) + standard error aliases + `Operation` interface definition + `Seeker` interface
 - **`iter.go`**: Iterator utilities for traversing filesystems (`Iter`, `Catch` functions)
+- **`filter.go`**: FilterFS implementation for applying filter functions to filesystem operations
+- **`util.go`**: Utility functions (DirExists, IsDir, FileExists, IsFile, ReadFile, WriteFile, etc.)
 
 #### Implementation Packages
 - **`osfs/fs.go`**: OS filesystem implementation (wraps `github.com/unmango/go/os`)
@@ -132,6 +134,8 @@ nix fmt
   - `option.go`: Option pattern for test setup
   - `boring.go`: Boring implementation helpers
   - `testfs.go`: Additional test utilities
+  - `doc.go`: Package documentation
+  - `factory/fs.go`: Factory-based test filesystem with configurable mock functions
 - **`tarfs/`**: Tar filesystem implementation
   - `fs.go`: Tar filesystem implementation
   - `file.go`: Tar file implementation
@@ -141,6 +145,12 @@ nix fmt
   - `fs.go`: In-memory filesystem implementation with full read/write support
   - `file.go`: In-memory file implementation with read/write capabilities
   - `fileinfo.go`: FileInfo implementation for in-memory files
+  - `doc.go`: Package documentation
+- **`ghfs/`**: GitHub filesystem implementation
+  - `fs.go`: GitHub filesystem implementation (read-only, via GitHub API)
+  - `file.go`: GitHub file implementation
+  - `option.go`: Configuration options (client, auth token, context func)
+  - `path.go`: Path cleaning utilities for GitHub URLs
 
 ##### Filesystem Implementation Overview
 - **osfs**: Wraps the OS filesystem for standard file operations
@@ -166,6 +176,11 @@ nix fmt
   - Supports standard filesystem operations (Create, Mkdir, Remove, Rename, Chmod, etc.)
   - Constructor: `memfs.New() *Fs`
 - **testfs**: Mock filesystem for testing with configurable behavior
+- **ghfs**: GitHub filesystem implementation (read-only)
+  - Provides filesystem access to GitHub repositories via GitHub API
+  - Supports authentication via token
+  - Path cleaning for GitHub URLs
+  - Constructor: `ghfs.New(options ...Option) *Fs`
 
 #### Operation Types
 - **`op/`**: File system operation definitions
@@ -191,6 +206,7 @@ nix fmt
 - **union (`union_test`)**: `union_suite_test.go`, `copy_test.go`, `file_test.go`, `merge_test.go`
 - **tarfs (`tarfs_test`)**: `tarfs_suite_test.go`, `fs_test.go`, `file_test.go`
 - **memfs (`memfs_test`)**: `memfs_suite_test.go`, `fs_test.go`
+- **ghfs (`ghfs_test`)**: `ghfs_suite_test.go`, `fs_test.go`
 
 #### Test Data
 - **`testdata/`**: Test fixtures and sample files
@@ -205,8 +221,8 @@ nix fmt
 
 ### Package Naming Conventions
 - **Main package**: `ihfs` (core library code)
-- **Tests**: `ihfs_test`, `try_test`, `cowfs_test`, `corfs_test`, `union_test`, `tarfs_test`, `memfs_test` (external test packages)
-- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `corfs`, `tarfs`, `memfs`, `testfs`)
+- **Tests**: `ihfs_test`, `try_test`, `cowfs_test`, `corfs_test`, `union_test`, `tarfs_test`, `memfs_test`, `ghfs_test` (external test packages)
+- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `corfs`, `tarfs`, `memfs`, `ghfs`, `testfs`)
 - **Utilities**: `union` for layered filesystem utilities
 - **Test suites**: Follow `*_suite_test.go` pattern
 - **Test files**: Follow `*_test.go` pattern
@@ -223,12 +239,14 @@ nix fmt
 ├── fs.go              # Type aliases, error aliases, Operation interface, and custom FS interfaces
 ├── file.go            # File-related type aliases and Seeker interface
 ├── iter.go            # Iterator utilities for filesystem traversal
+├── filter.go          # FilterFS implementation for applying filter functions to filesystem operations
+├── util.go            # Utility functions (DirExists, IsDir, FileExists, IsFile, ReadFile, WriteFile, etc.)
 ├── op/                # Concrete operation type implementations
 │   ├── doc.go         # Package documentation
 │   └── operation.go   # Operation implementations
-├── try/           # Type-safe utility functions with interface checks
-│   ├── fs.go      # FS operation wrappers
-│   └── file.go    # File operation wrappers
+├── try/               # Type-safe utility functions with interface checks
+│   ├── fs.go          # FS operation wrappers
+│   └── file.go        # File operation wrappers
 ├── osfs/              # OS filesystem implementation
 │   └── fs.go          # OS filesystem wrapper
 ├── cowfs/             # Copy-on-write filesystem implementation
@@ -254,14 +272,23 @@ nix fmt
 ├── memfs/             # In-memory filesystem implementation
 │   ├── fs.go          # In-memory filesystem (thread-safe, full read/write)
 │   ├── file.go        # In-memory file implementation
-│   └── fileinfo.go    # FileInfo implementation
+│   ├── fileinfo.go    # FileInfo implementation
+│   └── doc.go         # Package documentation
+├── ghfs/              # GitHub filesystem implementation
+│   ├── fs.go          # GitHub filesystem (read-only, via GitHub API)
+│   ├── file.go        # GitHub file implementation
+│   ├── option.go      # Configuration options (client, auth token, context func)
+│   └── path.go        # Path cleaning utilities for GitHub URLs
 ├── testfs/            # Test filesystem utilities
 │   ├── fs.go          # Test filesystem
 │   ├── file.go        # Test file implementation
 │   ├── fileinfo.go    # Test FileInfo
 │   ├── option.go      # Test setup options
 │   ├── boring.go      # Boring implementation helpers
-│   └── testfs.go      # Additional test utilities
+│   ├── testfs.go      # Additional test utilities
+│   ├── doc.go         # Package documentation
+│   └── factory/       # Factory-based test utilities
+│       └── fs.go      # Factory-based test filesystem with configurable mock functions
 └── testdata/          # Test data files
     ├── 2-files/       # Test fixture with two files
     └── test.tar       # Tar archive for testing tar filesystem
