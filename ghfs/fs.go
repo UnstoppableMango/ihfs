@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 
 	"github.com/google/go-github/v82/github"
@@ -40,6 +38,9 @@ func (*Fs) Name() string {
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	parts := strings.Split(clean(name), "/")
 
+	// TODO: API path patterns
+	// will likely need to use the URL prefix to determine
+	// which pattern to use
 	switch len(parts) {
 	case 1:
 		return f.openOwner(parts[0])
@@ -78,27 +79,23 @@ func (f *Fs) context(op ihfs.Operation) context.Context {
 	return f.ctxFn(f, op)
 }
 
-func (f *Fs) do(ctx context.Context, url string, out io.Writer) (*github.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
+func (f *Fs) do(ctx context.Context, url string) (*bytes.Reader, error) {
+	return do(ctx, f.client, url)
+}
 
-	return f.client.Do(ctx, req, out)
+func (f *Fs) open(name, url string) (*bytes.Reader, error) {
+	return f.do(f.context(op.Open{Name: name}), url)
 }
 
 func (f *Fs) openOwner(name string) (*Owner, error) {
-	buf := &bytes.Buffer{}
-	ctx := f.context(op.Open{Name: name})
-
-	_, err := f.do(ctx, fmt.Sprintf("users/%v", name), buf)
+	r, err := f.open(name, fmt.Sprintf("users/%v", name))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Owner{
 		name: name,
-		buf:  bytes.NewReader(buf.Bytes()),
+		buf:  r,
 	}, nil
 }
 
@@ -145,4 +142,19 @@ func (f *Fs) openAsset(owner, repository, release, name string) (*Asset, error) 
 
 func background(*Fs, ihfs.Operation) context.Context {
 	return context.Background()
+}
+
+func do(ctx context.Context, c *github.Client, url string) (*bytes.Reader, error) {
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := &bytes.Buffer{}
+	_, err = c.Do(ctx, req, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewReader(buf.Bytes()), nil
 }
