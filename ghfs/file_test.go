@@ -2,6 +2,7 @@ package ghfs_test
 
 import (
 	"bytes"
+	"io/fs"
 	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,28 +17,8 @@ import (
 var _ = Describe("File", func() {
 	Describe("Close", func() {
 		It("should return nil", func() {
-			owner := &ghfs.Owner{}
-			err := owner.Close()
-			Expect(err).To(BeNil())
-
-			repo := &ghfs.Repository{}
-			err = repo.Close()
-			Expect(err).To(BeNil())
-
-			content := &ghfs.Content{}
-			err = content.Close()
-			Expect(err).To(BeNil())
-
-			asset := &ghfs.Asset{}
-			err = asset.Close()
-			Expect(err).To(BeNil())
-
-			release := &ghfs.Release{}
-			err = release.Close()
-			Expect(err).To(BeNil())
-
-			branch := &ghfs.Branch{}
-			err = branch.Close()
+			f := &ghfs.File{}
+			err := f.Close()
 			Expect(err).To(BeNil())
 		})
 	})
@@ -85,22 +66,22 @@ var _ = Describe("File", func() {
 			Expect(info.Sys()).To(BeAssignableToTypeOf(&bytes.Reader{}))
 		})
 
-		It("should panic on IsDir", func() {
+		It("should return false for IsDir", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.IsDir() }).To(Panic())
+			Expect(info.IsDir()).To(BeFalse())
 		})
 
-		It("should panic on ModTime", func() {
+		It("should return zero time for ModTime", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.ModTime() }).To(Panic())
+			Expect(info.ModTime().IsZero()).To(BeTrue())
 		})
 
-		It("should panic on Mode", func() {
+		It("should return read-only mode for Mode", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.Mode() }).To(Panic())
+			Expect(info.Mode()).To(Equal(fs.FileMode(0444)))
 		})
 	})
 
@@ -123,7 +104,7 @@ var _ = Describe("File", func() {
 					}),
 				),
 				mock.WithRequestMatchHandler(
-					mock.GetReposReleasesByOwnerByRepoByReleaseId,
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Write([]byte("invalid json"))
 					}),
@@ -152,50 +133,11 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return error when User decode fails", func() {
-			f, err := fsys.Open("test-user")
+			f, err := ghfs.Open(fsys, "test-user")
 			Expect(err).NotTo(HaveOccurred())
-			owner := f.(*ghfs.Owner)
-			_, err = owner.User()
-			Expect(err).To(HaveOccurred())
-		})
 
-		It("should return error when Repository decode fails", func() {
-			f, err := fsys.Open("test-user/test-repo")
-			Expect(err).NotTo(HaveOccurred())
-			repo := f.(*ghfs.Repository)
-			_, err = repo.Repository()
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error when Release decode fails", func() {
-			f, err := fsys.Open("test-user/test-repo/releases/tag/v0.1.0")
-			Expect(err).NotTo(HaveOccurred())
-			release := f.(*ghfs.Release)
-			_, err = release.Release()
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error when Asset decode fails", func() {
-			f, err := fsys.Open("test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
-			Expect(err).NotTo(HaveOccurred())
-			asset := f.(*ghfs.Asset)
-			_, err = asset.Asset()
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error when Branch decode fails", func() {
-			f, err := fsys.Open("test-user/test-repo/tree/test-branch")
-			Expect(err).NotTo(HaveOccurred())
-			branch := f.(*ghfs.Branch)
-			_, err = branch.Branch()
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error when Content decode fails", func() {
-			f, err := fsys.Open("test-user/test-repo/blob/test-branch/file.txt")
-			Expect(err).NotTo(HaveOccurred())
-			content := f.(*ghfs.Content)
-			_, err = content.Content()
+			var owner github.User
+			err = f.Decode(&owner)
 			Expect(err).To(HaveOccurred())
 		})
 	})
