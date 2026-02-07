@@ -44,6 +44,30 @@ var _ = Describe("Fs", func() {
 							},
 						},
 					),
+					mock.WithRequestMatch(
+						mock.GetReposReleasesByOwnerByRepoByReleaseId,
+						github.RepositoryRelease{
+							Name: github.Ptr("test-release"),
+						},
+					),
+					mock.WithRequestMatch(
+						mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
+						github.ReleaseAsset{
+							Name: github.Ptr("asset.tar.gz"),
+						},
+					),
+					mock.WithRequestMatch(
+						mock.GetReposBranchesByOwnerByRepoByBranch,
+						github.Branch{
+							Name: github.Ptr("test-branch"),
+						},
+					),
+					mock.WithRequestMatch(
+						mock.GetReposContentsByOwnerByRepoByPath,
+						github.RepositoryContent{
+							Name: github.Ptr("file.txt"),
+						},
+					),
 				)
 
 				DeferCleanup(s.Close)
@@ -57,6 +81,9 @@ var _ = Describe("Fs", func() {
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Owner{}))
 				o := f.(*ghfs.Owner)
 				Expect(o.Name()).To(Equal("test-user"))
+				u, err := o.User()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(u.GetName()).To(Equal("test-user"))
 			})
 
 			It("should parse a repository path", func() {
@@ -67,6 +94,10 @@ var _ = Describe("Fs", func() {
 				r := f.(*ghfs.Repository)
 				Expect(r.Owner()).To(Equal("test-user"))
 				Expect(r.Name()).To(Equal("test-repo"))
+				repo, err := r.Repository()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(repo.GetName()).To(Equal("ihfs"))
+				Expect(repo.GetOwner().GetName()).To(Equal("test-user"))
 			})
 
 			DescribeTable("should parse a release path",
@@ -79,6 +110,9 @@ var _ = Describe("Fs", func() {
 					Expect(r.Owner()).To(Equal("test-user"))
 					Expect(r.Repository()).To(Equal("test-repo"))
 					Expect(r.Name()).To(Equal("v0.1.0"))
+					release, err := r.Release()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(release.GetName()).To(Equal("test-release"))
 				},
 				Entry(nil, "test-user/test-repo/releases/tag/v0.1.0"),
 				Entry(nil, "test-user/test-repo/releases/download/v0.1.0"),
@@ -95,6 +129,9 @@ var _ = Describe("Fs", func() {
 					Expect(a.Repository()).To(Equal("test-repo"))
 					Expect(a.Release()).To(Equal("v0.1.0"))
 					Expect(a.Name()).To(Equal("asset.tar.gz"))
+					asset, err := a.Asset()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(asset.GetName()).To(Equal("asset.tar.gz"))
 				},
 				Entry(nil, "test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz"),
 				Entry(nil, "test-user/test-repo/releases/download/v0.1.0/asset.tar.gz"),
@@ -109,10 +146,13 @@ var _ = Describe("Fs", func() {
 				Expect(b.Owner()).To(Equal("test-user"))
 				Expect(b.Repository()).To(Equal("test-repo"))
 				Expect(b.Name()).To(Equal("test-branch"))
+				branch, err := b.Branch()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(branch.GetName()).To(Equal("test-branch"))
 			})
 
 			It("should parse a content path", func() {
-				f, err := fsys.Open(prefix + "test-user/test-repo/blob/test-branch/README.md")
+				f, err := fsys.Open(prefix + "test-user/test-repo/blob/test-branch/file.txt")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
@@ -120,7 +160,10 @@ var _ = Describe("Fs", func() {
 				Expect(c.Owner()).To(Equal("test-user"))
 				Expect(c.Repository()).To(Equal("test-repo"))
 				Expect(c.Branch()).To(Equal("test-branch"))
-				Expect(c.Name()).To(Equal("README.md"))
+				Expect(c.Name()).To(Equal("file.txt"))
+				content, err := c.Content()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content.GetName()).To(Equal("file.txt"))
 			})
 
 			It("should parse a nested content path", func() {
@@ -133,6 +176,9 @@ var _ = Describe("Fs", func() {
 				Expect(c.Repository()).To(Equal("test-repo"))
 				Expect(c.Branch()).To(Equal("test-branch"))
 				Expect(c.Name()).To(Equal("nested/file.txt"))
+				content, err := c.Content()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content.GetName()).To(Equal("file.txt"))
 			})
 
 			It("should return an error for a path with 3 segments", func() {
