@@ -1,10 +1,14 @@
 package ghfs_test
 
 import (
+	"context"
+	"net/http"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/google/go-github/v73/github"
+	githubv82 "github.com/google/go-github/v82/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/ghfs"
@@ -189,4 +193,138 @@ var _ = Describe("Fs", func() {
 			})
 		},
 	)
+
+	Describe("Name", func() {
+		It("should return 'github'", func() {
+			fsys := ghfs.New()
+			Expect(fsys.Name()).To(Equal("github"))
+		})
+	})
+
+	Describe("Options", func() {
+		It("should support WithAuthToken", func() {
+			fsys := ghfs.New(ghfs.WithAuthToken("test-token"))
+			Expect(fsys).NotTo(BeNil())
+		})
+
+		It("should support WithContextFunc", func() {
+			called := false
+			ctxFunc := func(f *ghfs.Fs, o ihfs.Operation) context.Context {
+				called = true
+				return context.Background()
+			}
+
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetUsersByUsername,
+					github.User{Name: github.Ptr("test-user")},
+				),
+			)
+			DeferCleanup(s.Close)
+
+			fsys := ghfs.New(
+				ghfs.WithHttpClient(mockHttp),
+				ghfs.WithContextFunc(ctxFunc),
+			)
+
+			_, _ = fsys.Open("test-user")
+			Expect(called).To(BeTrue())
+		})
+	})
+
+	Describe("API errors", func() {
+		var fsys ihfs.FS
+
+		BeforeEach(func() {
+			// Mock server that returns 404 errors
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetUsersByUsername,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposBranchesByOwnerByRepoByBranch,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposContentsByOwnerByRepoByPath,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesByOwnerByRepoByReleaseId,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys = ghfs.New(ghfs.WithHttpClient(mockHttp))
+		})
+
+		It("should return error when openOwner fails", func() {
+			_, err := fsys.Open("test-user")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when openRepository fails", func() {
+			_, err := fsys.Open("test-user/test-repo")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when openBranch fails", func() {
+			_, err := fsys.Open("test-user/test-repo/tree/test-branch")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when openContent fails", func() {
+			_, err := fsys.Open("test-user/test-repo/blob/test-branch/file.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when openRelease fails", func() {
+			_, err := fsys.Open("test-user/test-repo/releases/tag/v0.1.0")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when openAsset fails", func() {
+			_, err := fsys.Open("test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("NewRequest errors", func() {
+		It("should handle error when creating request with invalid base URL", func() {
+			// Create a client with an invalid BaseURL to trigger NewRequest error
+			client := githubv82.NewClient(nil)
+			client.BaseURL.Path = "://invalid"
+			fsys := ghfs.New(ghfs.WithClient(client))
+
+			_, err := fsys.Open("test-user")
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
