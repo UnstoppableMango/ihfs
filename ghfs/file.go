@@ -3,64 +3,51 @@ package ghfs
 import (
 	"bytes"
 	"encoding/json"
-	"io"
+	"io/fs"
+	"time"
 
 	"github.com/google/go-github/v82/github"
 	"github.com/unstoppablemango/ihfs"
 )
 
-type Owner struct {
+type file struct {
+	*bytes.Reader
 	name string
-	r    *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (*Owner) Close() error   { return nil }
-func (o *Owner) Name() string { return o.name }
+func (f *file) IsDir() bool                  { panic("unimplemented") }
+func (f *file) ModTime() time.Time           { panic("unimplemented") }
+func (f *file) Mode() fs.FileMode            { panic("unimplemented") }
+func (f *file) Size() int64                  { return int64(f.Len()) }
+func (f *file) Sys() any                     { return f.Reader }
+func (f *file) Close() error                 { return nil }
+func (f *file) Name() string                 { return f.name }
+func (f *file) Stat() (ihfs.FileInfo, error) { return f, nil }
 
-// Read implements [fs.File].
-func (o *Owner) Read(p []byte) (n int, err error) {
-	return o.r.Read(p)
+func (f *file) dec(v any) error {
+	return json.NewDecoder(f.Reader).Decode(v)
 }
 
-// Stat implements [fs.File].
-func (o *Owner) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
+type Owner struct{ *file }
 
 func (o *Owner) User() (*github.User, error) {
 	var user github.User
-	if err := dec(o, &user); err != nil {
+	if err := o.dec(&user); err != nil {
 		return nil, err
 	}
-
 	return &user, nil
 }
 
 type Repository struct {
-	name  string
+	*file
 	owner string
-	r     *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (r *Repository) Close() error  { return nil }
-func (r *Repository) Name() string  { return r.name }
 func (r *Repository) Owner() string { return r.owner }
-
-// Read implements [fs.File].
-func (r *Repository) Read(p []byte) (int, error) {
-	return r.r.Read(p)
-}
-
-// Stat implements [fs.File].
-func (r *Repository) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
 
 func (r *Repository) Repository() (*github.Repository, error) {
 	var repo github.Repository
-	if err := dec(r, &repo); err != nil {
+	if err := r.dec(&repo); err != nil {
 		return nil, err
 	}
 
@@ -68,31 +55,17 @@ func (r *Repository) Repository() (*github.Repository, error) {
 }
 
 type Release struct {
-	name       string
+	*file
 	owner      string
 	repository string
-	r          *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (r *Release) Close() error       { return nil }
-func (r *Release) Name() string       { return r.name }
 func (r *Release) Owner() string      { return r.owner }
 func (r *Release) Repository() string { return r.repository }
 
-// Read implements [fs.File].
-func (r *Release) Read(p []byte) (int, error) {
-	return r.r.Read(p)
-}
-
-// Stat implements [fs.File].
-func (r *Release) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
-
 func (r *Release) Release() (*github.RepositoryRelease, error) {
 	var release github.RepositoryRelease
-	if err := dec(r, &release); err != nil {
+	if err := r.dec(&release); err != nil {
 		return nil, err
 	}
 
@@ -100,33 +73,19 @@ func (r *Release) Release() (*github.RepositoryRelease, error) {
 }
 
 type Asset struct {
-	name       string
+	*file
 	owner      string
 	repository string
 	release    string
-	r          *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (a *Asset) Close() error       { return nil }
-func (a *Asset) Name() string       { return a.name }
 func (a *Asset) Release() string    { return a.release }
 func (a *Asset) Repository() string { return a.repository }
 func (a *Asset) Owner() string      { return a.owner }
 
-// Read implements [fs.File].
-func (a *Asset) Read(p []byte) (int, error) {
-	return a.r.Read(p)
-}
-
-// Stat implements [fs.File].
-func (a *Asset) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
-
 func (a *Asset) Asset() (*github.ReleaseAsset, error) {
 	var asset github.ReleaseAsset
-	if err := dec(a, &asset); err != nil {
+	if err := a.dec(&asset); err != nil {
 		return nil, err
 	}
 
@@ -134,31 +93,17 @@ func (a *Asset) Asset() (*github.ReleaseAsset, error) {
 }
 
 type Branch struct {
-	name       string
+	*file
 	owner      string
 	repository string
-	r          *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (b *Branch) Close() error       { return nil }
-func (b *Branch) Name() string       { return b.name }
 func (b *Branch) Owner() string      { return b.owner }
 func (b *Branch) Repository() string { return b.repository }
 
-// Read implements [fs.File].
-func (b *Branch) Read(p []byte) (int, error) {
-	return b.r.Read(p)
-}
-
-// Stat implements [fs.File].
-func (b *Branch) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
-
 func (b *Branch) Branch() (*github.Branch, error) {
 	var branch github.Branch
-	if err := dec(b.r, &branch); err != nil {
+	if err := b.dec(&branch); err != nil {
 		return nil, err
 	}
 
@@ -166,39 +111,21 @@ func (b *Branch) Branch() (*github.Branch, error) {
 }
 
 type Content struct {
-	name       string
+	*file
 	owner      string
 	repository string
 	branch     string
-	r          *bytes.Reader
 }
 
-// Close implements [fs.File].
-func (c *Content) Close() error       { return nil }
-func (c *Content) Name() string       { return c.name }
 func (c *Content) Owner() string      { return c.owner }
 func (c *Content) Repository() string { return c.repository }
 func (c *Content) Branch() string     { return c.branch }
 
-// Read implements [fs.File].
-func (c *Content) Read(p []byte) (int, error) {
-	return c.r.Read(p)
-}
-
-// Stat implements [fs.File].
-func (c *Content) Stat() (ihfs.FileInfo, error) {
-	return nil, nil
-}
-
 func (c *Content) Content() (*github.RepositoryContent, error) {
 	var content github.RepositoryContent
-	if err := dec(c, &content); err != nil {
+	if err := c.dec(&content); err != nil {
 		return nil, err
 	}
 
 	return &content, nil
-}
-
-func dec(r io.Reader, v any) error {
-	return json.NewDecoder(r).Decode(v)
 }
