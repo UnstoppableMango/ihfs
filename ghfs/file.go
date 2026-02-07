@@ -30,7 +30,7 @@ func (o *Owner) Stat() (ihfs.FileInfo, error) {
 
 func (o *Owner) User() (*github.User, error) {
 	var user github.User
-	if err := dec(o.r, &user); err != nil {
+	if err := dec(o, &user); err != nil {
 		return nil, err
 	}
 
@@ -49,8 +49,8 @@ func (r *Repository) Name() string  { return r.name }
 func (r *Repository) Owner() string { return r.owner }
 
 // Read implements [fs.File].
-func (r *Repository) Read([]byte) (int, error) {
-	return 0, nil
+func (r *Repository) Read(p []byte) (int, error) {
+	return r.r.Read(p)
 }
 
 // Stat implements [fs.File].
@@ -60,7 +60,7 @@ func (r *Repository) Stat() (ihfs.FileInfo, error) {
 
 func (r *Repository) Repository() (*github.Repository, error) {
 	var repo github.Repository
-	if err := dec(r.r, &repo); err != nil {
+	if err := dec(r, &repo); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +92,7 @@ func (r *Release) Stat() (ihfs.FileInfo, error) {
 
 func (r *Release) Release() (*github.RepositoryRelease, error) {
 	var release github.RepositoryRelease
-	if err := dec(r.r, &release); err != nil {
+	if err := dec(r, &release); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +126,7 @@ func (a *Asset) Stat() (ihfs.FileInfo, error) {
 
 func (a *Asset) Asset() (*github.ReleaseAsset, error) {
 	var asset github.ReleaseAsset
-	if err := dec(a.r, &asset); err != nil {
+	if err := dec(a, &asset); err != nil {
 		return nil, err
 	}
 
@@ -192,7 +192,7 @@ func (c *Content) Stat() (ihfs.FileInfo, error) {
 
 func (c *Content) Content() (*github.RepositoryContent, error) {
 	var content github.RepositoryContent
-	if err := dec(c.r, &content); err != nil {
+	if err := dec(c, &content); err != nil {
 		return nil, err
 	}
 
