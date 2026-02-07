@@ -39,8 +39,8 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	parts := strings.Split(clean(name), "/")
 
 	// TODO: API path patterns
-	// will likely need to use the URL prefix to determine
-	// which pattern to use
+	// will likely need to use the URL prefix to determine which pattern to use
+	// also, potential to simply pass the given path directly w/o cleaning
 	switch len(parts) {
 	case 1:
 		return f.openOwner(parts[0])
@@ -95,48 +95,83 @@ func (f *Fs) openOwner(name string) (*Owner, error) {
 
 	return &Owner{
 		name: name,
-		buf:  r,
+		r:    r,
 	}, nil
 }
 
 func (f *Fs) openRepository(owner, name string) (*Repository, error) {
+	url := fmt.Sprintf("repos/%v/%v", owner, name)
+	r, err := f.open(name, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Repository{
 		owner: owner,
 		name:  name,
+		r:     r,
 	}, nil
 }
 
 func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
+	url := fmt.Sprintf("repos/%v/%v/branches/%v", owner, repository, name)
+	r, err := f.open(name, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Branch{
 		owner:      owner,
 		repository: repository,
 		name:       name,
+		r:          r,
 	}, nil
 }
 
 func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
+	url := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, name, branch)
+	r, err := f.open(name, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Content{
 		owner:      owner,
 		repository: repository,
 		branch:     branch,
 		name:       name,
+		r:          r,
 	}, nil
 }
 
 func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
+	url := fmt.Sprintf("repos/%v/%v/releases/%v", owner, repository, name)
+	r, err := f.open(name, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Release{
 		owner:      owner,
 		repository: repository,
 		name:       name,
+		r:          r,
 	}, nil
 }
 
 func (f *Fs) openAsset(owner, repository, release, name string) (*Asset, error) {
+	url := fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repository, name)
+	r, err := f.open(name, url)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Asset{
 		owner:      owner,
 		repository: repository,
 		release:    release,
 		name:       name,
+		r:          r,
 	}, nil
 }
 
