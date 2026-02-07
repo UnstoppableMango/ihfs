@@ -1,11 +1,14 @@
 package ghfs
 
 import (
+	"bytes"
+
 	"github.com/unstoppablemango/ihfs"
 )
 
 type Owner struct {
 	name string
+	buf  *bytes.Reader
 }
 
 // Close implements [fs.File].

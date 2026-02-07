@@ -1,9 +1,13 @@
 package ghfs_test
 
 import (
+	"net/http"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/google/go-github/v73/github"
+	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/ghfs"
 )
@@ -23,8 +27,30 @@ var _ = Describe("Fs", func() {
 		Entry(nil, "raw.githubusercontent.com/"),
 		Entry("No prefix", ""),
 		func(prefix string) {
+			var http *http.Client
+
+			BeforeEach(func() {
+				http = mock.NewMockedHTTPClient(
+					mock.WithRequestMatch(
+						mock.GetUserByAccountId,
+						github.User{
+							Name: github.Ptr("UnstoppableMango"),
+						},
+					),
+					mock.WithRequestMatch(
+						mock.GetReposByOwnerByRepo,
+						github.Repository{
+							Name: github.Ptr("ihfs"),
+							Owner: &github.User{
+								Name: github.Ptr("UnstoppableMango"),
+							},
+						},
+					),
+				)
+			})
+
 			It("should parse an owner path", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				f, err := fsys.Open(prefix + "UnstoppableMango")
 
@@ -35,7 +61,7 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a repository path", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs")
 
@@ -48,7 +74,7 @@ var _ = Describe("Fs", func() {
 
 			DescribeTable("should parse a release path",
 				func(path string) {
-					fsys := ghfs.New()
+					fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 					f, err := fsys.Open(prefix + path)
 
@@ -65,7 +91,7 @@ var _ = Describe("Fs", func() {
 
 			DescribeTable("should parse an asset path",
 				func(path string) {
-					fsys := ghfs.New()
+					fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 					f, err := fsys.Open(prefix + path)
 
@@ -82,7 +108,7 @@ var _ = Describe("Fs", func() {
 			)
 
 			It("should parse a branch path", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/tree/main")
 
@@ -95,7 +121,7 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a content path", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/blob/main/README.md")
 
@@ -109,7 +135,7 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a nested content path", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/blob/main/.github/renovate.json")
 
@@ -123,7 +149,7 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should return an error for a path with 3 segments", func() {
-				fsys := ghfs.New()
+				fsys := ghfs.New(ghfs.WithHttpClient(http))
 
 				_, err := fsys.Open(prefix + "UnstoppableMango/ihfs/invalid")
 
