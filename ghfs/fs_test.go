@@ -1,8 +1,6 @@
 package ghfs_test
 
 import (
-	"net/http"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -27,12 +25,12 @@ var _ = Describe("Fs", func() {
 		Entry(nil, "raw.githubusercontent.com/"),
 		Entry("No prefix", ""),
 		func(prefix string) {
-			var http *http.Client
+			var fsys ihfs.FS
 
 			BeforeEach(func() {
-				http = mock.NewMockedHTTPClient(
+				mockHttp := mock.NewMockedHTTPClient(
 					mock.WithRequestMatch(
-						mock.GetUserByAccountId,
+						mock.GetUsersByUsername,
 						github.User{
 							Name: github.Ptr("UnstoppableMango"),
 						},
@@ -47,11 +45,11 @@ var _ = Describe("Fs", func() {
 						},
 					),
 				)
+
+				fsys = ghfs.New(ghfs.WithHttpClient(mockHttp))
 			})
 
 			It("should parse an owner path", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				f, err := fsys.Open(prefix + "UnstoppableMango")
 
 				Expect(err).NotTo(HaveOccurred())
@@ -61,8 +59,6 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a repository path", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs")
 
 				Expect(err).NotTo(HaveOccurred())
@@ -74,8 +70,6 @@ var _ = Describe("Fs", func() {
 
 			DescribeTable("should parse a release path",
 				func(path string) {
-					fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 					f, err := fsys.Open(prefix + path)
 
 					Expect(err).NotTo(HaveOccurred())
@@ -91,8 +85,6 @@ var _ = Describe("Fs", func() {
 
 			DescribeTable("should parse an asset path",
 				func(path string) {
-					fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 					f, err := fsys.Open(prefix + path)
 
 					Expect(err).NotTo(HaveOccurred())
@@ -108,8 +100,6 @@ var _ = Describe("Fs", func() {
 			)
 
 			It("should parse a branch path", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/tree/main")
 
 				Expect(err).NotTo(HaveOccurred())
@@ -121,8 +111,6 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a content path", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/blob/main/README.md")
 
 				Expect(err).NotTo(HaveOccurred())
@@ -135,8 +123,6 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should parse a nested content path", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				f, err := fsys.Open(prefix + "UnstoppableMango/ihfs/blob/main/.github/renovate.json")
 
 				Expect(err).NotTo(HaveOccurred())
@@ -149,8 +135,6 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should return an error for a path with 3 segments", func() {
-				fsys := ghfs.New(ghfs.WithHttpClient(http))
-
 				_, err := fsys.Open(prefix + "UnstoppableMango/ihfs/invalid")
 
 				Expect(err).To(HaveOccurred())
