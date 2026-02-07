@@ -123,7 +123,7 @@ var _ = Describe("File", func() {
 					}),
 				),
 				mock.WithRequestMatchHandler(
-					mock.GetReposReleasesByOwnerByRepoByReleaseId,
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Write([]byte("invalid json"))
 					}),
