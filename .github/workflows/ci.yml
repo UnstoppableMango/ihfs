@@ -72,7 +72,7 @@ jobs:
           go-version-file: ghfs/go.mod
           cache-dependency-path: ghfs/go.sum
 
-      - run: go build -v ./ghfs/...
+      - run: go -C ghfs build -v ./...
 
       - run: >
           go -C ghfs tool ginkgo -r
