@@ -1,12 +1,17 @@
 package ghfs
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/google/go-github/v82/github"
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/op"
 )
 
 type (
@@ -73,9 +78,27 @@ func (f *Fs) context(op ihfs.Operation) context.Context {
 	return f.ctxFn(f, op)
 }
 
+func (f *Fs) do(ctx context.Context, url string, out io.Writer) (*github.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.client.Do(ctx, req, out)
+}
+
 func (f *Fs) openOwner(name string) (*Owner, error) {
+	buf := &bytes.Buffer{}
+	ctx := f.context(op.Open{Name: name})
+
+	_, err := f.do(ctx, fmt.Sprintf("user/%v", name), buf)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Owner{
 		name: name,
+		buf:  bytes.NewReader(buf.Bytes()),
 	}, nil
 }
 
