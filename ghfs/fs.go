@@ -83,95 +83,95 @@ func (f *Fs) do(ctx context.Context, url string) (*bytes.Reader, error) {
 	return do(ctx, f.client, url)
 }
 
-func (f *Fs) open(name, url string) (*bytes.Reader, error) {
-	return f.do(f.context(op.Open{Name: name}), url)
-}
-
-func (f *Fs) openOwner(name string) (*Owner, error) {
-	r, err := f.open(name, fmt.Sprintf("users/%v", name))
+func (f *Fs) open(name, url string) (*file, error) {
+	r, err := f.do(f.context(op.Open{Name: name}), url)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Owner{
-		name: name,
-		r:    r,
+	return &file{
+		name:   name,
+		Reader: r,
 	}, nil
+}
+
+func (f *Fs) openOwner(name string) (*Owner, error) {
+	file, err := f.open(name, fmt.Sprintf("users/%v", name))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Owner{file: file}, nil
 }
 
 func (f *Fs) openRepository(owner, name string) (*Repository, error) {
 	url := fmt.Sprintf("repos/%v/%v", owner, name)
-	r, err := f.open(name, url)
+	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Repository{
+		file:  file,
 		owner: owner,
-		name:  name,
-		r:     r,
 	}, nil
 }
 
 func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
 	url := fmt.Sprintf("repos/%v/%v/branches/%v", owner, repository, name)
-	r, err := f.open(name, url)
+	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Branch{
+		file:       file,
 		owner:      owner,
 		repository: repository,
-		name:       name,
-		r:          r,
 	}, nil
 }
 
 func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
 	url := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, name, branch)
-	r, err := f.open(name, url)
+	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Content{
+		file:       file,
 		owner:      owner,
 		repository: repository,
 		branch:     branch,
-		name:       name,
-		r:          r,
 	}, nil
 }
 
 func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
 	url := fmt.Sprintf("repos/%v/%v/releases/%v", owner, repository, name)
-	r, err := f.open(name, url)
+	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Release{
+		file:       file,
 		owner:      owner,
 		repository: repository,
-		name:       name,
-		r:          r,
 	}, nil
 }
 
 func (f *Fs) openAsset(owner, repository, release, name string) (*Asset, error) {
 	url := fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repository, name)
-	r, err := f.open(name, url)
+	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Asset{
+		file:       file,
 		owner:      owner,
 		repository: repository,
 		release:    release,
-		name:       name,
-		r:          r,
 	}, nil
 }
 
