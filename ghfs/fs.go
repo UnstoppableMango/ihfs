@@ -46,7 +46,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 			Err:  ihfs.ErrInvalid,
 		}
 	}
-	
+
 	parts := strings.Split(cleaned, "/")
 
 	// TODO: API path patterns
@@ -197,7 +197,7 @@ func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
 func (f *Fs) openAsset(owner, repository, releaseTag, assetName string) (*Asset, error) {
 	// First, fetch the release to get its assets
 	releaseURL := fmt.Sprintf("repos/%v/%v/releases/tags/%v", owner, repository, releaseTag)
-	releaseReader, err := f.do(f.context(op.Open{Name: assetName}), releaseURL)
+	releaseReader, err := f.do(f.context(op.Open{Name: releaseTag}), releaseURL)
 	if err != nil {
 		return nil, err
 	}
