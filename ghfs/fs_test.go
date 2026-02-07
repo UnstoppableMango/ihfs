@@ -49,7 +49,7 @@ var _ = Describe("Fs", func() {
 						},
 					),
 					mock.WithRequestMatch(
-						mock.GetReposReleasesByOwnerByRepoByReleaseId,
+						mock.GetReposReleasesTagsByOwnerByRepoByTag,
 						github.RepositoryRelease{
 							Name: github.Ptr("test-release"),
 						},

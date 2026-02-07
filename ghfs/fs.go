@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/google/go-github/v82/github"
 	"github.com/unmango/go/fopt"
@@ -12,9 +11,7 @@ import (
 	"github.com/unstoppablemango/ihfs/op"
 )
 
-type (
-	ContextFunc func(*Fs, ihfs.Operation) context.Context
-)
+type ContextFunc func(*Fs, ihfs.Operation) context.Context
 
 type Fs struct {
 	client *github.Client
@@ -36,39 +33,7 @@ func (*Fs) Name() string {
 }
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
-	parts := strings.Split(clean(name), "/")
-
-	// TODO: API path patterns
-	// will likely need to use the URL prefix to determine which pattern to use
-	// also, potential to simply pass the given path directly w/o cleaning
-	switch len(parts) {
-	case 1:
-		return f.openOwner(parts[0])
-	case 2:
-		return f.openRepository(parts[0], parts[1])
-	case 4:
-		return f.openBranch(parts[0], parts[1], parts[3])
-	case 5:
-		if parts[2] == "blob" {
-			return f.openContent(parts[0], parts[1], parts[3], parts[4])
-		}
-		return f.openRelease(parts[0], parts[1], parts[4])
-	}
-
-	if len(parts) >= 6 {
-		if parts[2] == "releases" {
-			return f.openAsset(parts[0], parts[1], parts[4], parts[5])
-		}
-		return f.openContent(parts[0], parts[1], parts[3],
-			strings.Join(parts[4:], "/"),
-		)
-	}
-
-	return nil, &ihfs.PathError{
-		Op:   "open",
-		Path: name,
-		Err:  ihfs.ErrNotExist,
-	}
+	return f.open(name)
 }
 
 func (f *Fs) setAuthToken(token string) {
@@ -83,96 +48,26 @@ func (f *Fs) do(ctx context.Context, url string) (*bytes.Reader, error) {
 	return do(ctx, f.client, url)
 }
 
-func (f *Fs) open(name, url string) (*file, error) {
-	r, err := f.do(f.context(op.Open{Name: name}), url)
-	if err != nil {
-		return nil, err
+func Open(fsys ihfs.FS, name string) (*File, error) {
+	if fs, ok := fsys.(*Fs); ok {
+		return fs.open(name)
 	}
 
-	return &file{
-		name:   name,
-		Reader: r,
-	}, nil
+	return openErr(name, fmt.Errorf("github: %w", ihfs.ErrNotImplemented))
 }
 
-func (f *Fs) openOwner(name string) (*Owner, error) {
-	file, err := f.open(name, fmt.Sprintf("users/%v", name))
+func (f *Fs) open(name string) (*File, error) {
+	path, err := normalize(name)
 	if err != nil {
-		return nil, err
+		return openErr(name, err)
 	}
 
-	return &Owner{file: file}, nil
-}
-
-func (f *Fs) openRepository(owner, name string) (*Repository, error) {
-	url := fmt.Sprintf("repos/%v/%v", owner, name)
-	file, err := f.open(name, url)
-	if err != nil {
-		return nil, err
+	ctx := f.context(op.Open{Name: name})
+	if r, err := f.do(ctx, path); err != nil {
+		return openErr(name, err)
+	} else {
+		return &File{r, name}, nil
 	}
-
-	return &Repository{
-		file:  file,
-		owner: owner,
-	}, nil
-}
-
-func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
-	url := fmt.Sprintf("repos/%v/%v/branches/%v", owner, repository, name)
-	file, err := f.open(name, url)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Branch{
-		file:       file,
-		owner:      owner,
-		repository: repository,
-	}, nil
-}
-
-func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
-	url := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, name, branch)
-	file, err := f.open(name, url)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Content{
-		file:       file,
-		owner:      owner,
-		repository: repository,
-		branch:     branch,
-	}, nil
-}
-
-func (f *Fs) openRelease(owner, repository, name string) (*Release, error) {
-	url := fmt.Sprintf("repos/%v/%v/releases/%v", owner, repository, name)
-	file, err := f.open(name, url)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Release{
-		file:       file,
-		owner:      owner,
-		repository: repository,
-	}, nil
-}
-
-func (f *Fs) openAsset(owner, repository, release, name string) (*Asset, error) {
-	url := fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repository, name)
-	file, err := f.open(name, url)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Asset{
-		file:       file,
-		owner:      owner,
-		repository: repository,
-		release:    release,
-	}, nil
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
@@ -192,4 +87,12 @@ func do(ctx context.Context, c *github.Client, url string) (*bytes.Reader, error
 	}
 
 	return bytes.NewReader(buf.Bytes()), nil
+}
+
+func openErr(name string, err error) (*File, error) {
+	return nil, &ihfs.PathError{
+		Op:   "open",
+		Path: name,
+		Err:  err,
+	}
 }
