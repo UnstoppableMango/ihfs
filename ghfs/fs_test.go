@@ -11,8 +11,8 @@ import (
 )
 
 // These test some invalid URLs. For example raw.githubusercontent.com/ does not
-// follow the owner/repo/tree/branch pattern, and github.com/ does not follow
-// the owner/repo/blob/branch/path pattern. I don't think that matters though,
+// follow the `owner/repo/tree/branch` pattern, and github.com/ does not follow
+// the `owner/repo/blob/branch/path` pattern. I don't think that matters though,
 // as the URL prefix stripping is a convenience feature.
 
 var _ = Describe("Fs", func() {
