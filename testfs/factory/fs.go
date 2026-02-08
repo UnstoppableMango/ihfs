@@ -55,7 +55,7 @@ func (f *Fs) SetOpen(open ...OpenFunc) *Fs {
 // Open implements [ihfs.FS] by consuming the next queued Open function.
 func (f *Fs) Open(path string) (ihfs.File, error) {
 	if len(f.open) == 0 {
-		return nil, ErrNotMocked
+		return nil, ErrNoMocks
 	}
 
 	open := f.open[0]
@@ -78,7 +78,7 @@ func (f *Fs) SetStat(stat ...StatFunc) *Fs {
 // Stat implements [ihfs.StatFS] by consuming the next queued Stat function.
 func (f *Fs) Stat(path string) (ihfs.FileInfo, error) {
 	if len(f.stat) == 0 {
-		return nil, ErrNotMocked
+		return nil, ErrNoMocks
 	}
 
 	stat := f.stat[0]
