@@ -569,4 +569,3 @@ func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
 	f.writeFile = f.writeFile[1:]
 	return writeFile(name, data, perm)
 }
-

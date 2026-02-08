@@ -13,6 +13,7 @@ import (
 	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"github.com/unstoppablemango/ihfs/testfs/factory"
 	"github.com/unstoppablemango/ihfs/try"
 )
 
@@ -251,11 +252,11 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			var capturedMode ihfs.FileMode
 
-			fsys := testfs.New(testfs.WithChmod(func(name string, mode ihfs.FileMode) error {
+			fsys := factory.NewFs().WithChmod(func(name string, mode ihfs.FileMode) error {
 				capturedName = name
 				capturedMode = mode
 				return nil
-			}))
+			})
 
 			err := try.Chmod(fsys, "file.txt", 0o644)
 
@@ -279,12 +280,12 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			var capturedUID, capturedGid int
 
-			fsys := testfs.New(testfs.WithChown(func(name string, uid, gid int) error {
+			fsys := factory.NewFs().WithChown(func(name string, uid, gid int) error {
 				capturedName = name
 				capturedUID = uid
 				capturedGid = gid
 				return nil
-			}))
+			})
 
 			err := try.Chown(fsys, "file.txt", 1000, 1000)
 
@@ -309,12 +310,12 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			var capturedAtime, capturedMtime time.Time
 
-			fsys := testfs.New(testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
+			fsys := factory.NewFs().WithChtimes(func(name string, atime, mtime time.Time) error {
 				capturedName = name
 				capturedAtime = atime
 				capturedMtime = mtime
 				return nil
-			}))
+			})
 
 			atime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 			mtime := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -341,11 +342,11 @@ var _ = Describe("Try Util", func() {
 			var capturedDir string
 			var capturedSrc ihfs.FS
 
-			fsys := testfs.New(testfs.WithCopy(func(dir string, src ihfs.FS) error {
+			fsys := factory.NewFs().WithCopy(func(dir string, src ihfs.FS) error {
 				capturedDir = dir
 				capturedSrc = src
 				return nil
-			}))
+			})
 
 			srcFs := osfs.New()
 			err := try.Copy(fsys, "dest", srcFs)
@@ -370,11 +371,11 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			var capturedMode ihfs.FileMode
 
-			fsys := testfs.New(testfs.WithMkdir(func(name string, mode ihfs.FileMode) error {
+			fsys := factory.NewFs().WithMkdir(func(name string, mode ihfs.FileMode) error {
 				capturedName = name
 				capturedMode = mode
 				return nil
-			}))
+			})
 
 			err := try.Mkdir(fsys, "newdir", 0o755)
 
@@ -398,11 +399,11 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			var capturedMode ihfs.FileMode
 
-			fsys := testfs.New(testfs.WithMkdirAll(func(name string, mode ihfs.FileMode) error {
+			fsys := factory.NewFs().WithMkdirAll(func(name string, mode ihfs.FileMode) error {
 				capturedName = name
 				capturedMode = mode
 				return nil
-			}))
+			})
 
 			err := try.MkdirAll(fsys, "path/to/dir", 0o755)
 
@@ -425,11 +426,11 @@ var _ = Describe("Try Util", func() {
 		It("should call MkdirTemp on the filesystem", func() {
 			var capturedDir, capturedPattern string
 
-			fsys := testfs.New(testfs.WithMkdirTemp(func(dir, pattern string) (string, error) {
+			fsys := factory.NewFs().WithMkdirTemp(func(dir, pattern string) (string, error) {
 				capturedDir = dir
 				capturedPattern = pattern
 				return "/tmp/test123", nil
-			}))
+			})
 
 			name, err := try.MkdirTemp(fsys, "/tmp", "test*")
 
@@ -454,10 +455,10 @@ var _ = Describe("Try Util", func() {
 		It("should call Remove on the filesystem", func() {
 			var capturedName string
 
-			fsys := testfs.New(testfs.WithRemove(func(name string) error {
+			fsys := factory.NewFs().WithRemove(func(name string) error {
 				capturedName = name
 				return nil
-			}))
+			})
 
 			err := try.Remove(fsys, "file.txt")
 
@@ -479,10 +480,10 @@ var _ = Describe("Try Util", func() {
 		It("should call RemoveAll on the filesystem", func() {
 			var capturedName string
 
-			fsys := testfs.New(testfs.WithRemoveAll(func(name string) error {
+			fsys := factory.NewFs().WithRemoveAll(func(name string) error {
 				capturedName = name
 				return nil
-			}))
+			})
 
 			err := try.RemoveAll(fsys, "dir")
 
@@ -506,12 +507,12 @@ var _ = Describe("Try Util", func() {
 			var capturedData []byte
 			var capturedPerm ihfs.FileMode
 
-			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+			fsys := factory.NewFs().WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
 				capturedName = name
 				capturedData = data
 				capturedPerm = perm
 				return nil
-			}))
+			})
 
 			err := try.WriteFile(fsys, "file.txt", []byte("content"), 0o644)
 
@@ -536,10 +537,10 @@ var _ = Describe("Try Util", func() {
 			var capturedName string
 			expectedFile := &testfs.File{}
 
-			fsys := testfs.New(testfs.WithCreate(func(name string) (ihfs.File, error) {
+			fsys := factory.NewFs().WithCreate(func(name string) (ihfs.File, error) {
 				capturedName = name
 				return expectedFile, nil
-			}))
+			})
 
 			file, err := try.Create(fsys, "file.txt")
 
@@ -564,11 +565,11 @@ var _ = Describe("Try Util", func() {
 			var capturedDir, capturedPattern string
 			expectedFile := &testfs.File{}
 
-			fsys := testfs.New(testfs.WithCreateTemp(func(dir, pattern string) (ihfs.File, error) {
+			fsys := factory.NewFs().WithCreateTemp(func(dir, pattern string) (ihfs.File, error) {
 				capturedDir = dir
 				capturedPattern = pattern
 				return expectedFile, nil
-			}))
+			})
 
 			file, err := try.CreateTemp(fsys, "/tmp", "prefix-*")
 
@@ -593,10 +594,10 @@ var _ = Describe("Try Util", func() {
 		It("should call Glob on the filesystem", func() {
 			var capturedPattern string
 
-			fsys := testfs.New(testfs.WithGlob(func(pattern string) ([]string, error) {
+			fsys := factory.NewFs().WithGlob(func(pattern string) ([]string, error) {
 				capturedPattern = pattern
 				return []string{"file1.txt", "file2.txt"}, nil
-			}))
+			})
 
 			matches, err := try.Glob(fsys, "*.txt")
 
@@ -623,12 +624,12 @@ var _ = Describe("Try Util", func() {
 			var capturedPerm ihfs.FileMode
 			expectedFile := &testfs.File{}
 
-			fsys := testfs.New(testfs.WithOpenFile(func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+			fsys := factory.NewFs().WithOpenFile(func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
 				capturedName = name
 				capturedFlag = flag
 				capturedPerm = perm
 				return expectedFile, nil
-			}))
+			})
 
 			file, err := try.OpenFile(fsys, "file.txt", os.O_RDONLY, 0o755)
 
@@ -654,10 +655,10 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadFile on the filesystem", func() {
 			var capturedName string
 
-			fsys := testfs.New(testfs.WithReadFile(func(name string) ([]byte, error) {
+			fsys := factory.NewFs().WithReadFile(func(name string) ([]byte, error) {
 				capturedName = name
 				return []byte("content"), nil
-			}))
+			})
 
 			data, err := try.ReadFile(fsys, "file.txt")
 
@@ -681,12 +682,10 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadLink on the filesystem", func() {
 			var capturedName string
 
-			fsys := testfs.New(
-				testfs.WithReadLink(func(name string) (string, error) {
-					capturedName = name
-					return "target", nil
-				}),
-			)
+			fsys := factory.NewFs().WithReadLink(func(name string) (string, error) {
+				capturedName = name
+				return "target", nil
+			})
 
 			target, err := try.ReadLink(fsys, "symlink")
 
@@ -710,11 +709,11 @@ var _ = Describe("Try Util", func() {
 		It("should call Rename on the filesystem", func() {
 			var capturedOldpath, capturedNewpath string
 
-			fsys := testfs.New(testfs.WithRename(func(oldpath, newpath string) error {
+			fsys := factory.NewFs().WithRename(func(oldpath, newpath string) error {
 				capturedOldpath = oldpath
 				capturedNewpath = newpath
 				return nil
-			}))
+			})
 
 			err := try.Rename(fsys, "old.txt", "new.txt")
 
@@ -736,17 +735,17 @@ var _ = Describe("Try Util", func() {
 	Describe("Sub", func() {
 		It("should call Sub on the filesystem", func() {
 			var capturedDir string
-			expectedFS := testfs.New()
+			expectedFS := factory.NewFs()
 
-			fsys := testfs.New(testfs.WithSub(func(dir string) (ihfs.FS, error) {
+			fsys := factory.NewFs().WithSub(func(dir string) (ihfs.FS, error) {
 				capturedDir = dir
-				return &expectedFS, nil
-			}))
+				return expectedFS, nil
+			})
 
 			subFS, err := try.Sub(fsys, "subdir")
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(subFS).To(BeIdenticalTo(&expectedFS))
+			Expect(subFS).To(BeIdenticalTo(expectedFS))
 			Expect(capturedDir).To(Equal("subdir"))
 		})
 
@@ -765,11 +764,11 @@ var _ = Describe("Try Util", func() {
 		It("should call Symlink on the filesystem", func() {
 			var capturedOldname, capturedNewname string
 
-			fsys := testfs.New(testfs.WithSymlink(func(oldname, newname string) error {
+			fsys := factory.NewFs().WithSymlink(func(oldname, newname string) error {
 				capturedOldname = oldname
 				capturedNewname = newname
 				return nil
-			}))
+			})
 
 			err := try.Symlink(fsys, "target", "link")
 
@@ -792,11 +791,11 @@ var _ = Describe("Try Util", func() {
 		It("should call TempFile on the filesystem", func() {
 			var capturedDir, capturedPattern string
 
-			fsys := testfs.New(testfs.WithTempFile(func(dir, pattern string) (string, error) {
+			fsys := factory.NewFs().WithTempFile(func(dir, pattern string) (string, error) {
 				capturedDir = dir
 				capturedPattern = pattern
 				return "/tmp/tempfile123", nil
-			}))
+			})
 
 			name, err := try.TempFile(fsys, "/tmp", "prefix-*")
 
@@ -821,10 +820,10 @@ var _ = Describe("Try Util", func() {
 		It("should call ReadDirNames on ReadDirNamesFS when supported", func() {
 			var capturedName string
 
-			fsys := testfs.New(testfs.WithReadDirNames(func(name string) ([]string, error) {
+			fsys := factory.NewFs().WithReadDirNames(func(name string) ([]string, error) {
 				capturedName = name
 				return []string{"file1.txt", "file2.txt"}, nil
-			}))
+			})
 
 			names, err := try.ReadDirNames(fsys, "dir")
 
