@@ -1,4 +1,4 @@
-package factory_test
+package testfs_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestFactory(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Factory Suite")
+	RunSpecs(t, "Testfs Suite")
 }

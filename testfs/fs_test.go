@@ -1,4 +1,4 @@
-package factory_test
+package testfs_test
 
 import (
 	"errors"
@@ -10,14 +10,13 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/testfs"
-	"github.com/unstoppablemango/ihfs/testfs/factory"
 )
 
 var _ = Describe("Fs", func() {
-	var f *factory.Fs
+	var f *testfs.Fs
 
 	BeforeEach(func() {
-		f = factory.NewFs()
+		f = testfs.New()
 	})
 
 	Describe("NewFs", func() {
@@ -40,14 +39,14 @@ var _ = Describe("Fs", func() {
 
 	Describe("Name", func() {
 		It("should return the default name", func() {
-			Expect(f.Name()).To(Equal("testfs/factory"))
+			Expect(f.Name()).To(Equal("testfs"))
 		})
 	})
 
 	Describe("Open", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Open("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -79,7 +78,7 @@ var _ = Describe("Fs", func() {
 			Expect(result2).To(Equal(file2))
 
 			_, err3 := f.Open("test3.txt")
-			Expect(err3).To(MatchError(factory.ErrNoMocks))
+			Expect(err3).To(MatchError(testfs.ErrNoMocks))
 		})
 	})
 
@@ -117,7 +116,7 @@ var _ = Describe("Fs", func() {
 	Describe("Stat", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Stat("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -147,7 +146,7 @@ var _ = Describe("Fs", func() {
 			Expect(result2).To(Equal(info2))
 
 			_, err := f.Stat("test3.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 	})
 
@@ -185,7 +184,7 @@ var _ = Describe("Fs", func() {
 	Describe("Chmod", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Chmod("test.txt", 0644)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -212,7 +211,7 @@ var _ = Describe("Fs", func() {
 			Expect(err2).To(MatchError("second"))
 
 			err3 := f.Chmod("test.txt", 0644)
-			Expect(err3).To(MatchError(factory.ErrNoMocks))
+			Expect(err3).To(MatchError(testfs.ErrNoMocks))
 		})
 	})
 
@@ -241,7 +240,7 @@ var _ = Describe("Fs", func() {
 	Describe("Chown", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Chown("test.txt", 1000, 1000)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -270,7 +269,7 @@ var _ = Describe("Fs", func() {
 	Describe("Chtimes", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Chtimes("test.txt", time.Now(), time.Now())
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -301,7 +300,7 @@ var _ = Describe("Fs", func() {
 	Describe("Copy", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Copy("dest", testfs.New())
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -322,7 +321,7 @@ var _ = Describe("Fs", func() {
 	Describe("Create", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Create("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -341,7 +340,7 @@ var _ = Describe("Fs", func() {
 	Describe("CreateTemp", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.CreateTemp("dir", "pattern")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -361,7 +360,7 @@ var _ = Describe("Fs", func() {
 	Describe("Glob", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Glob("*.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -380,7 +379,7 @@ var _ = Describe("Fs", func() {
 	Describe("Lstat", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Lstat("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -399,7 +398,7 @@ var _ = Describe("Fs", func() {
 	Describe("Mkdir", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Mkdir("dir", 0755)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -417,7 +416,7 @@ var _ = Describe("Fs", func() {
 	Describe("MkdirAll", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.MkdirAll("path/to/dir", 0755)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -435,7 +434,7 @@ var _ = Describe("Fs", func() {
 	Describe("MkdirTemp", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.MkdirTemp("dir", "pattern")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -454,7 +453,7 @@ var _ = Describe("Fs", func() {
 	Describe("OpenFile", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.OpenFile("test.txt", 0, 0644)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -475,7 +474,7 @@ var _ = Describe("Fs", func() {
 	Describe("ReadDir", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.ReadDir("dir")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -497,7 +496,7 @@ var _ = Describe("Fs", func() {
 	Describe("ReadDirNames", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.ReadDirNames("dir")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -516,7 +515,7 @@ var _ = Describe("Fs", func() {
 	Describe("ReadFile", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.ReadFile("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -535,7 +534,7 @@ var _ = Describe("Fs", func() {
 	Describe("ReadLink", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.ReadLink("link")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -553,7 +552,7 @@ var _ = Describe("Fs", func() {
 	Describe("Remove", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Remove("test.txt")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -570,7 +569,7 @@ var _ = Describe("Fs", func() {
 	Describe("RemoveAll", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.RemoveAll("dir")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -587,7 +586,7 @@ var _ = Describe("Fs", func() {
 	Describe("Rename", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Rename("old", "new")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -605,7 +604,7 @@ var _ = Describe("Fs", func() {
 	Describe("Sub", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.Sub("dir")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -627,7 +626,7 @@ var _ = Describe("Fs", func() {
 	Describe("Symlink", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.Symlink("target", "link")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -645,7 +644,7 @@ var _ = Describe("Fs", func() {
 	Describe("TempFile", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			_, err := f.TempFile("dir", "pattern")
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {
@@ -664,7 +663,7 @@ var _ = Describe("Fs", func() {
 	Describe("WriteFile", func() {
 		It("should return ErrNoMocks when no mocks are set", func() {
 			err := f.WriteFile("test.txt", []byte("data"), 0644)
-			Expect(err).To(MatchError(factory.ErrNoMocks))
+			Expect(err).To(MatchError(testfs.ErrNoMocks))
 		})
 
 		It("should execute the first mock", func() {

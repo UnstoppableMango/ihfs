@@ -1,11 +1,9 @@
 package testfs
 
 import (
-	"io/fs"
-	"testing/fstest"
+	"errors"
 	"time"
 
-	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 )
 
@@ -20,14 +18,12 @@ type (
 type Fs struct {
 	OpenFunc         func(string) (ihfs.File, error)
 	StatFunc         func(string) (ihfs.FileInfo, error)
-	CreateFunc       func(string) (ihfs.File, error)
-	CreateTempFunc   func(string, string) (ihfs.File, error)
-	WriteFileFunc    func(string, []byte, ihfs.FileMode) error
-	ReadFileFunc     func(string) ([]byte, error)
 	ChmodFunc        func(string, ihfs.FileMode) error
 	ChownFunc        func(string, int, int) error
 	ChtimesFunc      func(string, time.Time, time.Time) error
 	CopyFunc         func(string, ihfs.FS) error
+	CreateFunc       func(string) (ihfs.File, error)
+	CreateTempFunc   func(string, string) (ihfs.File, error)
 	GlobFunc         func(string) ([]string, error)
 	LstatFunc        func(string) (ihfs.FileInfo, error)
 	MkdirFunc        func(string, ihfs.FileMode) error
@@ -36,6 +32,7 @@ type Fs struct {
 	OpenFileFunc     func(string, int, ihfs.FileMode) (ihfs.File, error)
 	ReadDirFunc      func(string) ([]ihfs.DirEntry, error)
 	ReadDirNamesFunc func(string) ([]string, error)
+	ReadFileFunc     func(string) ([]byte, error)
 	ReadLinkFunc     func(string) (string, error)
 	RemoveFunc       func(string) error
 	RemoveAllFunc    func(string) error
@@ -43,6 +40,38 @@ type Fs struct {
 	SubFunc          func(string) (ihfs.FS, error)
 	SymlinkFunc      func(string, string) error
 	TempFileFunc     func(string, string) (string, error)
+	WriteFileFunc    func(string, []byte, ihfs.FileMode) error
+)
+
+var ErrNoMocks = errors.New("operation has no mocks")
+
+type Fs struct {
+	name         string
+	open         []OpenFunc
+	stat         []StatFunc
+	chmod        []ChmodFunc
+	chown        []ChownFunc
+	chtimes      []ChtimesFunc
+	copy         []CopyFunc
+	create       []CreateFunc
+	createTemp   []CreateTempFunc
+	glob         []GlobFunc
+	lstat        []LstatFunc
+	mkdir        []MkdirFunc
+	mkdirAll     []MkdirAllFunc
+	mkdirTemp    []MkdirTempFunc
+	openFile     []OpenFileFunc
+	readDir      []ReadDirFunc
+	readDirNames []ReadDirNamesFunc
+	readFile     []ReadFileFunc
+	readLink     []ReadLinkFunc
+	remove       []RemoveFunc
+	removeAll    []RemoveAllFunc
+	rename       []RenameFunc
+	sub          []SubFunc
+	symlink      []SymlinkFunc
+	tempFile     []TempFileFunc
+	writeFile    []WriteFileFunc
 }
 
 // New creates a new test [Fs] with the given options.
@@ -75,8 +104,9 @@ func New(opts ...Option) Fs {
 		TempFileFunc:     defaultTempFileFunc,
 	}
 
-	fopt.ApplyAll(&fs, opts)
-	return fs
+	open := f.open[0]
+	f.open = f.open[1:]
+	return open(path)
 }
 
 // Open implements [ihfs.FS].
