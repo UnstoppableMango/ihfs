@@ -45,6 +45,7 @@
 
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
+              bashInteractive
               ginkgo
               go
               goEnv
