@@ -9,13 +9,12 @@ import (
 
 // FileInfo is a configurable test [fs.FileInfo] implementation.
 type FileInfo struct {
-	name string
-
-	IsDirFunc   func() bool
-	SizeFunc    func() int64
-	ModeFunc    func() fs.FileMode
-	ModTimeFunc func() time.Time
-	SysFunc     func() any
+	NameV    string
+	IsDirV   bool
+	SizeV    int64
+	ModeV    fs.FileMode
+	ModTimeV time.Time
+	SysV     any
 }
 
 // NewFileInfo creates a new [FileInfo] with the given name and default zero values.

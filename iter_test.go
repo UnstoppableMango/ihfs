@@ -21,7 +21,6 @@ var _ = Describe("Catch", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		paths, entries := slices.Collect2(seq2)
-
 		Expect(paths).To(HaveExactElements(
 			"./testdata/2-files",
 			"testdata/2-files/one.txt",
@@ -34,10 +33,10 @@ var _ = Describe("Catch", func() {
 		fsys := errfs.New(fs.ErrNotExist)
 		seq := ihfs.Iter(fsys, "/nonexistent")
 
-		seq2, err := ihfs.Catch(seq)
+		seq, err := ihfs.Catch(ihfs.Iter(fsys, "/nonexistent"))
 
 		Expect(err).To(MatchError(fs.ErrNotExist))
-		Expect(seq2).To(BeNil())
+		Expect(seq).To(BeNil())
 	})
 })
 
@@ -48,7 +47,6 @@ var _ = Describe("Iter", func() {
 		seq := ihfs.IterPaths(fsys, "/nonexistent")
 
 		paths, errors := slices.Collect2(seq)
-
 		Expect(paths).To(ConsistOf("/nonexistent"))
 		Expect(errors).To(ConsistOf(fs.ErrNotExist))
 	})

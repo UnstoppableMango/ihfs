@@ -7,11 +7,12 @@ import (
 	"github.com/unmango/go/slices"
 )
 
-// WalkFunc is an alias for [fs.WalkDirFunc].
 type WalkFunc = fs.WalkDirFunc
 
-// SkipDir is an alias for [fs.SkipDir].
-var SkipDir = fs.SkipDir
+var (
+	SkipAll = fs.SkipAll
+	SkipDir = fs.SkipDir
+)
 
 // Catch iterates over seq until an error occurs and returns the error and
 // a Seq iterating over all paths and directory entries found before the error.
@@ -44,7 +45,7 @@ func Iter(fsys FS, root string) iter.Seq3[string, DirEntry, error] {
 	return func(yield func(string, DirEntry, error) bool) {
 		_ = Walk(fsys, root, func(path string, d fs.DirEntry, err error) error {
 			if !yield(path, d, err) {
-				return SkipDir
+				return SkipAll
 			}
 			return nil
 		})
@@ -56,7 +57,7 @@ func IterPaths(fsys FS, root string) iter.Seq2[string, error] {
 	return func(yield func(string, error) bool) {
 		_ = Walk(fsys, root, func(path string, _ fs.DirEntry, err error) error {
 			if !yield(path, err) {
-				return SkipDir
+				return SkipAll
 			}
 			return nil
 		})
@@ -68,7 +69,7 @@ func IterDirEntries(fsys FS, root string) iter.Seq2[DirEntry, error] {
 	return func(yield func(DirEntry, error) bool) {
 		_ = Walk(fsys, root, func(_ string, d fs.DirEntry, err error) error {
 			if !yield(d, err) {
-				return SkipDir
+				return SkipAll
 			}
 			return nil
 		})
