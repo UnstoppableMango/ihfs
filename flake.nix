@@ -26,25 +26,46 @@
     inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
-      imports = [ inputs.treefmt-nix.flakeModule ];
+
+      imports = [
+        inputs.treefmt-nix.flakeModule
+        ./ghfs
+      ];
 
       perSystem =
-        { inputs', pkgs, ... }:
+        {
+          inputs',
+          pkgs,
+          lib,
+          ...
+        }:
         let
           inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
 
           goEnv = mkGoEnv { pwd = ./.; };
-        in
-        {
-          packages.default = buildGoApplication {
+
+          ihfs = buildGoApplication {
             pname = "ihfs";
             version = "0.0.1";
-            src = ./.;
             modules = ./gomod2nix.toml;
+
+            src =
+              with lib;
+              cleanSourceWith {
+                src = cleanSource ./.;
+                filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
+              };
+          };
+        in
+        {
+          packages = {
+            inherit ihfs;
+            default = ihfs;
           };
 
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
+              bashInteractive
               ginkgo
               go
               goEnv
