@@ -9,8 +9,10 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-// MapFS is an alias for fstest.MapFS.
-type MapFS = fstest.MapFS
+type (
+	MapFS   = fstest.MapFS
+	MapFile = fstest.MapFile
+)
 
 // TODO: make this API less awkward to use in tests
 
