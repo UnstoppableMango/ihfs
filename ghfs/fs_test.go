@@ -458,4 +458,61 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(MatchError(ihfs.ErrNotExist))
 		})
 	})
+
+	Describe("URL encoding", func() {
+		It("should escape branch query parameter with spaces", func() {
+			var capturedURL string
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetReposContentsByOwnerByRepoByPath,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						capturedURL = r.URL.String()
+						w.Write([]byte(`{"name": "file.txt"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			// Branch with spaces - note: this will be lost during url.Parse in clean()
+			// but testing that if it makes it through, query param is escaped
+			_, err := fsys.Open("owner/repo/blob/feature branch/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			// The branch name should be URL-encoded in the query parameter
+			Expect(capturedURL).To(ContainSubstring("ref=feature+branch"))
+		})
+	})
+
+	Describe("Long nested paths", func() {
+		var fsys ihfs.FS
+
+		BeforeEach(func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetReposContentsByOwnerByRepoByPath,
+					github.RepositoryContent{
+						Name: github.Ptr("deep.txt"),
+					},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys = ghfs.New(ghfs.WithHttpClient(mockHttp))
+		})
+
+		It("should handle deeply nested blob paths", func() {
+			f, err := fsys.Open("owner/repo/blob/main/path/to/deep/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
+			c := f.(*ghfs.Content)
+			Expect(c.Name()).To(Equal("path/to/deep/file.txt"))
+		})
+
+		It("should handle deeply nested tree paths", func() {
+			f, err := fsys.Open("owner/repo/tree/main/path/to/directory")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).To(BeAssignableToTypeOf(&ghfs.Content{}))
+			c := f.(*ghfs.Content)
+			Expect(c.Name()).To(Equal("path/to/directory"))
+		})
+	})
 })
