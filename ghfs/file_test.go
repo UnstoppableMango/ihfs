@@ -2,6 +2,7 @@ package ghfs_test
 
 import (
 	"bytes"
+	"io/fs"
 	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -85,22 +86,22 @@ var _ = Describe("File", func() {
 			Expect(info.Sys()).To(BeAssignableToTypeOf(&bytes.Reader{}))
 		})
 
-		It("should panic on IsDir", func() {
+		It("should return false for IsDir", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.IsDir() }).To(Panic())
+			Expect(info.IsDir()).To(BeFalse())
 		})
 
-		It("should panic on ModTime", func() {
+		It("should return zero time for ModTime", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.ModTime() }).To(Panic())
+			Expect(info.ModTime().IsZero()).To(BeTrue())
 		})
 
-		It("should panic on Mode", func() {
+		It("should return read-only mode for Mode", func() {
 			info, err := file.Stat()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(func() { info.Mode() }).To(Panic())
+			Expect(info.Mode()).To(Equal(fs.FileMode(0444)))
 		})
 	})
 

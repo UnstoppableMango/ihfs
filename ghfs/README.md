@@ -2,6 +2,8 @@
 
 An `io/fs` implementation for the GitHub API.
 
+Still WIP.
+
 ## Other Projects
 
 - ghfs: <https://github.com/k1LoW/ghfs>

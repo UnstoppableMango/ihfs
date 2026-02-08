@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/google/go-github/v82/github"
@@ -43,12 +44,21 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	// also, potential to simply pass the given path directly w/o cleaning
 	switch len(parts) {
 	case 1:
-		return f.openOwner(parts[0])
+		if p := parts[0]; p != "" {
+			return f.openOwner(p)
+		}
+		return f.openCurrent()
 	case 2:
 		return f.openRepository(parts[0], parts[1])
 	case 4:
-		return f.openBranch(parts[0], parts[1], parts[3])
+		// Expected pattern: owner/repo/tree/branch
+		if parts[2] == "tree" {
+			return f.openBranch(parts[0], parts[1], parts[3])
+		}
 	case 5:
+		// Expected patterns:
+		// - owner/repo/blob/branch/path
+		// - owner/repo/releases/(tag|download)/TAG
 		if parts[2] == "blob" {
 			return f.openContent(parts[0], parts[1], parts[3], parts[4])
 		}
@@ -56,12 +66,18 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	}
 
 	if len(parts) >= 6 {
-		if parts[2] == "releases" {
+		// Expected patterns:
+		// - owner/repo/releases/(tag|download)/TAG/asset
+		// - owner/repo/(tree|blob)/branch/path/to/item
+		if parts[2] == "releases" && (parts[3] == "tag" || parts[3] == "download") {
 			return f.openAsset(parts[0], parts[1], parts[4], parts[5])
 		}
-		return f.openContent(parts[0], parts[1], parts[3],
-			strings.Join(parts[4:], "/"),
-		)
+
+		if parts[2] == "tree" || parts[2] == "blob" {
+			return f.openContent(parts[0], parts[1], parts[3],
+				strings.Join(parts[4:], "/"),
+			)
+		}
 	}
 
 	return nil, &ihfs.PathError{
@@ -104,6 +120,14 @@ func (f *Fs) openOwner(name string) (*Owner, error) {
 	return &Owner{file: file}, nil
 }
 
+func (f *Fs) openCurrent() (*Owner, error) {
+	if file, err := f.open("", "user"); err != nil {
+		return nil, err
+	} else {
+		return &Owner{file: file}, nil
+	}
+}
+
 func (f *Fs) openRepository(owner, name string) (*Repository, error) {
 	url := fmt.Sprintf("repos/%v/%v", owner, name)
 	file, err := f.open(name, url)
@@ -132,7 +156,10 @@ func (f *Fs) openBranch(owner, repository, name string) (*Branch, error) {
 }
 
 func (f *Fs) openContent(owner, repository, branch, name string) (*Content, error) {
-	url := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v", owner, repository, name, branch)
+	url := fmt.Sprintf("repos/%v/%v/contents/%v?ref=%v",
+		owner, repository, name, url.QueryEscape(branch),
+	)
+
 	file, err := f.open(name, url)
 	if err != nil {
 		return nil, err
