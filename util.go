@@ -40,7 +40,11 @@ func Copy(dir string, fsys FS) error {
 		destPath := filepath.Join(dir, path)
 
 		if d.IsDir() {
-			return os.MkdirAll(destPath, d.Type().Perm())
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			return os.MkdirAll(destPath, info.Mode().Perm())
 		}
 
 		src, err := fsys.Open(path)
@@ -53,7 +57,12 @@ func Copy(dir string, fsys FS) error {
 			return &fs.PathError{Op: "copy", Path: destPath, Err: fs.ErrExist}
 		}
 
-		dest, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, d.Type().Perm())
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		dest, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, info.Mode().Perm())
 		if err != nil {
 			return err
 		}

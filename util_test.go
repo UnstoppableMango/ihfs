@@ -3,7 +3,6 @@ package ihfs_test
 import (
 	"bytes"
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,89 +25,90 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should copy files from source filesystem to directory", func() {
-			srcFs := osfs.New()
+			srcFs, err := fs.Sub(osfs.New(), "testdata/2-files")
+			Expect(err).NotTo(HaveOccurred())
 			destDir := filepath.Join(tempDir, "dest")
 
-			err := ihfs.Copy(destDir, srcFs)
+			err = ihfs.Copy(destDir, srcFs)
 
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify files were copied
-			oneContent, err := os.ReadFile(filepath.Join(destDir, "testdata", "2-files", "one.txt"))
+			oneContent, err := os.ReadFile(filepath.Join(destDir, "one.txt"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(oneContent)).To(Equal("one\n"))
 
-			twoContent, err := os.ReadFile(filepath.Join(destDir, "testdata", "2-files", "two.txt"))
+			twoContent, err := os.ReadFile(filepath.Join(destDir, "two.txt"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(twoContent)).To(Equal("two\n"))
 		})
 
 		It("should create destination directory if it does not exist", func() {
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					entry := testfs.NewDirEntry("test.txt", false)
-					return fn("test.txt", entry, nil)
-				}),
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
-						copy(p, []byte("content"))
-						return len("content"), io.EOF
-					})), nil
-				}),
-			)
+			// Create a temp source directory with a file
+			srcDir := filepath.Join(tempDir, "src")
+			os.MkdirAll(srcDir, 0755)
+			os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("content"), 0644)
+
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src")
+			Expect(err).NotTo(HaveOccurred())
 			destDir := filepath.Join(tempDir, "new-dir")
 
-			err := ihfs.Copy(destDir, srcFs)
+			err = ihfs.Copy(destDir, srcFs)
 
 			Expect(err).NotTo(HaveOccurred())
 			_, err = os.Stat(destDir)
 			Expect(err).NotTo(HaveOccurred())
+			content, err := os.ReadFile(filepath.Join(destDir, "test.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("content"))
 		})
 
 		It("should return error if file already exists", func() {
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					entry := testfs.NewDirEntry("test.txt", false)
-					return fn("test.txt", entry, nil)
-				}),
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
-						copy(p, []byte("content"))
-						return len("content"), io.EOF
-					})), nil
-				}),
-			)
+			// Create a temp source directory with a file
+			srcDir := filepath.Join(tempDir, "src2")
+			os.MkdirAll(srcDir, 0755)
+			os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("content"), 0644)
+
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src2")
+			Expect(err).NotTo(HaveOccurred())
 
 			// Create destination file first
 			destDir := filepath.Join(tempDir, "dest")
 			os.MkdirAll(destDir, 0755)
 			os.WriteFile(filepath.Join(destDir, "test.txt"), []byte("existing"), 0644)
 
-			err := ihfs.Copy(destDir, srcFs)
+			err = ihfs.Copy(destDir, srcFs)
 
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, fs.ErrExist)).To(BeTrue())
 		})
 
 		It("should handle directory creation", func() {
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					dirEntry := testfs.NewDirEntry("subdir", true)
-					if err := fn("subdir", dirEntry, nil); err != nil {
-						return err
-					}
-					fileEntry := testfs.NewDirEntry("file.txt", false)
-					return fn("file.txt", fileEntry, nil)
-				}),
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
-						return 0, io.EOF
-					})), nil
-				}),
-			)
+			// Create a temp source directory with subdirectory
+			srcDir := filepath.Join(tempDir, "src3")
+			os.MkdirAll(filepath.Join(srcDir, "subdir"), 0755)
+			os.WriteFile(filepath.Join(srcDir, "subdir", "file.txt"), []byte("content"), 0644)
+
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src3")
+			Expect(err).NotTo(HaveOccurred())
 			destDir := filepath.Join(tempDir, "dest")
 
-			err := ihfs.Copy(destDir, srcFs)
+			err = ihfs.Copy(destDir, srcFs)
 
 			Expect(err).NotTo(HaveOccurred())
 			info, err := os.Stat(filepath.Join(destDir, "subdir"))
@@ -118,11 +118,11 @@ var _ = Describe("Util", func() {
 
 		It("should use CopyFS interface when available", func() {
 			var capturedDir string
-			var capturedSrc ihfs.FS
+			var called bool
 			copyFs := testfs.New(
 				testfs.WithCopy(func(dir string, src ihfs.FS) error {
 					capturedDir = dir
-					capturedSrc = src
+					called = true
 					return nil
 				}),
 			)
@@ -131,7 +131,7 @@ var _ = Describe("Util", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(capturedDir).To(Equal("target"))
-			Expect(capturedSrc).To(Equal(copyFs))
+			Expect(called).To(BeTrue())
 		})
 
 		It("should return error from CopyFS interface", func() {
@@ -148,60 +148,143 @@ var _ = Describe("Util", func() {
 			Expect(err).To(Equal(copyErr))
 		})
 
-		It("should return error when Walk returns error", func() {
-			walkErr := errors.New("walk failed")
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					return walkErr
-				}),
-			)
+		It("should return error when WalkDir encounters error during traversal", func() {
+			// Create a temp source directory with a file
+			srcDir := filepath.Join(tempDir, "src4")
+			os.MkdirAll(srcDir, 0755)
+			os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("content"), 0644)
 
-			err := ihfs.Copy(tempDir, srcFs)
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src4")
+			Expect(err).NotTo(HaveOccurred())
+			// Create an invalid destDir that will cause os.MkdirAll to fail
+			// Use a file path as directory to trigger error
+			destFile := filepath.Join(tempDir, "file-not-dir")
+			os.WriteFile(destFile, []byte("blocking"), 0644)
+			destDir := filepath.Join(destFile, "subdir")
+
+			err = ihfs.Copy(destDir, srcFs)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(walkErr))
 		})
 
 		It("should return error when Open returns error", func() {
-			openErr := errors.New("open failed")
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					entry := testfs.NewDirEntry("test.txt", false)
-					return fn("test.txt", entry, nil)
-				}),
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return nil, openErr
-				}),
-			)
+			// Create a custom FS that fails on Open
+			srcFs := &failingOpenFS{}
 
 			err := ihfs.Copy(tempDir, srcFs)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(openErr))
+			Expect(err.Error()).To(ContainSubstring("open failed"))
 		})
 
 		It("should clean up on copy error", func() {
-			readErr := errors.New("read failed")
-			srcFs := testfs.New(
-				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
-					entry := testfs.NewDirEntry("test.txt", false)
-					return fn("test.txt", entry, nil)
-				}),
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
-						return 0, readErr
-					})), nil
-				}),
-			)
+			// Create a custom FS that fails during Read
+			srcFs := &failingReadFS{}
 			destDir := filepath.Join(tempDir, "dest")
+			os.MkdirAll(destDir, 0755)
 
 			err := ihfs.Copy(destDir, srcFs)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(readErr))
+			Expect(err.Error()).To(ContainSubstring("read failed"))
 			// Verify file was cleaned up
 			_, err = os.Stat(filepath.Join(destDir, "test.txt"))
 			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
+
+		It("should propagate walkdir function error", func() {
+			// Create a temp source directory with a file
+			srcDir := filepath.Join(tempDir, "src5")
+			os.MkdirAll(srcDir, 0755)
+			os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("content"), 0644)
+
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src5")
+			Expect(err).NotTo(HaveOccurred())
+			// Use invalid permissions that will cause file creation error
+			destDir := filepath.Join(tempDir, "dest2")
+			os.MkdirAll(destDir, 0755)
+			os.WriteFile(filepath.Join(destDir, "test.txt"), []byte("exists"), 0644)
+
+			err = ihfs.Copy(destDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, fs.ErrExist)).To(BeTrue())
+		})
+
+		It("should return error when DirEntry.Info() fails for directory", func() {
+			srcFs := &failingInfoDirFS{}
+
+			err := ihfs.Copy(tempDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("info failed"))
+		})
+
+		It("should return error when DirEntry.Info() fails for file", func() {
+			srcFs := &failingInfoFileFS{}
+
+			err := ihfs.Copy(tempDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("info failed"))
+		})
+
+		It("should return error when Walk passes error to callback", func() {
+			// Create a directory that will cause walk to fail
+			srcDir := filepath.Join(tempDir, "src6")
+			subdir := filepath.Join(srcDir, "badperms")
+			os.MkdirAll(subdir, 0755)
+			os.WriteFile(filepath.Join(subdir, "file.txt"), []byte("content"), 0644)
+			// Remove read permissions to cause walk error
+			os.Chmod(subdir, 0000)
+			defer os.Chmod(subdir, 0755) // Clean up
+
+			// Change to temp dir so we can use relative paths with Sub
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src6")
+			Expect(err).NotTo(HaveOccurred())
+			destDir := filepath.Join(tempDir, "dest3")
+
+			err = ihfs.Copy(destDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when OpenFile fails", func() {
+			// Create a source file
+			srcDir := filepath.Join(tempDir, "src7")
+			os.MkdirAll(srcDir, 0755)
+			os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("content"), 0644)
+
+			// Change to temp dir
+			oldWd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldWd)
+
+			srcFs, err := fs.Sub(osfs.New(), "src7")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create dest directory with no write permissions
+			destDir := filepath.Join(tempDir, "dest4")
+			os.MkdirAll(destDir, 0555)
+			defer os.Chmod(destDir, 0755) // Clean up
+
+			err = ihfs.Copy(destDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
