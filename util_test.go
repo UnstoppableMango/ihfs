@@ -31,20 +31,10 @@ func (m mockFileInfo) Sys() any           { return nil }
 
 var _ = Describe("Util", func() {
 	Describe("Copy", func() {
-		var (
-			tempDir string
-			err     error
-		)
+		var tempDir string
 
 		BeforeEach(func() {
-			tempDir, err = os.MkdirTemp("", "ihfs-copy-test-*")
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			if tempDir != "" {
-				os.RemoveAll(tempDir)
-			}
+			tempDir = GinkgoT().TempDir()
 		})
 
 		It("should copy files from source filesystem to directory", func() {
