@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 )
 
