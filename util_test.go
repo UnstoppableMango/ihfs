@@ -3,7 +3,10 @@ package ihfs_test
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -27,6 +30,203 @@ func (m mockFileInfo) IsDir() bool        { return m.isDir }
 func (m mockFileInfo) Sys() any           { return nil }
 
 var _ = Describe("Util", func() {
+	Describe("Copy", func() {
+		var (
+			tempDir string
+			err     error
+		)
+
+		BeforeEach(func() {
+			tempDir, err = os.MkdirTemp("", "ihfs-copy-test-*")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			if tempDir != "" {
+				os.RemoveAll(tempDir)
+			}
+		})
+
+		It("should copy files from source filesystem to directory", func() {
+			srcFs := osfs.New()
+			destDir := filepath.Join(tempDir, "dest")
+
+			err := ihfs.Copy(destDir, srcFs)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify files were copied
+			oneContent, err := os.ReadFile(filepath.Join(destDir, "testdata", "2-files", "one.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(oneContent)).To(Equal("one\n"))
+
+			twoContent, err := os.ReadFile(filepath.Join(destDir, "testdata", "2-files", "two.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(twoContent)).To(Equal("two\n"))
+		})
+
+		It("should create destination directory if it does not exist", func() {
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					entry := testfs.NewDirEntry("test.txt", false)
+					return fn("test.txt", entry, nil)
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
+						copy(p, []byte("content"))
+						return len("content"), io.EOF
+					})), nil
+				}),
+			)
+			destDir := filepath.Join(tempDir, "new-dir")
+
+			err := ihfs.Copy(destDir, srcFs)
+
+			Expect(err).NotTo(HaveOccurred())
+			_, err = os.Stat(destDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error if file already exists", func() {
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					entry := testfs.NewDirEntry("test.txt", false)
+					return fn("test.txt", entry, nil)
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
+						copy(p, []byte("content"))
+						return len("content"), io.EOF
+					})), nil
+				}),
+			)
+
+			// Create destination file first
+			destDir := filepath.Join(tempDir, "dest")
+			os.MkdirAll(destDir, 0755)
+			os.WriteFile(filepath.Join(destDir, "test.txt"), []byte("existing"), 0644)
+
+			err := ihfs.Copy(destDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, fs.ErrExist)).To(BeTrue())
+		})
+
+		It("should handle directory creation", func() {
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					dirEntry := testfs.NewDirEntry("subdir", true)
+					if err := fn("subdir", dirEntry, nil); err != nil {
+						return err
+					}
+					fileEntry := testfs.NewDirEntry("file.txt", false)
+					return fn("file.txt", fileEntry, nil)
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
+						return 0, io.EOF
+					})), nil
+				}),
+			)
+			destDir := filepath.Join(tempDir, "dest")
+
+			err := ihfs.Copy(destDir, srcFs)
+
+			Expect(err).NotTo(HaveOccurred())
+			info, err := os.Stat(filepath.Join(destDir, "subdir"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+		})
+
+		It("should use CopyFS interface when available", func() {
+			var capturedDir string
+			var capturedSrc ihfs.FS
+			copyFs := testfs.New(
+				testfs.WithCopy(func(dir string, src ihfs.FS) error {
+					capturedDir = dir
+					capturedSrc = src
+					return nil
+				}),
+			)
+
+			err := ihfs.Copy("target", copyFs)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedDir).To(Equal("target"))
+			Expect(capturedSrc).To(Equal(copyFs))
+		})
+
+		It("should return error from CopyFS interface", func() {
+			copyErr := errors.New("copy failed")
+			copyFs := testfs.New(
+				testfs.WithCopy(func(dir string, src ihfs.FS) error {
+					return copyErr
+				}),
+			)
+
+			err := ihfs.Copy("target", copyFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(copyErr))
+		})
+
+		It("should return error when Walk returns error", func() {
+			walkErr := errors.New("walk failed")
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					return walkErr
+				}),
+			)
+
+			err := ihfs.Copy(tempDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(walkErr))
+		})
+
+		It("should return error when Open returns error", func() {
+			openErr := errors.New("open failed")
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					entry := testfs.NewDirEntry("test.txt", false)
+					return fn("test.txt", entry, nil)
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return nil, openErr
+				}),
+			)
+
+			err := ihfs.Copy(tempDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(openErr))
+		})
+
+		It("should clean up on copy error", func() {
+			readErr := errors.New("read failed")
+			srcFs := testfs.New(
+				testfs.WithWalk(func(root string, fn fs.WalkDirFunc) error {
+					entry := testfs.NewDirEntry("test.txt", false)
+					return fn("test.txt", entry, nil)
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return testfs.NewFile(testfs.WithRead(func(p []byte) (int, error) {
+						return 0, readErr
+					})), nil
+				}),
+			)
+			destDir := filepath.Join(tempDir, "dest")
+
+			err := ihfs.Copy(destDir, srcFs)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(readErr))
+			// Verify file was cleaned up
+			_, err = os.Stat(filepath.Join(destDir, "test.txt"))
+			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
+	})
+
 	Describe("DirExists", func() {
 		It("should return true when path is a directory", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 )
 
 var ErrNotImplemented = errors.New("not implemented")
@@ -14,6 +16,47 @@ var (
 	ReadDir = fs.ReadDir
 	Stat    = fs.Stat
 )
+
+func Copy(dir string, fsys FS) error {
+	if copier, ok := fsys.(CopyFS); ok {
+		return copier.Copy(dir, fsys)
+	}
+
+	return Walk(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(dir, path)
+
+		if d.IsDir() {
+			return os.MkdirAll(destPath, d.Type().Perm())
+		}
+
+		src, err := fsys.Open(path)
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		if _, err := os.Stat(destPath); err == nil {
+			return &fs.PathError{Op: "copy", Path: destPath, Err: fs.ErrExist}
+		}
+
+		dest, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, d.Type().Perm())
+		if err != nil {
+			return err
+		}
+		defer dest.Close()
+
+		if _, err := io.Copy(dest, src); err != nil {
+			os.Remove(destPath)
+			return err
+		}
+
+		return nil
+	})
+}
 
 // DirExists reports if the given path exists and is a directory.
 //
