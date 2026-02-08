@@ -327,4 +327,135 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	Describe("Empty path handling", func() {
+		It("should return error for empty path after cleaning", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetUser,
+					github.User{Name: github.Ptr("current-user")},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			// Empty string should call openCurrent, not openOwner("")
+			f, err := fsys.Open("")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).To(BeAssignableToTypeOf(&ghfs.Owner{}))
+		})
+
+		It("should return error when openCurrent fails", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetUser,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+						w.Write([]byte(`{"message": "Requires authentication"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			_, err := fsys.Open("")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Multiple accessor calls", func() {
+		It("should support calling User() multiple times", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetUsersByUsername,
+					github.User{Name: github.Ptr("test-user")},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			f, err := fsys.Open("test-user")
+			Expect(err).NotTo(HaveOccurred())
+			owner := f.(*ghfs.Owner)
+
+			// First call
+			u1, err := owner.User()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(u1.GetName()).To(Equal("test-user"))
+
+			// Second call should work due to Seek(0, 0) in dec()
+			u2, err := owner.User()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(u2.GetName()).To(Equal("test-user"))
+		})
+
+		It("should support calling Repository() multiple times", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetReposByOwnerByRepo,
+					github.Repository{
+						Name: github.Ptr("test-repo"),
+						Owner: &github.User{
+							Name: github.Ptr("test-user"),
+						},
+					},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			f, err := fsys.Open("test-user/test-repo")
+			Expect(err).NotTo(HaveOccurred())
+			repo := f.(*ghfs.Repository)
+
+			// First call
+			r1, err := repo.Repository()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(r1.GetName()).To(Equal("test-repo"))
+
+			// Second call should work
+			r2, err := repo.Repository()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(r2.GetName()).To(Equal("test-repo"))
+		})
+	})
+
+	Describe("Invalid route patterns", func() {
+		var fsys ihfs.FS
+
+		BeforeEach(func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys = ghfs.New(ghfs.WithHttpClient(mockHttp))
+		})
+
+		It("should return error for 4-segment path with invalid type", func() {
+			// Not "tree" in position 2
+			_, err := fsys.Open("owner/repo/invalid/branch")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrNotExist))
+		})
+
+		It("should return error for 6-segment path with invalid releases type", func() {
+			// Not "tag" or "download" in position 3 for releases
+			_, err := fsys.Open("owner/repo/releases/invalid/tag/asset")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrNotExist))
+		})
+
+		It("should return error for 6-segment path without tree or blob", func() {
+			// Not "tree" or "blob" in position 2
+			_, err := fsys.Open("owner/repo/invalid/branch/path/file")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrNotExist))
+		})
+	})
 })
