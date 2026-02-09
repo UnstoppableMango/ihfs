@@ -27,34 +27,38 @@ var (
 	Stat = fs.Stat
 )
 
-func Copy(dir string, fsys FS) error {
-	if copier, ok := fsys.(CopyFS); ok {
-		return copier.Copy(dir, fsys)
+func Copy(dest FS, dir string, src FS) error {
+	if copier, ok := dest.(CopyFS); ok {
+		return copier.Copy(dir, src)
 	}
 
-	return Walk(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return Walk(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		destPath := filepath.Join(dir, path)
+		destPath := filepath.Join(dir, filepath.FromSlash(path))
 
 		if d.IsDir() {
 			info, err := d.Info()
 			if err != nil {
 				return err
 			}
-			return os.MkdirAll(destPath, info.Mode().Perm())
+			return MkdirAll(dest, destPath, info.Mode().Perm())
 		}
 
-		src, err := fsys.Open(path)
+		src, err := src.Open(path)
 		if err != nil {
 			return err
 		}
 		defer src.Close()
 
-		if _, err := os.Stat(destPath); err == nil {
-			return &fs.PathError{Op: "copy", Path: destPath, Err: fs.ErrExist}
+		if _, err := Stat(dest, destPath); err == nil {
+			return &fs.PathError{
+				Op:   "copy",
+				Path: destPath,
+				Err:  fs.ErrExist,
+			}
 		}
 
 		info, err := d.Info()
@@ -62,14 +66,23 @@ func Copy(dir string, fsys FS) error {
 			return err
 		}
 
-		dest, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, info.Mode().Perm())
+		destf, err := OpenFile(dest,
+			destPath,
+			os.O_CREATE|os.O_WRONLY|os.O_EXCL,
+			info.Mode().Perm(),
+		)
 		if err != nil {
 			return err
 		}
-		defer dest.Close()
+		defer destf.Close()
 
-		if _, err := io.Copy(dest, src); err != nil {
-			os.Remove(destPath)
+		w, ok := destf.(io.Writer)
+		if !ok {
+			return fmt.Errorf("copy: %w", ErrNotImplemented)
+		}
+
+		if _, err := io.Copy(w, src); err != nil {
+			_ = Remove(dest, destPath)
 			return err
 		}
 
@@ -171,6 +184,28 @@ func ReadDirNames(fsys FS, name string) ([]string, error) {
 	return names, nil
 }
 
+// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
+//
+// If the FS does not implement [OpenFileFS], OpenFile returns
+// an error that can be checked with [errors.Is] for [ErrNotImplemented].
+func OpenFile(fsys FS, name string, flag int, perm FileMode) (File, error) {
+	if opener, ok := fsys.(OpenFileFS); ok {
+		return opener.OpenFile(name, flag, perm)
+	}
+	return nil, fmt.Errorf("open file: %w", ErrNotImplemented)
+}
+
+// Remove removes the named file or (empty) directory.
+//
+// If the FS does not implement [RemoveFS], Remove returns
+// an error that can be checked with [errors.Is] for [ErrNotImplemented].
+func Remove(fsys FS, name string) error {
+	if remover, ok := fsys.(RemoveFS); ok {
+		return remover.Remove(name)
+	}
+	return fmt.Errorf("remove: %w", ErrNotImplemented)
+}
+
 // WriteFile writes data to a file named by name in the given FS.
 // The file mode perm is used when creating the file.
 //
@@ -187,8 +222,8 @@ func WriteFile(fsys FS, name string, data []byte, perm FileMode) error {
 // WriteReader reads all data from r and writes it to name in fsys using [WriteFile].
 // It returns an error if reading from r fails or if [WriteFile] reports an error.
 func WriteReader(fsys FS, name string, r io.Reader, perm FileMode) error {
-	data, err := io.ReadAll(r)
-	if err != nil {
+	// TODO: probably a more efficient way to do this
+	if data, err := io.ReadAll(r); err != nil {
 		return fmt.Errorf("reading: %w", err)
 	}
 	return WriteFile(fsys, name, data, perm)
