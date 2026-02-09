@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
 )
 
 var ErrNotImplemented = errors.New("not implemented")
@@ -48,6 +49,49 @@ func IsDir(fsys FS, path string) (bool, error) {
 	} else {
 		return info.IsDir(), nil
 	}
+}
+
+// Mkdir creates a new directory with the specified name and permission bits.
+//
+// If fsys implements [MkdirFS], Mkdir calls fsys.Mkdir.
+// Otherwise, Mkdir returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Mkdir(fsys FS, path string, perm FileMode) error {
+	if fs, ok := fsys.(MkdirFS); ok {
+		return fs.Mkdir(path, perm)
+	}
+	return fmt.Errorf("mkdir: %w", ErrNotImplemented)
+}
+
+// MkdirAll creates a new directory named path, along with any necessary parents, and sets permission bits.
+//
+// If fsys implements [MkdirAllFS], MkdirAll calls fsys.MkdirAll.
+// Otherwise, MkdirAll attempts to create the directory and parents recursively.
+func MkdirAll(fsys FS, path string, perm FileMode) error {
+	if fs, ok := fsys.(MkdirAllFS); ok {
+		return fs.MkdirAll(path, perm)
+	}
+
+	if path == "" {
+		return nil
+	}
+
+	if err := Mkdir(fsys, path, perm); err != nil {
+		if !errors.Is(err, ErrNotExist) {
+			return err
+		}
+
+		parent := filepath.Dir(path)
+		if parent == path {
+			return err
+		}
+		if err := MkdirAll(fsys, parent, perm); err != nil {
+			return err
+		}
+		return Mkdir(fsys, path, perm)
+	}
+
+	return nil
 }
 
 // ReadDirNames reads the named directory and returns a list of names.

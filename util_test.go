@@ -241,6 +241,173 @@ var _ = Describe("Util", func() {
 		})
 	})
 
+	Describe("Mkdir", func() {
+		It("should call underlying Mkdir when MkdirFS is implemented", func() {
+			var capturedPath string
+			var capturedPerm ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithMkdir(func(path string, perm ihfs.FileMode) error {
+				capturedPath = path
+				capturedPerm = perm
+				return nil
+			}))
+
+			err := ihfs.Mkdir(fsys, "testdir", 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedPath).To(Equal("testdir"))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o755)))
+		})
+
+		It("should return ErrNotImplemented when MkdirFS not implemented", func() {
+			fsys := testfs.BoringFs{}
+
+			err := ihfs.Mkdir(fsys, "testdir", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+
+		It("should propagate errors from underlying Mkdir", func() {
+			mkdirErr := errors.New("mkdir error")
+			fsys := testfs.New(testfs.WithMkdir(func(path string, perm ihfs.FileMode) error {
+				return mkdirErr
+			}))
+
+			err := ihfs.Mkdir(fsys, "testdir", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(mkdirErr))
+		})
+	})
+
+	Describe("MkdirAll", func() {
+		It("should call underlying MkdirAll when MkdirAllFS is implemented", func() {
+			var capturedPath string
+			var capturedPerm ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+				capturedPath = path
+				capturedPerm = perm
+				return nil
+			}))
+
+			err := ihfs.MkdirAll(fsys, "parent/child", 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedPath).To(Equal("parent/child"))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o755)))
+		})
+
+		It("should return nil for empty path", func() {
+			fsys := testfs.BoringFs{}
+
+			err := ihfs.MkdirAll(fsys, "", 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should create directory when Mkdir succeeds", func() {
+			var capturedPath string
+
+			fsys := &mkdirOnlyFS{
+				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+					capturedPath = path
+					return nil
+				},
+			}
+
+			err := ihfs.MkdirAll(fsys, "testdir", 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedPath).To(Equal("testdir"))
+		})
+
+		It("should create parent directories recursively", func() {
+			var createdDirs []string
+			callCount := 0
+
+			fsys := &mkdirOnlyFS{
+				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+					callCount++
+					if callCount == 1 && path == "parent/child" {
+						return fs.ErrNotExist
+					}
+					createdDirs = append(createdDirs, path)
+					return nil
+				},
+			}
+
+			err := ihfs.MkdirAll(fsys, "parent/child", 0o755)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(createdDirs).To(ContainElement("parent"))
+			Expect(createdDirs).To(ContainElement("parent/child"))
+		})
+
+		It("should stop at root when parent equals current path", func() {
+			fsys := &mkdirOnlyFS{
+				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+					return fs.ErrNotExist
+				},
+			}
+
+			err := ihfs.MkdirAll(fsys, "/", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+		})
+
+		It("should return error when Mkdir fails with non-ErrNotExist", func() {
+			mkdirErr := errors.New("permission denied")
+			fsys := &mkdirOnlyFS{
+				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+					return mkdirErr
+				},
+			}
+
+			err := ihfs.MkdirAll(fsys, "testdir", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(mkdirErr))
+		})
+
+		It("should return error when creating parent fails", func() {
+			parentErr := errors.New("parent mkdir failed")
+			callCount := 0
+
+			fsys := &mkdirOnlyFS{
+				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+					callCount++
+					if callCount == 1 && path == "parent/child" {
+						return fs.ErrNotExist
+					}
+					if path == "parent" {
+						return parentErr
+					}
+					return nil
+				},
+			}
+
+			err := ihfs.MkdirAll(fsys, "parent/child", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(parentErr))
+		})
+
+		It("should propagate errors from underlying MkdirAll", func() {
+			mkdirAllErr := errors.New("mkdirall error")
+			fsys := testfs.New(testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+				return mkdirAllErr
+			}))
+
+			err := ihfs.MkdirAll(fsys, "parent/child", 0o755)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(mkdirAllErr))
+		})
+	})
+
 	Describe("WriteFile", func() {
 		It("should call underlying WriteFile when implemented", func() {
 			var capturedName string
@@ -279,4 +446,16 @@ type errorReader struct {
 
 func (r *errorReader) Read(p []byte) (n int, err error) {
 	return 0, r.err
+}
+
+type mkdirOnlyFS struct {
+	mkdirFunc func(string, ihfs.FileMode) error
+}
+
+func (m *mkdirOnlyFS) Open(name string) (ihfs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (m *mkdirOnlyFS) Mkdir(name string, mode ihfs.FileMode) error {
+	return m.mkdirFunc(name, mode)
 }
