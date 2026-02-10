@@ -120,7 +120,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should execute the first mock", func() {
-			info := testfs.NewFileInfo("test.txt")
+			info := &testfs.FileInfo{NameV: "test.txt"}
 			f.WithStat(func(path string) (ihfs.FileInfo, error) {
 				Expect(path).To(Equal("test.txt"))
 				return info, nil
@@ -132,8 +132,8 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should dequeue mocks in FIFO order", func() {
-			info1 := testfs.NewFileInfo("file1.txt")
-			info2 := testfs.NewFileInfo("file2.txt")
+			info1 := &testfs.FileInfo{NameV: "file1.txt"}
+			info2 := &testfs.FileInfo{NameV: "file2.txt"}
 			f.WithStat(
 				func(path string) (ihfs.FileInfo, error) { return info1, nil },
 				func(path string) (ihfs.FileInfo, error) { return info2, nil },
@@ -383,7 +383,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should execute the first mock", func() {
-			info := testfs.NewFileInfo("test.txt")
+			info := &testfs.FileInfo{NameV: "test.txt"}
 			f.WithLstat(func(name string) (ihfs.FileInfo, error) {
 				Expect(name).To(Equal("test.txt"))
 				return info, nil
@@ -479,8 +479,8 @@ var _ = Describe("Fs", func() {
 
 		It("should execute the first mock", func() {
 			entries := []ihfs.DirEntry{
-				fs.FileInfoToDirEntry(testfs.NewFileInfo("a.txt")),
-				fs.FileInfoToDirEntry(testfs.NewFileInfo("b.txt")),
+				fs.FileInfoToDirEntry(&testfs.FileInfo{NameV: "a.txt"}),
+				fs.FileInfoToDirEntry(&testfs.FileInfo{NameV: "b.txt"}),
 			}
 			f.WithReadDir(func(name string) ([]ihfs.DirEntry, error) {
 				Expect(name).To(Equal("dir"))

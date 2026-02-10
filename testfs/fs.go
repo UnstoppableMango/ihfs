@@ -2,7 +2,6 @@ package testfs
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/unmango/go/fopt"

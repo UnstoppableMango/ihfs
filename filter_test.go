@@ -30,7 +30,7 @@ var _ = Describe("Fs", func() {
 
 	It("should call Stat on the underlying filesystem", func() {
 		called := false
-		info := testfs.NewFileInfo("test.txt")
+		info := &testfs.FileInfo{NameV: "test.txt"}
 		fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 			called = true
 			Expect(name).To(Equal("test.txt"))
