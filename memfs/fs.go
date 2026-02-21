@@ -11,6 +11,8 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+var separator = string(filepath.Separator)
+
 // Fs represents an in-memory filesystem.
 type Fs struct {
 	mu   sync.RWMutex
@@ -108,8 +110,8 @@ func (f *Fs) MkdirAll(name string, perm os.FileMode) error {
 	}
 
 	// Create all parent directories
-	parts := strings.Split(strings.Trim(name, string(filepath.Separator)), string(filepath.Separator))
-	current := string(filepath.Separator)
+	parts := strings.Split(strings.Trim(name, separator), separator)
+	current := separator
 
 	for _, part := range parts {
 		if part == "" {
@@ -410,7 +412,6 @@ func (f *Fs) findDescendants(name string) []*FileData {
 
 func normalizePath(path string) string {
 	// Convert io/fs style paths to internal absolute paths
-	// "." becomes "/"
 	if path == "." || path == "" {
 		return string(filepath.Separator)
 	}
@@ -420,8 +421,7 @@ func normalizePath(path string) string {
 		path = string(filepath.Separator) + path
 	}
 
-	path = filepath.Clean(path)
-	return path
+	return filepath.Clean(path)
 }
 
 func perror(op, path string, err error) error {
