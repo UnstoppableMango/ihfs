@@ -130,20 +130,25 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		}
 	}
 
-	entries := f.entries[f.off:]
-
 	if n <= 0 {
-		return entries, nil
+		result := f.entries[f.off:]
+		f.off = len(f.entries)
+		return result, nil
 	}
-	if len(entries) == 0 {
+
+	if f.off >= len(f.entries) {
 		return nil, io.EOF
 	}
-	if n > len(entries) {
-		n = len(entries)
+
+	end := f.off + n
+	if end > len(f.entries) {
+		end = len(f.entries)
 	}
 
-	f.off += n
-	return entries[:n], nil
+	result := f.entries[f.off:end]
+	f.off = end
+
+	return result, nil
 }
 
 // Write implements [ihfs.Writer].

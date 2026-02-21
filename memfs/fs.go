@@ -1,6 +1,7 @@
 package memfs
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,10 @@ func (f *Fs) getData() map[string]*FileData {
 
 // Open implements ihfs.FS.
 func (f *Fs) Open(name string) (ihfs.File, error) {
+	if !fs.ValidPath(name) {
+		return nil, perror("open", name, ihfs.ErrInvalid)
+	}
+
 	name = normalizePath(name)
 
 	f.mu.RLock()
@@ -404,15 +409,18 @@ func (f *Fs) findDescendants(name string) []*FileData {
 }
 
 func normalizePath(path string) string {
-	if path == "" {
+	// Convert io/fs style paths to internal absolute paths
+	// "." becomes "/"
+	if path == "." || path == "" {
 		return string(filepath.Separator)
 	}
 
-	path = filepath.Clean(path)
+	// Prepend "/" for relative paths (io/fs style)
 	if !strings.HasPrefix(path, string(filepath.Separator)) {
 		path = string(filepath.Separator) + path
 	}
 
+	path = filepath.Clean(path)
 	return path
 }
 

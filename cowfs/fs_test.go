@@ -5,12 +5,14 @@ import (
 	"io"
 	"io/fs"
 	"syscall"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/cowfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/union"
 )
@@ -345,6 +347,32 @@ var _ = Describe("Fs", func() {
 
 			// Just verify the function can be called
 			Expect(cfs).ToNot(BeNil())
+		})
+	})
+
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			base := memfs.New()
+			layer := memfs.New()
+
+			Expect(layer.Mkdir("dir", 0755)).To(Succeed())
+
+			f, err := layer.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(io.Writer).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			f2, err := layer.Create("dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f2.(io.Writer).Write([]byte("nested"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
+
+			cfs := cowfs.New(base, layer)
+
+			err = fstest.TestFS(cfs, "file.txt", "dir", "dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

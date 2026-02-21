@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"testing/fstest"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/corfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/union"
 )
@@ -1522,6 +1524,32 @@ var _ = Describe("Fs", func() {
 			// Just test that the option can be applied without error
 			cfs := corfs.New(base, layer, corfs.WithDefaultMergeStrategy())
 			Expect(cfs).ToNot(BeNil())
+		})
+	})
+
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			base := memfs.New()
+			layer := memfs.New()
+
+			Expect(base.Mkdir("dir", 0755)).To(Succeed())
+
+			f, err := base.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(io.Writer).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			f2, err := base.Create("dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f2.(io.Writer).Write([]byte("nested"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
+
+			cfs := corfs.New(base, layer)
+
+			err = fstest.TestFS(cfs, "file.txt", "dir", "dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
+	"io/fs"
+	"strings"
 	"sync"
 
 	"github.com/unstoppablemango/ihfs"
@@ -75,6 +77,16 @@ func (t *TarFile) Name() string {
 
 // Open implements [ihfs.FS].
 func (t *TarFile) Open(name string) (ihfs.File, error) {
+	if !fs.ValidPath(name) {
+		return nil, t.invalid(name)
+	}
+
+	// Handle root directory
+	if name == "." {
+		// Return a synthetic directory with all top-level entries
+		return t.openRoot()
+	}
+
 	if file := t.cache.get(name); file != nil {
 		return file.file(), nil
 	}
@@ -89,6 +101,10 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 	}
 
 	if t.closed {
+		// Archive is closed, check if this is a synthetic directory
+		if dir := t.getSyntheticDir(name); dir != nil {
+			return dir, nil
+		}
 		return nil, t.notExist(name, ihfs.ErrClosed)
 	}
 
@@ -98,6 +114,10 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 		if err == io.EOF {
 			if closeErr := t.close(); closeErr != nil {
 				return nil, t.notExist(name, closeErr)
+			}
+			// Check if this could be a synthetic directory
+			if dir := t.getSyntheticDir(name); dir != nil {
+				return dir, nil
 			}
 			return nil, t.notExist(name, err)
 		}
@@ -119,6 +139,47 @@ func (t *TarFile) close() error {
 
 func (t *TarFile) notExist(name string, cause error) error {
 	return t.error(name, ihfs.ErrNotExist, cause)
+}
+
+func (t *TarFile) invalid(name string) error {
+	return t.error(name, ihfs.ErrInvalid, nil)
+}
+
+func (t *TarFile) openRoot() (ihfs.File, error) {
+	// Need to ensure all entries are loaded
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	if !t.closed {
+		// Load all remaining entries
+		for {
+			fd, err := next(t.tr)
+			if err == io.EOF {
+				// Don't close yet - files might be opened later
+				t.closed = true
+				break
+			}
+			if err != nil {
+				return nil, t.error(".", ihfs.ErrInvalid, err)
+			}
+			t.cache.set(fd.hdr.Name, fd)
+		}
+	}
+
+	// Return a directory for root with name "."
+	return newDirFile(".", t.cache), nil
+}
+
+func (t *TarFile) getSyntheticDir(name string) ihfs.File {
+	// Check if any files in cache start with this prefix
+	prefix := name + "/"
+	for _, fd := range t.cache.all() {
+		if strings.HasPrefix(fd.hdr.Name, prefix) {
+			// This is a valid directory
+			return newDirFile(name, t.cache)
+		}
+	}
+	return nil
 }
 
 func (t *TarFile) error(name string, err, cause error) error {
