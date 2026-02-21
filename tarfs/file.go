@@ -98,12 +98,7 @@ func (f *File) buildDirSnapshot() []fs.DirEntry {
 	entries := make([]fs.DirEntry, 0)
 	seen := make(map[string]bool)
 
-	for _, fd := range f.cache.all() {
-		// Skip entries that don't match our prefix
-		if prefix != "" && !strings.HasPrefix(fd.hdr.Name, prefix) {
-			continue
-		}
-
+	for _, fd := range f.cache.listWithPrefix(prefix) {
 		// Get the relative path after the prefix
 		rel := strings.TrimPrefix(fd.hdr.Name, prefix)
 		parts := strings.SplitN(rel, "/", 2)

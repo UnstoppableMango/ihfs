@@ -1,6 +1,9 @@
 package tarfs
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 type cache struct {
 	mux  sync.RWMutex
@@ -19,13 +22,28 @@ func (c *cache) set(name string, fd *fileData) {
 	c.data[name] = fd
 }
 
-func (c *cache) all() []*fileData {
+func (c *cache) hasPrefix(prefix string) bool {
 	c.mux.RLock()
 	defer c.mux.RUnlock()
 
-	result := make([]*fileData, 0, len(c.data))
-	for _, fd := range c.data {
-		result = append(result, fd)
+	for name := range c.data {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *cache) listWithPrefix(prefix string) []*fileData {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+
+	var result []*fileData
+	for name, fd := range c.data {
+		// Empty prefix matches all (for root directory)
+		if prefix == "" || strings.HasPrefix(name, prefix) {
+			result = append(result, fd)
+		}
 	}
 	return result
 }
