@@ -693,6 +693,75 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
+	Describe("PR comment regression tests", func() {
+		var tfs *tarfs.TarFile
+
+		BeforeEach(func() {
+			var err error
+			tfs, err = tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("directory entries implement ReadDirFile", func() {
+			It("should allow casting directory to fs.ReadDirFile", func() {
+				file, err := tfs.Open("tartest")
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				rdFile, ok := file.(fs.ReadDirFile)
+				Expect(ok).To(BeTrue(), "directory should implement fs.ReadDirFile")
+
+				entries, err := rdFile.ReadDir(-1)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(entries).To(HaveLen(2))
+			})
+
+			It("should allow casting explicit directory entry to fs.ReadDirFile", func() {
+				file, err := tfs.Open(".")
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				rdFile, ok := file.(fs.ReadDirFile)
+				Expect(ok).To(BeTrue(), "root directory should implement fs.ReadDirFile")
+
+				entries, err := rdFile.ReadDir(-1)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(entries)).To(BeNumerically(">=", 1), "root should contain at least tartest")
+			})
+		})
+
+		Context("FileInfo.Name returns base name only", func() {
+			It("should return base name for nested synthetic directory", func() {
+				file, err := tfs.Open("tartest")
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				info, err := file.Stat()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(info.Name()).To(Equal("tartest"), "should be base name, not full path")
+			})
+
+			It("should return base name for synthetic subdirectory entries", func() {
+				file, err := tfs.Open("tartest")
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				rdFile := file.(fs.ReadDirFile)
+				entries, err := rdFile.ReadDir(-1)
+				Expect(err).NotTo(HaveOccurred())
+
+				for _, entry := range entries {
+					name := entry.Name()
+					Expect(name).NotTo(ContainSubstring("/"), "entry name should not contain path separator")
+					
+					info, err := entry.Info()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(info.Name()).To(Equal(name), "Info().Name() should match entry.Name()")
+				}
+			})
+		})
+	})
+
 	Describe("fstest", func() {
 		It("should pass fstest.TestFS", func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
