@@ -1226,7 +1226,7 @@ var _ = Describe("Fs", func() {
 
 			// Create test structure
 			Expect(mfs.Mkdir("/dir", 0755)).To(Succeed())
-			
+
 			f, err := mfs.Create("/file.txt")
 			Expect(err).NotTo(HaveOccurred())
 			_, err = f.(interface{ Write([]byte) (int, error) }).Write([]byte("content"))

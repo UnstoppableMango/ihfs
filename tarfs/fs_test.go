@@ -412,7 +412,7 @@ var _ = Describe("Fs", func() {
 			Expect(string(content)).To(Equal("file in subdir"))
 		})
 
-		It("should read empty content from directory", func() {
+		It("should return error when reading from directory", func() {
 			file, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -420,7 +420,8 @@ var _ = Describe("Fs", func() {
 			n, err := file.Read(buf)
 
 			Expect(n).To(Equal(0))
-			Expect(err).To(Equal(io.EOF))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid argument"))
 		})
 	})
 

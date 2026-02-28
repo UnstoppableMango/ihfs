@@ -88,6 +88,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 	}
 
 	if file := t.cache.get(name); file != nil {
+		if file.hdr.FileInfo().IsDir() {
+			return newDirFile(name, t.cache), nil
+		}
 		return file.file(), nil
 	}
 
@@ -97,6 +100,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
+		if file.hdr.FileInfo().IsDir() {
+			return newDirFile(name, t.cache), nil
+		}
 		return file.file(), nil
 	}
 
@@ -127,6 +133,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 		t.cache.set(fd.hdr.Name, fd)
 		if fd.hdr.Name == name {
+			if fd.hdr.FileInfo().IsDir() {
+				return newDirFile(name, t.cache), nil
+			}
 			return fd.file(), nil
 		}
 	}

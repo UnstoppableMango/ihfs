@@ -37,10 +37,12 @@ func (f *Fs) getData() map[string]*FileData {
 
 // Open implements ihfs.FS.
 func (f *Fs) Open(name string) (ihfs.File, error) {
+	// Validate path before normalization
 	if !fs.ValidPath(name) {
 		return nil, perror("open", name, ihfs.ErrInvalid)
 	}
 
+	// Normalize after validation for internal use
 	name = normalizePath(name)
 
 	f.mu.RLock()
@@ -412,8 +414,12 @@ func (f *Fs) findDescendants(name string) []*FileData {
 
 func normalizePath(path string) string {
 	// Convert io/fs style paths to internal absolute paths
-	if path == "." || path == "" {
+	if path == "." {
 		return string(filepath.Separator)
+	}
+	if path == "" {
+		// Leave empty paths unchanged so callers can treat them as invalid
+		return path
 	}
 
 	// Prepend "/" for relative paths (io/fs style)

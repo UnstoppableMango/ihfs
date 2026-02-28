@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"io"
 	"io/fs"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -135,7 +136,7 @@ type dirFileInfo struct {
 	name string
 }
 
-func (dfi dirFileInfo) Name() string       { return dfi.name }
+func (dfi dirFileInfo) Name() string       { return path.Base(dfi.name) }
 func (dfi dirFileInfo) Size() int64        { return 0 }
 func (dfi dirFileInfo) Mode() fs.FileMode  { return fs.ModeDir | 0755 }
 func (dfi dirFileInfo) ModTime() time.Time { return time.Time{} }

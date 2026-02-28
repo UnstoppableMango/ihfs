@@ -210,10 +210,9 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	}
 
 	end := min(start+n, len(entries))
-	result := entries[start:end]
 	f.readDirCount = int64(end)
 
-	return result, nil
+	return entries[start:end], nil
 }
 
 // Seek implements io.Seeker.
