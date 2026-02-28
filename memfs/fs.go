@@ -37,9 +37,12 @@ func (f *Fs) getData() map[string]*FileData {
 
 // Open implements ihfs.FS.
 func (f *Fs) Open(name string) (ihfs.File, error) {
+	// Store original name for error messages
+	origName := name
+	
 	// Validate path before normalization
 	if !fs.ValidPath(name) {
-		return nil, perror("open", name, ihfs.ErrInvalid)
+		return nil, perror("open", origName, ihfs.ErrInvalid)
 	}
 
 	// Normalize after validation for internal use
@@ -50,7 +53,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	f.mu.RUnlock()
 
 	if !ok {
-		return nil, perror("open", name, ihfs.ErrNotExist)
+		return nil, perror("open", origName, ihfs.ErrNotExist)
 	}
 
 	return NewReadOnlyFile(file), nil

@@ -1220,7 +1220,7 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
-	Describe("PR comment regression tests", func() {
+	Describe("regression", func() {
 		Context("consistent path validation", func() {
 			var mfs *memfs.Fs
 
@@ -1274,6 +1274,21 @@ var _ = Describe("Fs", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(info.IsDir()).To(BeTrue())
 				Expect(f.Close()).To(Succeed())
+			})
+		})
+
+		Context("error message path consistency", func() {
+			It("should use original path in error messages, not internal normalized path", func() {
+				mfs := memfs.New()
+
+				// Try to open a non-existent file with a valid path
+				_, err := mfs.Open("nonexistent.txt")
+				Expect(err).To(HaveOccurred())
+				
+				// Error should contain the original path we passed
+				Expect(err.Error()).To(ContainSubstring("nonexistent.txt"))
+				// Error should not contain internal absolute path like "/nonexistent.txt"
+				Expect(err.Error()).NotTo(ContainSubstring("/nonexistent.txt"))
 			})
 		})
 	})

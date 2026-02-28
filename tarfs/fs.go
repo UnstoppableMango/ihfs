@@ -90,7 +90,11 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			for {
 				fd, err := next(t.tr)
 				if err == io.EOF {
-					t.closed = true
+					// Close the tar reader since we've fully read it
+					if closeErr := t.close(); closeErr != nil {
+						t.mux.Unlock()
+						return nil, t.error(".", ihfs.ErrInvalid, closeErr)
+					}
 					break
 				}
 				if err != nil {
@@ -227,10 +231,13 @@ type TarError struct {
 }
 
 func (e *TarError) Error() string {
-	return fmt.Sprintf(
-		"%s(%s): %v: %v",
-		e.Archive, e.Name, e.Err, e.Cause,
-	)
+	if e.Cause != nil {
+		return fmt.Sprintf(
+			"%s(%s): %v: %v",
+			e.Archive, e.Name, e.Err, e.Cause,
+		)
+	}
+	return fmt.Sprintf("%s(%s): %v", e.Archive, e.Name, e.Err)
 }
 
 func (e *TarError) Unwrap() []error {

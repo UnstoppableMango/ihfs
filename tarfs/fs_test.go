@@ -693,7 +693,7 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
-	Describe("PR comment regression tests", func() {
+	Describe("regression", func() {
 		var tfs *tarfs.TarFile
 
 		BeforeEach(func() {
@@ -753,11 +753,80 @@ var _ = Describe("Fs", func() {
 				for _, entry := range entries {
 					name := entry.Name()
 					Expect(name).NotTo(ContainSubstring("/"), "entry name should not contain path separator")
-					
+
 					info, err := entry.Info()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(info.Name()).To(Equal(name), "Info().Name() should match entry.Name()")
 				}
+			})
+		})
+
+		Context("resource cleanup", func() {
+			It("should close tar reader when opening root directory", func() {
+				tfs, err := tarfs.Open("../testdata/test.tar")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Open root directory which reads entire tar
+				f, err := tfs.Open(".")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(f.Close()).To(Succeed())
+
+				// Explicitly close the tarfs - should not leak
+				err = tfs.Close()
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("directory with trailing slash", func() {
+			It("should detect non-synthetic directories with trailing slash in tar", func() {
+				// Create a tar with explicit directory entry ending in "/"
+				var buf bytes.Buffer
+				tw := tar.NewWriter(&buf)
+
+				err := tw.WriteHeader(&tar.Header{
+					Name:     "mydir/",
+					Typeflag: tar.TypeDir,
+					Mode:     0755,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				// Write file under directory
+				err = tw.WriteHeader(&tar.Header{
+					Name: "mydir/file.txt",
+					Size: 5,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				_, err = tw.Write([]byte("hello"))
+				Expect(err).NotTo(HaveOccurred())
+
+				err = tw.Close()
+				Expect(err).NotTo(HaveOccurred())
+
+				tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+				f, err := tfs.Open("mydir")
+				Expect(err).NotTo(HaveOccurred())
+				defer f.Close()
+
+				info, err := f.Stat()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(info.IsDir()).To(BeTrue())
+				// Should have non-nil Sys since it's in the tar
+				Expect(info.Sys()).NotTo(BeNil())
+			})
+		})
+
+		Context("error message clarity", func() {
+			It("should not include nil in error messages", func() {
+				tfs, err := tarfs.Open("../testdata/test.tar")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Try to open with invalid path
+				_, err = tfs.Open("../invalid")
+				Expect(err).To(HaveOccurred())
+
+				// Error message should not contain ": <nil>"
+				Expect(err.Error()).NotTo(ContainSubstring(": <nil>"))
 			})
 		})
 	})

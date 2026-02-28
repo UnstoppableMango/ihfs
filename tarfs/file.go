@@ -39,8 +39,11 @@ func (f *File) Read(p []byte) (int, error) {
 func (f *File) Stat() (fs.FileInfo, error) {
 	// For synthetic directories (created by us, not from tar), return FileInfo with nil Sys()
 	if f.hdr.Typeflag == tar.TypeDir && f.hdr.Size == 0 && f.cache != nil {
-		// Check if this is a synthetic directory (not actually in the tar)
-		if f.cache.get(f.name) == nil {
+		// Check if this is a synthetic directory (not actually in the tar).
+		// Some tar archives store directory headers with a trailing slash (e.g., "dir/"),
+		// while the logical name may be "dir". Treat the directory as synthetic only
+		// if it is missing from the cache under both forms.
+		if f.cache.get(f.name) == nil && f.cache.get(f.name+"/") == nil {
 			return fileInfo{hdr: f.hdr, nilSys: true}, nil
 		}
 	}
