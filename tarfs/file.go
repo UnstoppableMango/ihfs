@@ -14,7 +14,7 @@ import (
 
 // File represents a file in a tar archive.
 type File struct {
-	io.Reader
+	r            io.Reader
 	hdr          *tar.Header
 	cache        *cache
 	name         string
@@ -32,7 +32,7 @@ func (f *File) Read(p []byte) (int, error) {
 	if f.hdr.FileInfo().IsDir() {
 		return 0, &fs.PathError{Op: "read", Path: f.name, Err: fs.ErrInvalid}
 	}
-	return f.Reader.Read(p)
+	return f.r.Read(p)
 }
 
 // Stat implements [fs.File].
@@ -110,11 +110,7 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		return nil, io.EOF
 	}
 
-	end := start + n
-	if end > len(entries) {
-		end = len(entries)
-	}
-
+	end := min(start+n, len(entries))
 	result := entries[start:end]
 	f.readDirCount = end
 
@@ -153,7 +149,7 @@ func (fi fileInfo) ModTime() time.Time {
 
 func (fi fileInfo) IsDir() bool { return true }
 
-func (fi fileInfo) Sys() interface{} {
+func (fi fileInfo) Sys() any {
 	if fi.nilSys || fi.hdr == nil {
 		return nil
 	}
@@ -177,9 +173,9 @@ type fileData struct {
 
 func (fd fileData) file(cache *cache) *File {
 	return &File{
-		hdr:    fd.hdr,
-		name:   fd.hdr.Name,
-		cache:  cache,
-		Reader: bytes.NewReader(fd.data),
+		hdr:   fd.hdr,
+		name:  fd.hdr.Name,
+		cache: cache,
+		r:     bytes.NewReader(fd.data),
 	}
 }

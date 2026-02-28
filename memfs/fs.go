@@ -29,8 +29,8 @@ func (f *Fs) getData() map[string]*FileData {
 	f.init.Do(func() {
 		f.data = make(map[string]*FileData)
 		// Root should always exist
-		root := CreateDir(string(filepath.Separator))
-		f.data[string(filepath.Separator)] = root
+		root := CreateDir(separator)
+		f.data[separator] = root
 	})
 	return f.data
 }
@@ -401,7 +401,7 @@ func (f *Fs) findParent(file *FileData) *FileData {
 
 func (f *Fs) findDescendants(name string) []*FileData {
 	var descendants []*FileData
-	prefix := name + string(filepath.Separator)
+	prefix := name + separator
 
 	for path, file := range f.getData() {
 		if strings.HasPrefix(path, prefix) {
@@ -415,7 +415,7 @@ func (f *Fs) findDescendants(name string) []*FileData {
 func normalizePath(path string) string {
 	// Convert io/fs style paths to internal absolute paths
 	if path == "." {
-		return string(filepath.Separator)
+		return separator
 	}
 	if path == "" {
 		// Leave empty paths unchanged so callers can treat them as invalid
@@ -423,8 +423,8 @@ func normalizePath(path string) string {
 	}
 
 	// Prepend "/" for relative paths (io/fs style)
-	if !strings.HasPrefix(path, string(filepath.Separator)) {
-		path = string(filepath.Separator) + path
+	if !strings.HasPrefix(path, separator) {
+		path = separator + path
 	}
 
 	return filepath.Clean(path)

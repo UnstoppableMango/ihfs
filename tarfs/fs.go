@@ -109,9 +109,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 				Typeflag: tar.TypeDir,
 				Mode:     0755,
 			},
-			name:   ".",
-			cache:  t.cache,
-			Reader: bytes.NewReader(nil),
+			name:  ".",
+			cache: t.cache,
+			r:     bytes.NewReader(nil),
 		}, nil
 	}
 
@@ -140,9 +140,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 						Typeflag: tar.TypeDir,
 						Mode:     0755,
 					},
-					name:   name,
-					cache:  t.cache,
-					Reader: bytes.NewReader(nil),
+					name:  name,
+					cache: t.cache,
+					r:     bytes.NewReader(nil),
 				}, nil
 			}
 		}
@@ -167,9 +167,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 							Typeflag: tar.TypeDir,
 							Mode:     0755,
 						},
-						name:   name,
-						cache:  t.cache,
-						Reader: bytes.NewReader(nil),
+						name:  name,
+						cache: t.cache,
+						r:     bytes.NewReader(nil),
 					}, nil
 				}
 			}
