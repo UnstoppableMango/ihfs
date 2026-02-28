@@ -1379,26 +1379,26 @@ var _ = Describe("Fs", func() {
 	})
 
 	Describe("fstest", func() {
-	It("should pass fstest.TestFS", func() {
-		mfs := memfs.New()
+		It("should pass fstest.TestFS", func() {
+			mfs := memfs.New()
 
-		// Create test structure
-		Expect(mfs.Mkdir("/dir", 0755)).To(Succeed())
+			// Create test structure
+			Expect(mfs.Mkdir("/dir", 0755)).To(Succeed())
 
-		f, err := mfs.Create("/file.txt")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = f.(interface{ Write([]byte) (int, error) }).Write([]byte("content"))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(f.Close()).To(Succeed())
+			f, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(interface{ Write([]byte) (int, error) }).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
 
-		f2, err := mfs.Create("/dir/nested.txt")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = f2.(interface{ Write([]byte) (int, error) }).Write([]byte("nested"))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(f2.Close()).To(Succeed())
+			f2, err := mfs.Create("/dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f2.(interface{ Write([]byte) (int, error) }).Write([]byte("nested"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
 
-		err = fstest.TestFS(mfs, "file.txt", "dir", "dir/nested.txt")
-		Expect(err).NotTo(HaveOccurred())
-	})
+			err = fstest.TestFS(mfs, "file.txt", "dir", "dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 })
