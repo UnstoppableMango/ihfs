@@ -325,13 +325,11 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// Note: cowfs.New expects union.Option, not cowfs.Option,
 			// so we test the option function directly
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithMergeStrategy(union.DefaultMergeStrategy)
 			opt(cfs)
 
-			// Just verify the function can be called
 			Expect(cfs).ToNot(BeNil())
 		})
 
@@ -339,13 +337,11 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// Note: cowfs.New expects union.Option, not cowfs.Option,
 			// so we test the option function directly
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithDefaultMergeStrategy()
 			opt(cfs)
 
-			// Just verify the function can be called
 			Expect(cfs).ToNot(BeNil())
 		})
 	})

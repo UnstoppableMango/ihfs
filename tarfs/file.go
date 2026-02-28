@@ -28,7 +28,6 @@ func (f *File) Close() error {
 
 // Read implements [io.Reader]. For directories, returns an error.
 func (f *File) Read(p []byte) (int, error) {
-	// For directories, return error (cannot read directory content)
 	if f.hdr.FileInfo().IsDir() {
 		return 0, &fs.PathError{Op: "read", Path: f.name, Err: fs.ErrInvalid}
 	}
@@ -44,7 +43,7 @@ func (f *File) Stat() (fs.FileInfo, error) {
 		// while the logical name may be "dir". Treat the directory as synthetic only
 		// if it is missing from the cache under both forms.
 		if f.cache.get(f.name) == nil && f.cache.get(f.name+"/") == nil {
-			return fileInfo{hdr: f.hdr, nilSys: true}, nil
+			return FileInfo{hdr: f.hdr, nilSys: true}, nil
 		}
 	}
 	return f.hdr.FileInfo(), nil
@@ -89,7 +88,7 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 
 		// If this is a subdirectory (has more parts), create a synthetic entry
 		if len(parts) > 1 {
-			entries = append(entries, fileInfo{name: baseName})
+			entries = append(entries, FileInfo{name: baseName})
 		} else {
 			// It's a file directly under this directory
 			entries = append(entries, fs.FileInfoToDirEntry(fd.hdr.FileInfo()))
@@ -120,39 +119,39 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 	return result, nil
 }
 
-// fileInfo wraps tar.Header as fs.FileInfo and fs.DirEntry, or represents a synthetic directory by name
-type fileInfo struct {
+// FileInfo wraps tar.Header as fs.FileInfo and fs.DirEntry, or represents a synthetic directory by name
+type FileInfo struct {
 	hdr    *tar.Header
 	name   string // used when hdr is nil (for synthetic subdirectories)
 	nilSys bool   // when true, Sys() returns nil
 }
 
-func (fi fileInfo) Name() string {
+func (fi FileInfo) Name() string {
 	if fi.hdr != nil {
 		return path.Base(fi.hdr.Name)
 	}
 	return path.Base(fi.name)
 }
 
-func (fi fileInfo) Size() int64 { return 0 }
+func (fi FileInfo) Size() int64 { return 0 }
 
-func (fi fileInfo) Mode() fs.FileMode {
+func (fi FileInfo) Mode() fs.FileMode {
 	if fi.hdr != nil {
 		return fs.ModeDir | fs.FileMode(fi.hdr.Mode)
 	}
 	return fs.ModeDir | 0755
 }
 
-func (fi fileInfo) ModTime() time.Time {
+func (fi FileInfo) ModTime() time.Time {
 	if fi.hdr != nil {
 		return fi.hdr.ModTime
 	}
 	return time.Time{}
 }
 
-func (fi fileInfo) IsDir() bool { return true }
+func (fi FileInfo) IsDir() bool { return true }
 
-func (fi fileInfo) Sys() any {
+func (fi FileInfo) Sys() any {
 	if fi.nilSys || fi.hdr == nil {
 		return nil
 	}
@@ -160,12 +159,12 @@ func (fi fileInfo) Sys() any {
 }
 
 // Type implements [fs.DirEntry].
-func (fi fileInfo) Type() fs.FileMode {
+func (fi FileInfo) Type() fs.FileMode {
 	return fs.ModeDir
 }
 
 // Info implements [fs.DirEntry].
-func (fi fileInfo) Info() (fs.FileInfo, error) {
+func (fi FileInfo) Info() (fs.FileInfo, error) {
 	return fi, nil
 }
 

@@ -17,27 +17,6 @@ import (
 	"github.com/unstoppablemango/ihfs/union"
 )
 
-// nonCreateFS is a filesystem that doesn't implement CreateFS
-type nonCreateFS struct {
-	testfs.Fs
-}
-
-// Override Stat to not implement CreateFS
-func (f nonCreateFS) Create(name string) (ihfs.File, error) {
-	panic("should not be called - this FS doesn't implement CreateFS")
-}
-
-// nonWriterFile is a file that doesn't implement Writer
-type nonWriterFile struct {
-	*testfs.File
-}
-
-// Override Write to not satisfy Writer interface signature properly
-func (f *nonWriterFile) Write(p []byte) (int, error) {
-	return 0, errors.New("write not supported")
-}
-
-// minimalFS is a minimal filesystem that only implements Open and Stat
 type minimalFS struct{}
 
 func (m minimalFS) Open(name string) (ihfs.File, error) {
@@ -48,7 +27,6 @@ func (m minimalFS) Stat(name string) (ihfs.FileInfo, error) {
 	return nil, fs.ErrNotExist
 }
 
-// minimalFSWithMkdirAll implements MkdirAll but not Create
 type minimalFSWithMkdirAll struct{ minimalFS }
 
 func (m minimalFSWithMkdirAll) MkdirAll(name string, perm ihfs.FileMode) error {
@@ -299,7 +277,6 @@ var _ = Describe("Fs", func() {
 
 			cfs := corfs.New(base, layer, corfs.WithCacheTime(1*time.Hour))
 			_, err := cfs.Open("test.txt")
-			// This will fail to copy because layer doesn't support Create
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -1070,13 +1047,6 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			type fileWithoutWrite struct {
-				ihfs.File
-			}
-			nonWriterFile := &fileWithoutWrite{
-				File: &testfs.File{},
-			}
-
 			var removeCalled bool
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
@@ -1089,7 +1059,7 @@ var _ = Describe("Fs", func() {
 					return nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
-					return nonWriterFile, nil
+					return testfs.BoringFile{}, nil
 				}),
 				testfs.WithRemove(func(name string) error {
 					removeCalled = true
@@ -1512,7 +1482,6 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// Just test that the option can be applied without error
 			cfs := corfs.New(base, layer, corfs.WithMergeStrategy(union.DefaultMergeStrategy))
 			Expect(cfs).ToNot(BeNil())
 		})
@@ -1521,7 +1490,6 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// Just test that the option can be applied without error
 			cfs := corfs.New(base, layer, corfs.WithDefaultMergeStrategy())
 			Expect(cfs).ToNot(BeNil())
 		})

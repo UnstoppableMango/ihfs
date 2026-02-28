@@ -145,12 +145,10 @@ func (f *File) Write(p []byte) (int, error) {
 		return 0, f.error("write", ihfs.ErrInvalid)
 	}
 
-	// Expand content if necessary
 	if f.at > int64(len(f.data.content)) {
 		f.data.content = append(f.data.content, make([]byte, f.at-int64(len(f.data.content)))...)
 	}
 
-	// Overwrite or append
 	if f.at+int64(len(p)) > int64(len(f.data.content)) {
 		f.data.content = append(f.data.content[:f.at], p...)
 	} else {
@@ -203,7 +201,6 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		return result, nil
 	}
 
-	// Return n entries
 	start := int(f.readDirCount)
 	if start >= len(entries) {
 		return nil, io.EOF
@@ -267,7 +264,6 @@ func (f *File) Truncate(size int64) error {
 	}
 
 	if size > int64(len(f.data.content)) {
-		// Extend with zeros
 		f.data.content = append(f.data.content, make([]byte, size-int64(len(f.data.content)))...)
 	} else {
 		f.data.content = f.data.content[:size]

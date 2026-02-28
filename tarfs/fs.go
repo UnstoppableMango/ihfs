@@ -124,7 +124,6 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 		}, nil
 	}
 
-	// Validate path after root check
 	if !fs.ValidPath(name) {
 		return nil, t.invalid(name)
 	}

@@ -440,12 +440,10 @@ var _ = Describe("File", func() {
 			}
 			file := union.NewFile(nil, layerFile)
 
-			// Read 2 entries first
 			entries, err := file.ReadDir(2)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(entries).To(HaveLen(2))
 
-			// Request 10 entries but only 1 remains
 			entries, err = file.ReadDir(10)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(entries).To(HaveLen(1))
