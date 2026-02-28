@@ -39,7 +39,7 @@ func (f *Fs) getData() map[string]*FileData {
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	// Store original name for error messages
 	origName := name
-	
+
 	// Validate path before normalization
 	if !fs.ValidPath(name) {
 		return nil, perror("open", origName, ihfs.ErrInvalid)
