@@ -132,6 +132,7 @@ nix fmt
   - `option.go`: Option pattern for test setup
   - `boring.go`: Boring implementation helpers
   - `testfs.go`: Additional test utilities
+  - `factory/fs.go`: Queue-based factory filesystem for per-call mock control
 - **`tarfs/`**: Tar filesystem implementation
   - `fs.go`: Tar filesystem implementation
   - `file.go`: Tar file implementation
@@ -261,7 +262,9 @@ nix fmt
 │   ├── fileinfo.go    # Test FileInfo
 │   ├── option.go      # Test setup options
 │   ├── boring.go      # Boring implementation helpers
-│   └── testfs.go      # Additional test utilities
+│   ├── testfs.go      # Additional test utilities
+│   └── factory/
+│       └── fs.go      # Queue-based factory filesystem for per-call mock control
 └── testdata/          # Test data files
     ├── 2-files/       # Test fixture with two files
     └── test.tar       # Tar archive for testing tar filesystem

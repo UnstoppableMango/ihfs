@@ -58,8 +58,7 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		return nil, f.perror("readdir", fs.ErrInvalid)
 	}
 
-	// Build a snapshot of the directory entries on the first call so that
-	// paginated reads are stable even if the shared cache grows between calls.
+	// Snapshot on first call so paginated reads are stable.
 	if f.readDirSnapshot == nil {
 		f.readDirSnapshot = f.buildDirSnapshot()
 	}
