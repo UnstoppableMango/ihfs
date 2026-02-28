@@ -84,7 +84,17 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		seen[baseName] = true
 
 		if len(parts) > 1 {
-			entries = append(entries, DirEntry{hdr: fd.hdr, name: baseName})
+			// Subdirectory - prefer a real directory entry if cached, else synthetic
+			dirKey := prefix + baseName
+			if realEntry := f.cache.get(dirKey); realEntry != nil && realEntry.hdr.FileInfo().IsDir() {
+				entries = append(entries, realEntry.dirEntry())
+			} else {
+				entries = append(entries, DirEntry{hdr: &tar.Header{
+					Name:     baseName,
+					Typeflag: tar.TypeDir,
+					Mode:     0755,
+				}, name: baseName})
+			}
 		} else {
 			// It's a file directly under this directory
 			entries = append(entries, fd.dirEntry())
@@ -141,7 +151,7 @@ func (d DirEntry) Name() string {
 
 // Type implements [fs.DirEntry].
 func (d DirEntry) Type() fs.FileMode {
-	return d.fileInfo().Mode()
+	return d.fileInfo().Mode().Type()
 }
 
 func (d DirEntry) fileInfo() fs.FileInfo {
