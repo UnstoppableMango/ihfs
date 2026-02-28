@@ -455,16 +455,6 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(MatchError(fs.ErrInvalid))
 		})
 
-		It("should return nil from Sys() on directory FileInfo", func() {
-			file, err := tfs.Open("tartest")
-			Expect(err).NotTo(HaveOccurred())
-			defer file.Close()
-
-			info, err := file.Stat()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.Sys()).To(BeNil())
-		})
-
 		It("should handle paginated ReadDir when requesting more than available", func() {
 			file, err := tfs.Open("tartest")
 			Expect(err).NotTo(HaveOccurred())
@@ -860,17 +850,6 @@ var _ = Describe("Fs", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(entries).To(HaveLen(1))
 		Expect(entries[0].Name()).To(Equal("file.txt"))
-	})
-
-	It("should return nil Sys() for synthetic directories", func() {
-		file, err := tfs.Open("tartest")
-		Expect(err).NotTo(HaveOccurred())
-		defer file.Close()
-
-		info, err := file.Stat()
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(info.Sys()).To(BeNil())
 	})
 
 	It("should handle root directory with Open(.)", func() {

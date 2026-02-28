@@ -9,7 +9,6 @@ import (
 	"path"
 	"slices"
 	"strings"
-	"time"
 )
 
 // File represents a file in a tar archive.
@@ -26,27 +25,25 @@ func (f *File) Close() error {
 	return nil
 }
 
+func (f *File) FileInfo() fs.FileInfo {
+	return f.hdr.FileInfo()
+}
+
+func (f *File) IsDir() bool {
+	return f.FileInfo().IsDir()
+}
+
 // Read implements [io.Reader]. For directories, returns an error.
 func (f *File) Read(p []byte) (int, error) {
-	if f.hdr.FileInfo().IsDir() {
-		return 0, &fs.PathError{Op: "read", Path: f.name, Err: fs.ErrInvalid}
+	if f.IsDir() {
+		return 0, f.perror("read", fs.ErrInvalid)
 	}
 	return f.r.Read(p)
 }
 
 // Stat implements [fs.File].
 func (f *File) Stat() (fs.FileInfo, error) {
-	// For synthetic directories (created by us, not from tar), return FileInfo with nil Sys()
-	if f.hdr.Typeflag == tar.TypeDir && f.hdr.Size == 0 && f.cache != nil {
-		// Check if this is a synthetic directory (not actually in the tar).
-		// Some tar archives store directory headers with a trailing slash (e.g., "dir/"),
-		// while the logical name may be "dir". Treat the directory as synthetic only
-		// if it is missing from the cache under both forms.
-		if f.cache.get(f.name) == nil && f.cache.get(f.name+"/") == nil {
-			return FileInfo{hdr: f.hdr, nilSys: true}, nil
-		}
-	}
-	return f.hdr.FileInfo(), nil
+	return f.FileInfo(), nil
 }
 
 // Name returns the name of the tar entry.
@@ -56,8 +53,8 @@ func (f *File) Name() string {
 
 // ReadDir implements [fs.ReadDirFile] for directories.
 func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
-	if !f.hdr.FileInfo().IsDir() {
-		return nil, &fs.PathError{Op: "readdir", Path: f.name, Err: fs.ErrInvalid}
+	if !f.IsDir() {
+		return nil, f.perror("readdir", fs.ErrInvalid)
 	}
 
 	// Determine prefix: empty for root ("."), otherwise name + "/"
@@ -86,12 +83,11 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 		seen[baseName] = true
 
-		// If this is a subdirectory (has more parts), create a synthetic entry
 		if len(parts) > 1 {
-			entries = append(entries, FileInfo{name: baseName})
+			entries = append(entries, DirEntry{hdr: fd.hdr, name: baseName})
 		} else {
 			// It's a file directly under this directory
-			entries = append(entries, fs.FileInfoToDirEntry(fd.hdr.FileInfo()))
+			entries = append(entries, fd.dirEntry())
 		}
 	}
 
@@ -119,58 +115,50 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 	return result, nil
 }
 
-// FileInfo wraps tar.Header as fs.FileInfo and fs.DirEntry, or represents a synthetic directory by name
-type FileInfo struct {
-	hdr    *tar.Header
-	name   string // used when hdr is nil (for synthetic subdirectories)
-	nilSys bool   // when true, Sys() returns nil
+func (f *File) perror(op string, err error) error {
+	return &fs.PathError{Op: op, Path: f.name, Err: err}
 }
 
-func (fi FileInfo) Name() string {
-	if fi.hdr != nil {
-		return path.Base(fi.hdr.Name)
-	}
-	return path.Base(fi.name)
-}
-
-func (fi FileInfo) Size() int64 { return 0 }
-
-func (fi FileInfo) Mode() fs.FileMode {
-	if fi.hdr != nil {
-		return fs.ModeDir | fs.FileMode(fi.hdr.Mode)
-	}
-	return fs.ModeDir | 0755
-}
-
-func (fi FileInfo) ModTime() time.Time {
-	if fi.hdr != nil {
-		return fi.hdr.ModTime
-	}
-	return time.Time{}
-}
-
-func (fi FileInfo) IsDir() bool { return true }
-
-func (fi FileInfo) Sys() any {
-	if fi.nilSys || fi.hdr == nil {
-		return nil
-	}
-	return fi.hdr
-}
-
-// Type implements [fs.DirEntry].
-func (fi FileInfo) Type() fs.FileMode {
-	return fs.ModeDir
+type DirEntry struct {
+	hdr  *tar.Header
+	name string
 }
 
 // Info implements [fs.DirEntry].
-func (fi FileInfo) Info() (fs.FileInfo, error) {
-	return fi, nil
+func (d DirEntry) Info() (fs.FileInfo, error) {
+	return d.fileInfo(), nil
+}
+
+// IsDir implements [fs.DirEntry].
+func (d DirEntry) IsDir() bool {
+	return d.fileInfo().IsDir()
+}
+
+// Name implements [fs.DirEntry].
+func (d DirEntry) Name() string {
+	return path.Base(d.name)
+}
+
+// Type implements [fs.DirEntry].
+func (d DirEntry) Type() fs.FileMode {
+	return d.fileInfo().Mode()
+}
+
+func (d DirEntry) fileInfo() fs.FileInfo {
+	return d.hdr.FileInfo()
 }
 
 type fileData struct {
 	hdr  *tar.Header
 	data []byte
+}
+
+func (fd fileData) dirEntry() fs.DirEntry {
+	return fs.FileInfoToDirEntry(fd.fileInfo())
+}
+
+func (fd fileData) fileInfo() fs.FileInfo {
+	return fd.hdr.FileInfo()
 }
 
 func (fd fileData) file(cache *cache) *File {
