@@ -902,4 +902,49 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("close error when loading root", func() {
+		It("should return error when close fails after reading all entries for root", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "f.txt", Mode: 0644, Size: 4})).To(Succeed())
+			_, _ = tw.Write([]byte("data"))
+			Expect(tw.Close()).To(Succeed())
+
+			closeErr := errors.New("close failed")
+			tfs := tarfs.FromReader("test.tar", &errCloser{bytes.NewReader(buf.Bytes()), closeErr})
+
+			file, err := tfs.Open(".")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+			Expect(err).To(MatchError(closeErr))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Context("root directory trailing slash normalization", func() {
+		It("should normalize directory headers with trailing slashes when loading root", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Mode: 0644, Size: 5})).To(Succeed())
+			_, _ = tw.Write([]byte("hello"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open "." triggers full root scan including "mydir/"
+			root, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			defer root.Close()
+
+			// After root scan, "mydir" (without slash) should be cached and openable
+			dir, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			info, err := dir.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+		})
+	})
 })

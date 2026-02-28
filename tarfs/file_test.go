@@ -1,6 +1,8 @@
 package tarfs_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"io"
 	"io/fs"
 
@@ -94,6 +96,34 @@ var _ = Describe("File", func() {
 			tf, ok := file.(*tarfs.File)
 			Expect(ok).To(BeTrueBecause("file is a *tarfs.File"))
 			Expect(tf.Name()).To(Equal("tartest/test.txt"))
+		})
+	})
+
+	Describe("ReadDir", func() {
+		It("should use real cached directory entry when available", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// Explicit child dir header (no explicit parent header, so parent is synthetic)
+			Expect(tw.WriteHeader(&tar.Header{Name: "parent/child/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "parent/child/file.txt", Mode: 0644, Size: 4})).To(Succeed())
+			_, _ = tw.Write([]byte("data"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open "parent" — synthetic dir, but "parent/child" is a real cached entry
+			parentFile, err := tfs.Open("parent")
+			Expect(err).NotTo(HaveOccurred())
+			defer parentFile.Close()
+
+			rdFile, ok := parentFile.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("child"))
+			Expect(entries[0].IsDir()).To(BeTrue())
 		})
 	})
 })
