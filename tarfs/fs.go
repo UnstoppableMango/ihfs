@@ -2,8 +2,11 @@ package tarfs
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
+	"strings"
 	"sync"
 
 	"github.com/unstoppablemango/ihfs"
@@ -75,8 +78,58 @@ func (t *TarFile) Name() string {
 
 // Open implements [ihfs.FS].
 func (t *TarFile) Open(name string) (ihfs.File, error) {
+	// Handle root directory before fs.ValidPath check (which rejects ".")
+	if name == "." {
+		// Return root directory - need to load all entries first
+		t.mux.Lock()
+		if !t.closed {
+			for {
+				fd, err := next(t.tr)
+				if err == io.EOF {
+					// Close the tar reader since we've fully read it
+					if closeErr := t.close(); closeErr != nil {
+						t.mux.Unlock()
+						return nil, t.error(".", ihfs.ErrInvalid, closeErr)
+					}
+					break
+				}
+				if err != nil {
+					t.mux.Unlock()
+					return nil, t.error(".", ihfs.ErrInvalid, err)
+				}
+				name := fd.hdr.Name
+				t.cache.set(name, fd)
+				// Normalize directory names so callers using fs.ValidPath
+				// can open "dir" and still get the real directory header
+				if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(name, "/") {
+					trimmed := strings.TrimSuffix(name, "/")
+					if trimmed != "" {
+						t.cache.set(trimmed, fd)
+					}
+				}
+			}
+		}
+		t.mux.Unlock()
+
+		// Return a synthetic directory for root
+		return &File{
+			hdr: &tar.Header{
+				Name:     ".",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			},
+			name:  ".",
+			cache: t.cache,
+			r:     bytes.NewReader(nil),
+		}, nil
+	}
+
+	if !fs.ValidPath(name) {
+		return nil, t.invalid(name)
+	}
+
 	if file := t.cache.get(name); file != nil {
-		return file.file(), nil
+		return file.file(t.cache), nil
 	}
 
 	// Not in cache, read from tar (only one goroutine at a time)
@@ -85,10 +138,27 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
-		return file.file(), nil
+		return file.file(t.cache), nil
 	}
 
 	if t.closed {
+		// Check if this is a synthetic directory
+		prefix := name + "/"
+		for _, fd := range t.cache.all() {
+			if strings.HasPrefix(fd.hdr.Name, prefix) {
+				// This is a valid directory - return synthetic entry
+				return &File{
+					hdr: &tar.Header{
+						Name:     name,
+						Typeflag: tar.TypeDir,
+						Mode:     0755,
+					},
+					name:  name,
+					cache: t.cache,
+					r:     bytes.NewReader(nil),
+				}, nil
+			}
+		}
 		return nil, t.notExist(name, ihfs.ErrClosed)
 	}
 
@@ -99,15 +169,41 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			if closeErr := t.close(); closeErr != nil {
 				return nil, t.notExist(name, closeErr)
 			}
+			// Check if this is a synthetic directory
+			prefix := name + "/"
+			for _, fd := range t.cache.all() {
+				if strings.HasPrefix(fd.hdr.Name, prefix) {
+					// This is a valid directory - return synthetic entry
+					return &File{
+						hdr: &tar.Header{
+							Name:     name,
+							Typeflag: tar.TypeDir,
+							Mode:     0755,
+						},
+						name:  name,
+						cache: t.cache,
+						r:     bytes.NewReader(nil),
+					}, nil
+				}
+			}
 			return nil, t.notExist(name, err)
 		}
 		if err != nil {
 			return nil, t.notExist(name, err)
 		}
 
-		t.cache.set(fd.hdr.Name, fd)
-		if fd.hdr.Name == name {
-			return fd.file(), nil
+		entryName := fd.hdr.Name
+		t.cache.set(entryName, fd)
+		// Normalize directory names so callers using fs.ValidPath
+		// can open "dir" and still get the real directory header
+		if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(entryName, "/") {
+			trimmed := strings.TrimSuffix(entryName, "/")
+			if trimmed != "" {
+				t.cache.set(trimmed, fd)
+			}
+		}
+		if fd.hdr.Name == name || (fd.hdr.Typeflag == tar.TypeDir && strings.TrimSuffix(fd.hdr.Name, "/") == name) {
+			return fd.file(t.cache), nil
 		}
 	}
 }
@@ -119,6 +215,10 @@ func (t *TarFile) close() error {
 
 func (t *TarFile) notExist(name string, cause error) error {
 	return t.error(name, ihfs.ErrNotExist, cause)
+}
+
+func (t *TarFile) invalid(name string) error {
+	return t.error(name, ihfs.ErrInvalid, nil)
 }
 
 func (t *TarFile) error(name string, err, cause error) error {
@@ -149,10 +249,13 @@ type TarError struct {
 }
 
 func (e *TarError) Error() string {
-	return fmt.Sprintf(
-		"%s(%s): %v: %v",
-		e.Archive, e.Name, e.Err, e.Cause,
-	)
+	if e.Cause != nil {
+		return fmt.Sprintf(
+			"%s(%s): %v: %v",
+			e.Archive, e.Name, e.Err, e.Cause,
+		)
+	}
+	return fmt.Sprintf("%s(%s): %v", e.Archive, e.Name, e.Err)
 }
 
 func (e *TarError) Unwrap() []error {

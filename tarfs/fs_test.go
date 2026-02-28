@@ -8,10 +8,12 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
@@ -96,7 +98,6 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tw.Close()).To(Succeed())
 
-			// Create from plain io.Reader (not io.ReadCloser)
 			reader := bytes.NewReader(buf.Bytes())
 			tfs := tarfs.FromReader("test.tar", reader)
 
@@ -277,7 +278,6 @@ var _ = Describe("Fs", func() {
 			var buf bytes.Buffer
 			tw := tar.NewWriter(&buf)
 
-			// Write multiple files
 			for i := 1; i <= 5; i++ {
 				num := fmt.Sprintf("%d", i)
 				name := "file" + num + ".txt"
@@ -303,21 +303,18 @@ var _ = Describe("Fs", func() {
 			tfs, err := tarfs.Open(testPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Open first file - should only read up to it
 			file1, err := tfs.Open("file1.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content1, err := io.ReadAll(file1)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content1)).To(Equal("content 1"))
 
-			// Open last file - should read through entire archive
 			file5, err := tfs.Open("file5.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content5, err := io.ReadAll(file5)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content5)).To(Equal("content 5"))
 
-			// Open middle file - should be cached now
 			file3, err := tfs.Open("file3.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content3, err := io.ReadAll(file3)
@@ -335,7 +332,7 @@ var _ = Describe("Fs", func() {
 			tw := tar.NewWriter(&buf)
 
 			err := tw.WriteHeader(&tar.Header{
-				Name:     "mydir/",
+				Name:     "mydir",
 				Mode:     0755,
 				Typeflag: tar.TypeDir,
 			})
@@ -351,7 +348,7 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			err = tw.WriteHeader(&tar.Header{
-				Name:     "emptydir/",
+				Name:     "emptydir",
 				Mode:     0755,
 				Typeflag: tar.TypeDir,
 			})
@@ -368,7 +365,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should open a directory entry", func() {
-			file, err := tfs.Open("mydir/")
+			file, err := tfs.Open("mydir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
@@ -376,7 +373,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return directory info for directory entry", func() {
-			file, err := tfs.Open("mydir/")
+			file, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
 			defer file.Close()
 
@@ -388,7 +385,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should open an empty directory", func() {
-			file, err := tfs.Open("emptydir/")
+			file, err := tfs.Open("emptydir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
@@ -410,15 +407,92 @@ var _ = Describe("Fs", func() {
 			Expect(string(content)).To(Equal("file in subdir"))
 		})
 
-		It("should read empty content from directory", func() {
-			file, err := tfs.Open("mydir/")
+		It("should return error when reading from directory", func() {
+			file, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
 
 			buf := make([]byte, 10)
 			n, err := file.Read(buf)
 
 			Expect(n).To(Equal(0))
-			Expect(err).To(Equal(io.EOF))
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrInvalid))
+		})
+	})
+
+	Describe("synthetic directory handling", func() {
+		var tfs *tarfs.TarFile
+
+		BeforeEach(func() {
+			var err error
+			tfs, err = tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when reading from synthetic directory", func() {
+			file, err := tfs.Open("tartest")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			buf := make([]byte, 10)
+			n, err := file.Read(buf)
+
+			Expect(n).To(Equal(0))
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrInvalid))
+		})
+
+		It("should return error when reading from root directory", func() {
+			file, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			buf := make([]byte, 10)
+			n, err := file.Read(buf)
+
+			Expect(n).To(Equal(0))
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrInvalid))
+		})
+
+		It("should handle paginated ReadDir when requesting more than available", func() {
+			file, err := tfs.Open("tartest")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			rdFile, ok := file.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			entries, err := rdFile.ReadDir(10)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(2))
+		})
+
+		It("should handle error when opening root with corrupted tar", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name: "file.txt",
+				Mode: 0644,
+				Size: 1000, // Claim large size
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("short"))
+			Expect(err).NotTo(HaveOccurred())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/corrupt.tar"
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			corruptTfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			file, err := corruptTfs.Open(".")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+			Expect(file).To(BeNil())
 		})
 	})
 
@@ -506,7 +580,6 @@ var _ = Describe("Fs", func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Pre-cache the file
 			_, err = tfs.Open("tartest/test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -516,7 +589,6 @@ var _ = Describe("Fs", func() {
 			for range goroutines {
 				go func() {
 					defer GinkgoRecover()
-					// This should hit the cache
 					file, err := tfs.Open("tartest/test.txt")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(file).NotTo(BeNil())
@@ -595,6 +667,284 @@ var _ = Describe("Fs", func() {
 
 			Expect(closedErrors).To(Equal(7))
 			Expect(notExistErrors).To(Equal(1))
+		})
+	})
+
+	var tfs *tarfs.TarFile
+
+	BeforeEach(func() {
+		var err error
+		tfs, err = tarfs.Open("../testdata/test.tar")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	Context("directory entries implement ReadDirFile", func() {
+		It("should allow casting directory to fs.ReadDirFile", func() {
+			file, err := tfs.Open("tartest")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			rdFile, ok := file.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue(), "directory should implement fs.ReadDirFile")
+
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(2))
+		})
+
+		It("should allow casting explicit directory entry to fs.ReadDirFile", func() {
+			file, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			rdFile, ok := file.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue(), "root directory should implement fs.ReadDirFile")
+
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(entries)).To(BeNumerically(">=", 1), "root should contain at least tartest")
+		})
+	})
+
+	Context("FileInfo.Name returns base name only", func() {
+		It("should return base name for nested synthetic directory", func() {
+			file, err := tfs.Open("tartest")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			info, err := file.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Name()).To(Equal("tartest"), "should be base name, not full path")
+		})
+
+		It("should return base name for synthetic subdirectory entries", func() {
+			file, err := tfs.Open("tartest")
+			Expect(err).NotTo(HaveOccurred())
+			defer file.Close()
+
+			rdFile := file.(fs.ReadDirFile)
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, entry := range entries {
+				name := entry.Name()
+				Expect(name).NotTo(ContainSubstring("/"), "entry name should not contain path separator")
+
+				info, err := entry.Info()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(info.Name()).To(Equal(name), "Info().Name() should match entry.Name()")
+			}
+		})
+	})
+
+	Context("resource cleanup", func() {
+		It("should close tar reader when opening root directory", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			f, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			err = tfs.Close()
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("directory with trailing slash", func() {
+		It("should detect non-synthetic directories with trailing slash in tar", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			err := tw.WriteHeader(&tar.Header{
+				Name:     "mydir/",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tw.WriteHeader(&tar.Header{
+				Name: "mydir/file.txt",
+				Size: 5,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = tw.Write([]byte("hello"))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = tw.Close()
+			Expect(err).NotTo(HaveOccurred())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			f, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			defer f.Close()
+
+			info, err := f.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+			Expect(info.Sys()).NotTo(BeNil())
+		})
+	})
+
+	Context("error message clarity", func() {
+		It("should not include nil in error messages", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = tfs.Open("../invalid")
+			Expect(err).To(HaveOccurred())
+
+			Expect(err.Error()).NotTo(ContainSubstring(": <nil>"))
+		})
+	})
+
+	It("should return error when calling ReadDir on a regular file", func() {
+		file, err := tfs.Open("tartest/test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		rdFile, ok := file.(fs.ReadDirFile)
+		Expect(ok).To(BeTrue(), "File should implement ReadDirFile interface")
+
+		_, err = rdFile.ReadDir(-1)
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("invalid argument")))
+	})
+
+	It("should return Sys() for real tar entries", func() {
+		file, err := tfs.Open("tartest/test.txt")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		info, err := file.Stat()
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(info.Sys()).NotTo(BeNil())
+	})
+
+	It("should skip entries outside directory prefix", func() {
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+
+		err := tw.WriteHeader(&tar.Header{Name: "dir1/file.txt", Size: 5})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = tw.Write([]byte("hello"))
+		Expect(err).NotTo(HaveOccurred())
+
+		err = tw.WriteHeader(&tar.Header{Name: "dir2/file.txt", Size: 5})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = tw.Write([]byte("world"))
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(tw.Close()).To(Succeed())
+
+		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+		file, err := tfs.Open("dir1")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		rdFile := file.(fs.ReadDirFile)
+		entries, err := rdFile.ReadDir(-1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(entries).To(HaveLen(1))
+		Expect(entries[0].Name()).To(Equal("file.txt"))
+	})
+
+	It("should handle root directory with Open(.)", func() {
+		file, err := tfs.Open(".")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		info, err := file.Stat()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+		Expect(info.Name()).To(Equal("."))
+	})
+
+	It("should handle directories with trailing slashes in tar", func() {
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+
+		err := tw.WriteHeader(&tar.Header{
+			Name:     "mydir/",
+			Typeflag: tar.TypeDir,
+			Mode:     0755,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		err = tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Size: 5})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = tw.Write([]byte("hello"))
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(tw.Close()).To(Succeed())
+
+		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+		file, err := tfs.Open("mydir")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		info, err := file.Stat()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+		Expect(info.Sys()).NotTo(BeNil())
+	})
+
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			tfs, err := tarfs.Open("../testdata/test.tar")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = fstest.TestFS(tfs, "tartest/test.txt", "tartest/another.txt")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("close error when loading root", func() {
+		It("should return error when close fails after reading all entries for root", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "f.txt", Mode: 0644, Size: 4})).To(Succeed())
+			_, _ = tw.Write([]byte("data"))
+			Expect(tw.Close()).To(Succeed())
+
+			closeErr := errors.New("close failed")
+			tfs := tarfs.FromReader("test.tar", &errCloser{bytes.NewReader(buf.Bytes()), closeErr})
+
+			file, err := tfs.Open(".")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+			Expect(err).To(MatchError(closeErr))
+			Expect(file).To(BeNil())
+		})
+	})
+
+	Context("root directory trailing slash normalization", func() {
+		It("should normalize directory headers with trailing slashes when loading root", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Mode: 0644, Size: 5})).To(Succeed())
+			_, _ = tw.Write([]byte("hello"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open "." triggers full root scan including "mydir/"
+			root, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			defer root.Close()
+
+			// After root scan, "mydir" (without slash) should be cached and openable
+			dir, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			info, err := dir.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
 		})
 	})
 })

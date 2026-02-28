@@ -15,13 +15,6 @@ import (
 	"github.com/unstoppablemango/ihfs/union"
 )
 
-// nonWriterFile is a file that doesn't implement io.Writer
-type nonWriterFile struct{}
-
-func (f *nonWriterFile) Close() error                 { return nil }
-func (f *nonWriterFile) Read(p []byte) (int, error)   { return 0, io.EOF }
-func (f *nonWriterFile) Stat() (ihfs.FileInfo, error) { return nil, nil }
-
 var _ = Describe("CopyToLayer", func() {
 	var testTime time.Time
 
@@ -71,7 +64,6 @@ var _ = Describe("CopyToLayer", func() {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					// Directory exists
 					fi := testfs.NewFileInfo(name)
 					fi.IsDirFunc = func() bool { return true }
 					return fi, nil
@@ -128,7 +120,6 @@ var _ = Describe("CopyToLayer", func() {
 					return nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					// Directory doesn't exist
 					return nil, fs.ErrNotExist
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
@@ -301,15 +292,12 @@ var _ = Describe("CopyToLayer", func() {
 			content := []byte("test")
 			baseFile := &testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
-					n := copy(p, content)
-					return n, io.EOF
+					return copy(p, content), io.EOF
 				},
 				CloseFunc: func() error { return nil },
 			}
 
-			// Use the nonWriterFile type that doesn't implement io.Writer
-			layerFile := &nonWriterFile{}
-
+			layerFile := &testfs.BoringFile{}
 			base := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
 					return baseFile, nil
@@ -337,7 +325,6 @@ var _ = Describe("CopyToLayer", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(removedFile).To(Equal("test.txt"))
 
-			// Verify it's a PathError with the right details
 			var pathErr *ihfs.PathError
 			if errors.As(err, &pathErr) {
 				Expect(pathErr.Op).To(Equal("copy"))

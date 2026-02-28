@@ -19,6 +19,17 @@ func (c *cache) set(name string, fd *fileData) {
 	c.data[name] = fd
 }
 
+func (c *cache) all() []*fileData {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+
+	result := make([]*fileData, 0, len(c.data))
+	for _, fd := range c.data {
+		result = append(result, fd)
+	}
+	return result
+}
+
 func newCache() *cache {
 	return &cache{
 		mux:  sync.RWMutex{},

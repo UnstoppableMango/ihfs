@@ -3,6 +3,7 @@ package memfs_test
 import (
 	"io"
 	"os"
+	"testing/fstest"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,7 +17,7 @@ var _ = Describe("Fs", func() {
 	Describe("Open", func() {
 		It("should open root directory", func() {
 			mfs := memfs.New()
-			file, err := mfs.Open("/")
+			file, err := mfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
 
@@ -27,7 +28,7 @@ var _ = Describe("Fs", func() {
 
 		It("should return error for non-existent file", func() {
 			mfs := memfs.New()
-			_, err := mfs.Open("/nonexistent")
+			_, err := mfs.Open("nonexistent")
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(ContainSubstring("does not exist")))
 		})
@@ -59,7 +60,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
 			content, err := io.ReadAll(file)
@@ -257,7 +258,7 @@ var _ = Describe("Fs", func() {
 			_, err = mfs.Stat("/old.txt")
 			Expect(err).To(HaveOccurred())
 
-			file, err = mfs.Open("/new.txt")
+			file, err = mfs.Open("new.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content, err := io.ReadAll(file)
 			Expect(err).NotTo(HaveOccurred())
@@ -411,7 +412,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content, err := io.ReadAll(file)
 			Expect(err).NotTo(HaveOccurred())
@@ -431,7 +432,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
 			seeker := file.(io.Seeker)
@@ -461,7 +462,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content, err := io.ReadAll(file)
 			Expect(err).NotTo(HaveOccurred())
@@ -477,7 +478,7 @@ var _ = Describe("Fs", func() {
 			_, err = mfs.Create("/testdir/file2.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := mfs.Open("/testdir")
+			file, err := mfs.Open("testdir")
 			Expect(err).NotTo(HaveOccurred())
 
 			dirFile := file.(ihfs.ReadDirFile)
@@ -502,7 +503,7 @@ var _ = Describe("Fs", func() {
 
 		It("should error when reading from directory", func() {
 			mfs := memfs.New()
-			file, err := mfs.Open("/")
+			file, err := mfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
 
 			buf := make([]byte, 10)
@@ -517,7 +518,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
 			writer := file.(io.Writer)
@@ -584,7 +585,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content, err := io.ReadAll(file)
 			Expect(err).NotTo(HaveOccurred())
@@ -593,7 +594,7 @@ var _ = Describe("Fs", func() {
 
 		It("should error when ReadDir on closed file", func() {
 			mfs := memfs.New()
-			file, err := mfs.Open("/")
+			file, err := mfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
@@ -618,7 +619,7 @@ var _ = Describe("Fs", func() {
 			err := mfs.Mkdir("/emptydir", 0755)
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := mfs.Open("/emptydir")
+			file, err := mfs.Open("emptydir")
 			Expect(err).NotTo(HaveOccurred())
 
 			dirFile := file.(ihfs.ReadDirFile)
@@ -643,7 +644,7 @@ var _ = Describe("Fs", func() {
 			_, err = mfs.Create("/testdir/file3.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := mfs.Open("/testdir")
+			file, err := mfs.Open("testdir")
 			Expect(err).NotTo(HaveOccurred())
 
 			dirFile := file.(ihfs.ReadDirFile)
@@ -713,7 +714,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
 			truncater := file.(interface{ Truncate(int64) error })
@@ -933,7 +934,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 			content, err := io.ReadAll(file)
 			Expect(err).NotTo(HaveOccurred())
@@ -943,7 +944,7 @@ var _ = Describe("Fs", func() {
 		It("should handle registerWithParent for root", func() {
 			// Root has no parent, should not error
 			mfs := memfs.New()
-			file, err := mfs.Open("/")
+			file, err := mfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(file).NotTo(BeNil())
 		})
@@ -962,9 +963,8 @@ var _ = Describe("Fs", func() {
 
 		It("should handle normalizePath with empty string", func() {
 			mfs := memfs.New()
-			file, err := mfs.Open("")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(file).NotTo(BeNil())
+			_, err := mfs.Open("")
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should handle normalizePath without leading separator", func() {
@@ -986,7 +986,7 @@ var _ = Describe("Fs", func() {
 			err := mfs.Mkdir("/nildir", 0755)
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err := mfs.Open("/nildir")
+			file, err := mfs.Open("nildir")
 			Expect(err).NotTo(HaveOccurred())
 
 			dirFile := file.(ihfs.ReadDirFile)
@@ -1009,7 +1009,7 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("/test.txt")
+			file, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
 			seeker := file.(io.Seeker)
@@ -1094,7 +1094,7 @@ var _ = Describe("Fs", func() {
 			Expect(info.Name()).To(Equal("file.txt"))
 
 			// Verify we can still read the original file
-			file, err = mfs.Open("/file.txt")
+			file, err = mfs.Open("file.txt")
 			Expect(err).NotTo(HaveOccurred())
 			defer file.Close()
 			content := make([]byte, 12)
@@ -1217,6 +1217,188 @@ var _ = Describe("Fs", func() {
 			// Try to rename non-existent file
 			err := mfs.Rename("/nonexistent.txt", "/new.txt")
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("consistent path validation", func() {
+		var mfs *memfs.Fs
+
+		BeforeEach(func() {
+			mfs = memfs.New()
+			f, err := mfs.Create("test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+		})
+
+		DescribeTable("should reject invalid paths",
+			func(path string) {
+				_, err := mfs.Open(path)
+				Expect(err).To(HaveOccurred(), "Open(%q) should reject invalid path", path)
+				Expect(err).To(MatchError(ContainSubstring("invalid")), "Open(%q) should return invalid error", path)
+			},
+			Entry("leading slash", "/test.txt"),
+			Entry("trailing /.", "test.txt/."),
+			Entry("double slash", "test.txt//"),
+			Entry("leading ./", "./test.txt"),
+			Entry("contains ..", "../test.txt"),
+			Entry("contains .. in middle", "test/../test.txt"),
+		)
+
+		It("should accept valid paths after normalization", func() {
+			f, err := mfs.Open("test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).NotTo(BeNil())
+			Expect(f.Close()).To(Succeed())
+		})
+	})
+
+	Context("empty string path handling", func() {
+		It("should reject empty string consistently", func() {
+			mfs := memfs.New()
+
+			// Open with empty string should fail
+			_, err := mfs.Open("")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("invalid")))
+		})
+
+		It("should accept dot for root directory", func() {
+			mfs := memfs.New()
+
+			f, err := mfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).NotTo(BeNil())
+
+			info, err := f.Stat()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.IsDir()).To(BeTrue())
+			Expect(f.Close()).To(Succeed())
+		})
+	})
+
+	Context("error message path consistency", func() {
+		It("should use original path in error messages, not internal normalized path", func() {
+			mfs := memfs.New()
+
+			// Try to open a non-existent file with a valid path
+			_, err := mfs.Open("nonexistent.txt")
+			Expect(err).To(HaveOccurred())
+
+			// Error should contain the original path we passed
+			Expect(err.Error()).To(ContainSubstring("nonexistent.txt"))
+			// Error should not contain internal absolute path like "/nonexistent.txt"
+			Expect(err.Error()).NotTo(ContainSubstring("/nonexistent.txt"))
+		})
+	})
+
+	It("should handle MkdirAll with existing non-directory", func() {
+		mfs := memfs.New()
+
+		// Create a file
+		f, err := mfs.Create("file.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(f.Close()).To(Succeed())
+
+		// Try to create directory with same name
+		err = mfs.MkdirAll("file.txt", 0755)
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("exists")))
+	})
+
+	It("should handle Rename when new parent doesn't exist", func() {
+		mfs := memfs.New()
+
+		// Create a file
+		f, err := mfs.Create("file.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(f.Close()).To(Succeed())
+
+		// Try to rename to non-existent directory
+		err = mfs.Rename("file.txt", "nonexistent/file.txt")
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("does not exist")))
+	})
+
+	It("should handle Rename when new parent is not a directory", func() {
+		mfs := memfs.New()
+
+		// Create two files
+		f1, err := mfs.Create("file1.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(f1.Close()).To(Succeed())
+
+		f2, err := mfs.Create("file2.txt")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(f2.Close()).To(Succeed())
+
+		// Try to rename file1 to file2/something (file2 is not a directory)
+		err = mfs.Rename("file1.txt", "file2.txt/something")
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("invalid")))
+	})
+
+	It("should normalize paths starting with /", func() {
+		mfs := memfs.New()
+
+		// MkdirAll with leading slash
+		err := mfs.MkdirAll("/some/deep/path", 0755)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify it was created
+		info, err := mfs.Stat("some/deep/path")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+	})
+
+	It("should handle MkdirAll with empty path components", func() {
+		mfs := memfs.New()
+
+		// This would create path parts with empty strings after split
+		// Testing that empty parts are skipped (line 122-123)
+		err := mfs.MkdirAll("a//b", 0755)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify it was created (cleaned to a/b)
+		info, err := mfs.Stat("a/b")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+	})
+
+	It("should handle empty string consistently", func() {
+		mfs := memfs.New()
+
+		// Empty string is invalid for Open
+		_, err := mfs.Open("")
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("invalid")))
+
+		// But normalizePath now treats "" as root for other operations
+		// so they shouldn't create invalid internal paths
+		err = mfs.Mkdir("", 0755)
+		Expect(err).To(HaveOccurred()) // Should fail but not panic
+	})
+
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			mfs := memfs.New()
+
+			// Create test structure
+			Expect(mfs.Mkdir("/dir", 0755)).To(Succeed())
+
+			f, err := mfs.Create("/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(interface{ Write([]byte) (int, error) }).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			f2, err := mfs.Create("/dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f2.(interface{ Write([]byte) (int, error) }).Write([]byte("nested"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
+
+			err = fstest.TestFS(mfs, "file.txt", "dir", "dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

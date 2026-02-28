@@ -1,6 +1,8 @@
 package tarfs_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"io"
 	"io/fs"
 
@@ -94,6 +96,129 @@ var _ = Describe("File", func() {
 			tf, ok := file.(*tarfs.File)
 			Expect(ok).To(BeTrueBecause("file is a *tarfs.File"))
 			Expect(tf.Name()).To(Equal("tartest/test.txt"))
+		})
+	})
+
+	Describe("ReadDir", func() {
+		It("should use real cached directory entry when available", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// Explicit child dir header (no explicit parent header, so parent is synthetic)
+			Expect(tw.WriteHeader(&tar.Header{Name: "parent/child/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "parent/child/file.txt", Mode: 0644, Size: 4})).To(Succeed())
+			_, _ = tw.Write([]byte("data"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open "parent" — synthetic dir, but "parent/child" is a real cached entry
+			parentFile, err := tfs.Open("parent")
+			Expect(err).NotTo(HaveOccurred())
+			defer parentFile.Close()
+
+			rdFile, ok := parentFile.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("child"))
+			Expect(entries[0].IsDir()).To(BeTrue())
+		})
+
+		// Bug: fileData.file sets File.name = fd.hdr.Name verbatim. When a tar archive
+		// uses GNU-tar-style trailing-slash directory headers (e.g. "mydir/"), the returned
+		// File has name "mydir/", so ReadDir computes prefix "mydir//" which never matches
+		// any child entries, making the directory appear empty.
+		It("should list children of a GNU-tar-style directory entry (trailing slash)", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// GNU tar / gtar convention: directory headers end with "/"
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Mode: 0644, Size: 5})).To(Succeed())
+			_, _ = tw.Write([]byte("hello"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open root first to fully hydrate the cache (including "mydir/file.txt")
+			root, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			root.Close()
+
+			// Open "mydir" — hits cache, gets the fileData whose hdr.Name is "mydir/"
+			// fileData.file() sets File.name = "mydir/", so ReadDir builds prefix "mydir//"
+			dir, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			defer dir.Close()
+
+			rdFile, ok := dir.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			// Bug: returns [] because "mydir/file.txt" does not start with "mydir//"
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("file.txt"))
+		})
+
+		// Bug: ReadDir rebuilds and re-sorts the full entry list from the shared cache on
+		// every call. If the cache grows between paginated calls (because another Open adds
+		// an entry that sorts before the current readDirCount position), earlier entries are
+		// shifted forward and the offset points to the wrong position, producing duplicates
+		// and skipping entries.
+		It("should return each entry exactly once across paginated ReadDir calls", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// Children in reverse alphabetical order in the tar so the sort inside ReadDir
+			// is exercised and we can confirm the final order is correct.
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/c.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("c"))
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/a.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("a"))
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/b.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("b"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open root to fully hydrate the cache before any ReadDir call.
+			// This ensures the snapshot captures all three entries on the first ReadDir.
+			root, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			root.Close()
+
+			dirFile, err := tfs.Open("dir")
+			Expect(err).NotTo(HaveOccurred())
+			defer dirFile.Close()
+
+			rdFile, ok := dirFile.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			// Three sequential paginated reads of one entry each.
+			// Without the fix, the sorted list is rebuilt from the cache on every call.
+			// Because map iteration is non-deterministic, inserting an entry that sorts
+			// before the current offset causes the offset to land on the wrong position,
+			// returning a duplicate and skipping another entry.
+			e1, err := rdFile.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(e1).To(HaveLen(1))
+
+			e2, err := rdFile.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(e2).To(HaveLen(1))
+
+			e3, err := rdFile.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(e3).To(HaveLen(1))
+
+			// Fourth call must signal EOF — the directory is exhausted.
+			_, err = rdFile.ReadDir(1)
+			Expect(err).To(MatchError(io.EOF))
+
+			// All three entries returned exactly once, in sorted order.
+			names := []string{e1[0].Name(), e2[0].Name(), e3[0].Name()}
+			Expect(names).To(Equal([]string{"a.txt", "b.txt", "c.txt"}))
 		})
 	})
 })

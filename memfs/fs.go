@@ -1,6 +1,7 @@
 package memfs
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 )
+
+var separator = string(filepath.Separator)
 
 // Fs represents an in-memory filesystem.
 type Fs struct {
@@ -26,14 +29,23 @@ func (f *Fs) getData() map[string]*FileData {
 	f.init.Do(func() {
 		f.data = make(map[string]*FileData)
 		// Root should always exist
-		root := CreateDir(string(filepath.Separator))
-		f.data[string(filepath.Separator)] = root
+		root := CreateDir(separator)
+		f.data[separator] = root
 	})
 	return f.data
 }
 
 // Open implements ihfs.FS.
 func (f *Fs) Open(name string) (ihfs.File, error) {
+	// Store original name for error messages
+	origName := name
+
+	// Validate path before normalization
+	if !fs.ValidPath(name) {
+		return nil, perror("open", origName, ihfs.ErrInvalid)
+	}
+
+	// Normalize after validation for internal use
 	name = normalizePath(name)
 
 	f.mu.RLock()
@@ -41,7 +53,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	f.mu.RUnlock()
 
 	if !ok {
-		return nil, perror("open", name, ihfs.ErrNotExist)
+		return nil, perror("open", origName, ihfs.ErrNotExist)
 	}
 
 	return NewReadOnlyFile(file), nil
@@ -103,14 +115,10 @@ func (f *Fs) MkdirAll(name string, perm os.FileMode) error {
 	}
 
 	// Create all parent directories
-	parts := strings.Split(strings.Trim(name, string(filepath.Separator)), string(filepath.Separator))
-	current := string(filepath.Separator)
+	parts := strings.Split(strings.Trim(name, separator), separator)
+	current := separator
 
 	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-
 		current = filepath.Join(current, part)
 		if _, exists := f.getData()[current]; !exists {
 			dir := CreateDir(current)
@@ -221,11 +229,7 @@ func (f *Fs) Rename(oldName, newName string) error {
 	delete(f.getData(), oldName)
 	f.getData()[newName] = file
 
-	if err := f.registerWithParent(file); err != nil {
-		return perror("rename", newName, err)
-	}
-
-	return nil
+	return f.registerWithParent(file)
 }
 
 // Stat implements ihfs.StatFS.
@@ -392,7 +396,7 @@ func (f *Fs) findParent(file *FileData) *FileData {
 
 func (f *Fs) findDescendants(name string) []*FileData {
 	var descendants []*FileData
-	prefix := name + string(filepath.Separator)
+	prefix := name + separator
 
 	for path, file := range f.getData() {
 		if strings.HasPrefix(path, prefix) {
@@ -404,16 +408,21 @@ func (f *Fs) findDescendants(name string) []*FileData {
 }
 
 func normalizePath(path string) string {
+	// Convert io/fs style paths to internal absolute paths
+	if path == "." {
+		return separator
+	}
 	if path == "" {
-		return string(filepath.Separator)
+		// Treat empty paths as referring to the filesystem root
+		return separator
 	}
 
-	path = filepath.Clean(path)
-	if !strings.HasPrefix(path, string(filepath.Separator)) {
-		path = string(filepath.Separator) + path
+	// Prepend "/" for relative paths (io/fs style)
+	if !strings.HasPrefix(path, separator) {
+		path = separator + path
 	}
 
-	return path
+	return filepath.Clean(path)
 }
 
 func perror(op, path string, err error) error {
