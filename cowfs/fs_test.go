@@ -325,7 +325,6 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// so we test the option function directly
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithMergeStrategy(union.DefaultMergeStrategy)
 			opt(cfs)
@@ -337,7 +336,6 @@ var _ = Describe("Fs", func() {
 			base := testfs.New()
 			layer := testfs.New()
 
-			// so we test the option function directly
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithDefaultMergeStrategy()
 			opt(cfs)

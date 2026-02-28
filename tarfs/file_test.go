@@ -125,5 +125,96 @@ var _ = Describe("File", func() {
 			Expect(entries[0].Name()).To(Equal("child"))
 			Expect(entries[0].IsDir()).To(BeTrue())
 		})
+
+		// Bug: fileData.file sets File.name = fd.hdr.Name verbatim. When a tar archive
+		// uses GNU-tar-style trailing-slash directory headers (e.g. "mydir/"), the returned
+		// File has name "mydir/", so ReadDir computes prefix "mydir//" which never matches
+		// any child entries, making the directory appear empty.
+		It("should list children of a GNU-tar-style directory entry (trailing slash)", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// GNU tar / gtar convention: directory headers end with "/"
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Mode: 0644, Size: 5})).To(Succeed())
+			_, _ = tw.Write([]byte("hello"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open root first to fully hydrate the cache (including "mydir/file.txt")
+			root, err := tfs.Open(".")
+			Expect(err).NotTo(HaveOccurred())
+			root.Close()
+
+			// Open "mydir" — hits cache, gets the fileData whose hdr.Name is "mydir/"
+			// fileData.file() sets File.name = "mydir/", so ReadDir builds prefix "mydir//"
+			dir, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			defer dir.Close()
+
+			rdFile, ok := dir.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			// Bug: returns [] because "mydir/file.txt" does not start with "mydir//"
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("file.txt"))
+		})
+
+		// Bug: ReadDir rebuilds and re-sorts the full entry list from the shared cache on
+		// every call. If the cache grows between paginated calls (because another Open adds
+		// an entry that sorts before the current readDirCount position), earlier entries are
+		// shifted forward and the offset points to the wrong position, producing duplicates
+		// and skipping entries.
+		It("should not return duplicate entries when cache grows between paginated reads", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			// Explicit dir header without trailing slash; children in reverse alpha order
+			// so that the second child ("a.txt") will sort before the first ("b.txt") once added.
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/b.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("b"))
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/a.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("a"))
+			Expect(tw.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+			// Open "dir/b.txt" — lazily reads the "dir" header and "dir/b.txt" into cache;
+			// the tar reader is now positioned after "dir/b.txt", with "dir/a.txt" still unread.
+			_, err := tfs.Open("dir/b.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Open "dir" from cache — tar reader position is unchanged.
+			dirFile, err := tfs.Open("dir")
+			Expect(err).NotTo(HaveOccurred())
+			defer dirFile.Close()
+
+			rdFile, ok := dirFile.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			// First paginated read: only "dir/b.txt" is cached → sorted entries = ["b.txt"]
+			// → readDirCount advances to 1.
+			entries1, err := rdFile.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries1).To(HaveLen(1))
+
+			// Open "dir/a.txt" — reads it from the tar and adds it to the shared cache.
+			// "a.txt" sorts BEFORE "b.txt", so the rebuilt sorted list becomes ["a.txt", "b.txt"].
+			_, err = tfs.Open("dir/a.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Second paginated read: cache now has both entries.
+			// Bug: ReadDir rebuilds ["a.txt", "b.txt"], readDirCount=1 still points at index 1
+			// → returns "b.txt" again instead of "a.txt".
+			entries2, err := rdFile.ReadDir(1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries2).To(HaveLen(1))
+
+			// Together the two reads should return each entry exactly once.
+			allNames := []string{entries1[0].Name(), entries2[0].Name()}
+			Expect(allNames).To(ConsistOf("a.txt", "b.txt"))
+		})
 	})
 })
