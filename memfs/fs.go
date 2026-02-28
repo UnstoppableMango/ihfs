@@ -119,10 +119,6 @@ func (f *Fs) MkdirAll(name string, perm os.FileMode) error {
 	current := separator
 
 	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-
 		current = filepath.Join(current, part)
 		if _, exists := f.getData()[current]; !exists {
 			dir := CreateDir(current)
@@ -233,11 +229,7 @@ func (f *Fs) Rename(oldName, newName string) error {
 	delete(f.getData(), oldName)
 	f.getData()[newName] = file
 
-	if err := f.registerWithParent(file); err != nil {
-		return perror("rename", newName, err)
-	}
-
-	return nil
+	return f.registerWithParent(file)
 }
 
 // Stat implements ihfs.StatFS.
