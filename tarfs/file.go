@@ -13,11 +13,12 @@ import (
 
 // File represents a file in a tar archive.
 type File struct {
-	r            io.Reader
-	hdr          *tar.Header
-	cache        *cache
-	name         string
-	readDirCount int
+	r               io.Reader
+	hdr             *tar.Header
+	cache           *cache
+	name            string
+	readDirCount    int
+	readDirSnapshot []fs.DirEntry // stable snapshot built on first ReadDir call
 }
 
 // Close implements [fs.File].
@@ -57,14 +58,43 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		return nil, f.perror("readdir", fs.ErrInvalid)
 	}
 
+	// Build a snapshot of the directory entries on the first call so that
+	// paginated reads are stable even if the shared cache grows between calls.
+	if f.readDirSnapshot == nil {
+		f.readDirSnapshot = f.buildDirSnapshot()
+	}
+	entries := f.readDirSnapshot
+
+	if n <= 0 {
+		result := entries[f.readDirCount:]
+		f.readDirCount = len(entries)
+		return result, nil
+	}
+
+	// Return n entries
+	start := f.readDirCount
+	if start >= len(entries) {
+		return nil, io.EOF
+	}
+
+	end := min(start+n, len(entries))
+	result := entries[start:end]
+	f.readDirCount = end
+
+	return result, nil
+}
+
+// buildDirSnapshot collects and sorts the directory entries visible in the cache
+// at the time of the call. The result is stored as an immutable snapshot so that
+// concurrent or sequential ReadDir calls paginate over a consistent view.
+func (f *File) buildDirSnapshot() []fs.DirEntry {
 	// Determine prefix: empty for root ("."), otherwise name + "/"
 	var prefix string
 	if f.name != "." {
 		prefix = f.name + "/"
 	}
 
-	// Collect entries under this directory
-	var entries []fs.DirEntry
+	entries := make([]fs.DirEntry, 0)
 	seen := make(map[string]bool)
 
 	for _, fd := range f.cache.all() {
@@ -101,28 +131,11 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 	}
 
-	// Sort entries by name
 	slices.SortFunc(entries, func(a, b fs.DirEntry) int {
 		return cmp.Compare(a.Name(), b.Name())
 	})
 
-	if n <= 0 {
-		result := entries[f.readDirCount:]
-		f.readDirCount = len(entries)
-		return result, nil
-	}
-
-	// Return n entries
-	start := f.readDirCount
-	if start >= len(entries) {
-		return nil, io.EOF
-	}
-
-	end := min(start+n, len(entries))
-	result := entries[start:end]
-	f.readDirCount = end
-
-	return result, nil
+	return entries
 }
 
 func (f *File) perror(op string, err error) error {
@@ -172,9 +185,15 @@ func (fd fileData) fileInfo() fs.FileInfo {
 }
 
 func (fd fileData) file(cache *cache) *File {
+	// Trim trailing slash from directory names so ReadDir computes the correct
+	// prefix ("dir/") rather than a double-slash prefix ("dir//").
+	name := fd.hdr.Name
+	if fd.hdr.Typeflag == tar.TypeDir {
+		name = strings.TrimSuffix(name, "/")
+	}
 	return &File{
 		hdr:   fd.hdr,
-		name:  fd.hdr.Name,
+		name:  name,
 		cache: cache,
 		r:     bytes.NewReader(fd.data),
 	}

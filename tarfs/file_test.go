@@ -167,26 +167,27 @@ var _ = Describe("File", func() {
 		// an entry that sorts before the current readDirCount position), earlier entries are
 		// shifted forward and the offset points to the wrong position, producing duplicates
 		// and skipping entries.
-		It("should not return duplicate entries when cache grows between paginated reads", func() {
+		It("should return each entry exactly once across paginated ReadDir calls", func() {
 			var buf bytes.Buffer
 			tw := tar.NewWriter(&buf)
-			// Explicit dir header without trailing slash; children in reverse alpha order
-			// so that the second child ("a.txt") will sort before the first ("b.txt") once added.
-			Expect(tw.WriteHeader(&tar.Header{Name: "dir", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
-			Expect(tw.WriteHeader(&tar.Header{Name: "dir/b.txt", Mode: 0644, Size: 1})).To(Succeed())
-			_, _ = tw.Write([]byte("b"))
+			// Children in reverse alphabetical order in the tar so the sort inside ReadDir
+			// is exercised and we can confirm the final order is correct.
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/c.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("c"))
 			Expect(tw.WriteHeader(&tar.Header{Name: "dir/a.txt", Mode: 0644, Size: 1})).To(Succeed())
 			_, _ = tw.Write([]byte("a"))
+			Expect(tw.WriteHeader(&tar.Header{Name: "dir/b.txt", Mode: 0644, Size: 1})).To(Succeed())
+			_, _ = tw.Write([]byte("b"))
 			Expect(tw.Close()).To(Succeed())
 
 			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
 
-			// Open "dir/b.txt" — lazily reads the "dir" header and "dir/b.txt" into cache;
-			// the tar reader is now positioned after "dir/b.txt", with "dir/a.txt" still unread.
-			_, err := tfs.Open("dir/b.txt")
+			// Open root to fully hydrate the cache before any ReadDir call.
+			// This ensures the snapshot captures all three entries on the first ReadDir.
+			root, err := tfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
+			root.Close()
 
-			// Open "dir" from cache — tar reader position is unchanged.
 			dirFile, err := tfs.Open("dir")
 			Expect(err).NotTo(HaveOccurred())
 			defer dirFile.Close()
@@ -194,27 +195,30 @@ var _ = Describe("File", func() {
 			rdFile, ok := dirFile.(fs.ReadDirFile)
 			Expect(ok).To(BeTrue())
 
-			// First paginated read: only "dir/b.txt" is cached → sorted entries = ["b.txt"]
-			// → readDirCount advances to 1.
-			entries1, err := rdFile.ReadDir(1)
+			// Three sequential paginated reads of one entry each.
+			// Without the fix, the sorted list is rebuilt from the cache on every call.
+			// Because map iteration is non-deterministic, inserting an entry that sorts
+			// before the current offset causes the offset to land on the wrong position,
+			// returning a duplicate and skipping another entry.
+			e1, err := rdFile.ReadDir(1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(entries1).To(HaveLen(1))
+			Expect(e1).To(HaveLen(1))
 
-			// Open "dir/a.txt" — reads it from the tar and adds it to the shared cache.
-			// "a.txt" sorts BEFORE "b.txt", so the rebuilt sorted list becomes ["a.txt", "b.txt"].
-			_, err = tfs.Open("dir/a.txt")
+			e2, err := rdFile.ReadDir(1)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(e2).To(HaveLen(1))
 
-			// Second paginated read: cache now has both entries.
-			// Bug: ReadDir rebuilds ["a.txt", "b.txt"], readDirCount=1 still points at index 1
-			// → returns "b.txt" again instead of "a.txt".
-			entries2, err := rdFile.ReadDir(1)
+			e3, err := rdFile.ReadDir(1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(entries2).To(HaveLen(1))
+			Expect(e3).To(HaveLen(1))
 
-			// Together the two reads should return each entry exactly once.
-			allNames := []string{entries1[0].Name(), entries2[0].Name()}
-			Expect(allNames).To(ConsistOf("a.txt", "b.txt"))
+			// Fourth call must signal EOF — the directory is exhausted.
+			_, err = rdFile.ReadDir(1)
+			Expect(err).To(MatchError(io.EOF))
+
+			// All three entries returned exactly once, in sorted order.
+			names := []string{e1[0].Name(), e2[0].Name(), e3[0].Name()}
+			Expect(names).To(Equal([]string{"a.txt", "b.txt", "c.txt"}))
 		})
 	})
 })
