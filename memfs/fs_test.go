@@ -1364,6 +1364,21 @@ var _ = Describe("Fs", func() {
 		Expect(info.IsDir()).To(BeTrue())
 	})
 
+	It("should handle empty string consistently", func() {
+		mfs := memfs.New()
+
+		// Empty string is invalid for Open
+		_, err := mfs.Open("")
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(ContainSubstring("invalid")))
+
+		// But normalizePath now treats "" as root for other operations
+		// so they shouldn't create invalid internal paths
+		err = mfs.Mkdir("", 0755)
+		Expect(err).To(HaveOccurred()) // Should fail but not panic
+	})
+
+	Describe("fstest", func() {
 	It("should pass fstest.TestFS", func() {
 		mfs := memfs.New()
 
@@ -1384,5 +1399,6 @@ var _ = Describe("Fs", func() {
 
 		err = fstest.TestFS(mfs, "file.txt", "dir", "dir/nested.txt")
 		Expect(err).NotTo(HaveOccurred())
+	})
 	})
 })

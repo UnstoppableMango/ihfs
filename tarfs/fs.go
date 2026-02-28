@@ -78,11 +78,7 @@ func (t *TarFile) Name() string {
 
 // Open implements [ihfs.FS].
 func (t *TarFile) Open(name string) (ihfs.File, error) {
-	if !fs.ValidPath(name) {
-		return nil, t.invalid(name)
-	}
-
-	// Handle root directory
+	// Handle root directory before fs.ValidPath check (which rejects ".")
 	if name == "." {
 		// Return root directory - need to load all entries first
 		t.mux.Lock()
@@ -101,7 +97,16 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 					t.mux.Unlock()
 					return nil, t.error(".", ihfs.ErrInvalid, err)
 				}
-				t.cache.set(fd.hdr.Name, fd)
+				name := fd.hdr.Name
+				t.cache.set(name, fd)
+				// Normalize directory names so callers using fs.ValidPath
+				// can open "dir" and still get the real directory header
+				if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(name, "/") {
+					trimmed := strings.TrimSuffix(name, "/")
+					if trimmed != "" {
+						t.cache.set(trimmed, fd)
+					}
+				}
 			}
 		}
 		t.mux.Unlock()
@@ -117,6 +122,11 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			cache: t.cache,
 			r:     bytes.NewReader(nil),
 		}, nil
+	}
+
+	// Validate path after root check
+	if !fs.ValidPath(name) {
+		return nil, t.invalid(name)
 	}
 
 	if file := t.cache.get(name); file != nil {
@@ -183,8 +193,17 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			return nil, t.notExist(name, err)
 		}
 
-		t.cache.set(fd.hdr.Name, fd)
-		if fd.hdr.Name == name {
+		entryName := fd.hdr.Name
+		t.cache.set(entryName, fd)
+		// Normalize directory names so callers using fs.ValidPath
+		// can open "dir" and still get the real directory header
+		if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(entryName, "/") {
+			trimmed := strings.TrimSuffix(entryName, "/")
+			if trimmed != "" {
+				t.cache.set(trimmed, fd)
+			}
+		}
+		if fd.hdr.Name == name || (fd.hdr.Typeflag == tar.TypeDir && strings.TrimSuffix(fd.hdr.Name, "/") == name) {
 			return fd.file(t.cache), nil
 		}
 	}

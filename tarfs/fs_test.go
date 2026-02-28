@@ -901,6 +901,53 @@ var _ = Describe("Fs", func() {
 		Expect(info.Sys()).To(BeNil())
 	})
 
+	It("should handle root directory with Open(.)", func() {
+		// fs.ValidPath rejects ".", so Open must handle it before validation
+		file, err := tfs.Open(".")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		info, err := file.Stat()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+		Expect(info.Name()).To(Equal("."))
+	})
+
+	It("should handle directories with trailing slashes in tar", func() {
+		// Create tar with directory entry ending in "/"
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+
+		// Add directory with trailing slash
+		err := tw.WriteHeader(&tar.Header{
+			Name:     "mydir/",
+			Typeflag: tar.TypeDir,
+			Mode:     0755,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		// Add file in directory
+		err = tw.WriteHeader(&tar.Header{Name: "mydir/file.txt", Size: 5})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = tw.Write([]byte("hello"))
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(tw.Close()).To(Succeed())
+
+		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+
+		// Should be able to open "mydir" (without trailing slash)
+		file, err := tfs.Open("mydir")
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+
+		info, err := file.Stat()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(info.IsDir()).To(BeTrue())
+		// Should have non-nil Sys since it's a real tar entry
+		Expect(info.Sys()).NotTo(BeNil())
+	})
+
 	Describe("fstest", func() {
 		It("should pass fstest.TestFS", func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")

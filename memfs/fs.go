@@ -421,8 +421,8 @@ func normalizePath(path string) string {
 		return separator
 	}
 	if path == "" {
-		// Leave empty paths unchanged so callers can treat them as invalid
-		return path
+		// Treat empty paths as referring to the filesystem root
+		return separator
 	}
 
 	// Prepend "/" for relative paths (io/fs style)
