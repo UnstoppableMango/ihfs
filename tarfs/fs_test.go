@@ -421,7 +421,7 @@ var _ = Describe("Fs", func() {
 
 			Expect(n).To(Equal(0))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid argument"))
+			Expect(err).To(MatchError(fs.ErrInvalid))
 		})
 	})
 

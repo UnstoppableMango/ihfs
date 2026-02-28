@@ -2,6 +2,7 @@ package tarfs
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -83,15 +84,39 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Handle root directory
 	if name == "." {
-		// Return a synthetic directory with all top-level entries
-		return t.openRoot()
+		// Return root directory - need to load all entries first
+		t.mux.Lock()
+		if !t.closed {
+			for {
+				fd, err := next(t.tr)
+				if err == io.EOF {
+					t.closed = true
+					break
+				}
+				if err != nil {
+					t.mux.Unlock()
+					return nil, t.error(".", ihfs.ErrInvalid, err)
+				}
+				t.cache.set(fd.hdr.Name, fd)
+			}
+		}
+		t.mux.Unlock()
+
+		// Return a synthetic directory for root
+		return &File{
+			hdr: &tar.Header{
+				Name:     ".",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			},
+			name:   ".",
+			cache:  t.cache,
+			Reader: bytes.NewReader(nil),
+		}, nil
 	}
 
 	if file := t.cache.get(name); file != nil {
-		if file.hdr.FileInfo().IsDir() {
-			return newDirFile(name, t.cache), nil
-		}
-		return file.file(), nil
+		return file.file(t.cache), nil
 	}
 
 	// Not in cache, read from tar (only one goroutine at a time)
@@ -100,16 +125,26 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 	// Check cache again in case another goroutine loaded it
 	if file := t.cache.get(name); file != nil {
-		if file.hdr.FileInfo().IsDir() {
-			return newDirFile(name, t.cache), nil
-		}
-		return file.file(), nil
+		return file.file(t.cache), nil
 	}
 
 	if t.closed {
-		// Archive is closed, check if this is a synthetic directory
-		if dir := t.getSyntheticDir(name); dir != nil {
-			return dir, nil
+		// Check if this is a synthetic directory
+		prefix := name + "/"
+		for _, fd := range t.cache.all() {
+			if strings.HasPrefix(fd.hdr.Name, prefix) {
+				// This is a valid directory - return synthetic entry
+				return &File{
+					hdr: &tar.Header{
+						Name:     name,
+						Typeflag: tar.TypeDir,
+						Mode:     0755,
+					},
+					name:   name,
+					cache:  t.cache,
+					Reader: bytes.NewReader(nil),
+				}, nil
+			}
 		}
 		return nil, t.notExist(name, ihfs.ErrClosed)
 	}
@@ -121,9 +156,22 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			if closeErr := t.close(); closeErr != nil {
 				return nil, t.notExist(name, closeErr)
 			}
-			// Check if this could be a synthetic directory
-			if dir := t.getSyntheticDir(name); dir != nil {
-				return dir, nil
+			// Check if this is a synthetic directory
+			prefix := name + "/"
+			for _, fd := range t.cache.all() {
+				if strings.HasPrefix(fd.hdr.Name, prefix) {
+					// This is a valid directory - return synthetic entry
+					return &File{
+						hdr: &tar.Header{
+							Name:     name,
+							Typeflag: tar.TypeDir,
+							Mode:     0755,
+						},
+						name:   name,
+						cache:  t.cache,
+						Reader: bytes.NewReader(nil),
+					}, nil
+				}
 			}
 			return nil, t.notExist(name, err)
 		}
@@ -133,10 +181,7 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 
 		t.cache.set(fd.hdr.Name, fd)
 		if fd.hdr.Name == name {
-			if fd.hdr.FileInfo().IsDir() {
-				return newDirFile(name, t.cache), nil
-			}
-			return fd.file(), nil
+			return fd.file(t.cache), nil
 		}
 	}
 }
@@ -152,43 +197,6 @@ func (t *TarFile) notExist(name string, cause error) error {
 
 func (t *TarFile) invalid(name string) error {
 	return t.error(name, ihfs.ErrInvalid, nil)
-}
-
-func (t *TarFile) openRoot() (ihfs.File, error) {
-	// Need to ensure all entries are loaded
-	t.mux.Lock()
-	defer t.mux.Unlock()
-
-	if !t.closed {
-		// Load all remaining entries
-		for {
-			fd, err := next(t.tr)
-			if err == io.EOF {
-				// Don't close yet - files might be opened later
-				t.closed = true
-				break
-			}
-			if err != nil {
-				return nil, t.error(".", ihfs.ErrInvalid, err)
-			}
-			t.cache.set(fd.hdr.Name, fd)
-		}
-	}
-
-	// Return a directory for root with name "."
-	return newDirFile(".", t.cache), nil
-}
-
-func (t *TarFile) getSyntheticDir(name string) ihfs.File {
-	// Check if any files in cache start with this prefix
-	prefix := name + "/"
-	for _, fd := range t.cache.all() {
-		if strings.HasPrefix(fd.hdr.Name, prefix) {
-			// This is a valid directory
-			return newDirFile(name, t.cache)
-		}
-	}
-	return nil
 }
 
 func (t *TarFile) error(name string, err, cause error) error {
