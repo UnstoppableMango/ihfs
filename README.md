@@ -3,8 +3,10 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/UnstoppableMango/ihfs/ci.yml)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/UnstoppableMango/ihfs/main)
 ![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs)
+[![Go Report Card](https://goreportcard.com/badge/github.com/unstoppablemango/ihfs)](https://goreportcard.com/report/github.com/unstoppablemango/ihfs)
+![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs)
 
-Similar to [afero](https://github.com/spf13/afero), but with composable interfaces more akin to `io/fs`.
+Similar to [afero](https://github.com/spf13/afero), but built around the extension interface pattern described in the [io/fs draft design](https://github.com/golang/proposal/blob/master/design/draft-iofs.md).
 
 Also an anagram for "fish".
 
