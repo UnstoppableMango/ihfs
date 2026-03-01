@@ -28,6 +28,7 @@ jobs:
           --github-output
           --race
           --trace
+          --randomize-all
           --coverprofile=cover.out
 
       - uses: codecov/codecov-action@v5
@@ -46,6 +47,7 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: nix flake check
+      - run: nix build .# .#mockfs
 
   clean:
     runs-on: ubuntu-latest
@@ -59,3 +61,6 @@ jobs:
 
       - run: go tool gomod2nix
       - run: git diff --exit-code gomod2nix.toml
+
+      - run: make generate
+      - run: git diff --exit-code

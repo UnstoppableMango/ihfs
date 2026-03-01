@@ -1,6 +1,6 @@
 .direnv/
 .envrc
-/result
+/result*
 cover*
 *.out
 *.test
