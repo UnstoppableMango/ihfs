@@ -26,7 +26,11 @@
     inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
-      imports = [ inputs.treefmt-nix.flakeModule ];
+
+      imports = [
+        inputs.treefmt-nix.flakeModule
+        ./mockfs
+      ];
 
       perSystem =
         {
@@ -44,6 +48,7 @@
           packages.default = buildGoApplication {
             pname = "ihfs";
             version = "0.0.1";
+
             src = lib.cleanSourceWith {
               src = ./.;
               filter =
@@ -51,14 +56,8 @@
                 lib.cleanSourceFilter path type
                 && !(lib.any (prefix: lib.hasPrefix prefix path) (map toString [ ./mockfs ]));
             };
-            modules = ./gomod2nix.toml;
-          };
 
-          packages.mockfs = buildGoApplication {
-            pname = "mockfs";
-            version = "0.0.1";
-            src = ./mockfs;
-            modules = ./mockfs/gomod2nix.toml;
+            modules = ./gomod2nix.toml;
           };
 
           devShells.default = pkgs.mkShellNoCC {
