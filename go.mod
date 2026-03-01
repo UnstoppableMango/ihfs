@@ -29,10 +29,11 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/modelcontextprotocol/go-sdk v0.8.0 // indirect
 	github.com/nix-community/go-nix v0.0.0-20220612195009-5f5614f7ca47 // indirect
-	github.com/nix-community/gomod2nix v1.7.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/cobra v1.9.1 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/nix-community/gomod2nix v1.7.1-0.20260208211840-1201ddd1279c // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/spf13/cobra v1.10.1 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20251023183803-a4bb9ffd2546 // indirect
