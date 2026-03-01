@@ -28,6 +28,7 @@ jobs:
           --github-output
           --race
           --trace
+          --randomize-all
           --coverprofile=cover.out
 
       - uses: codecov/codecov-action@v5
@@ -46,6 +47,7 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: nix flake check
+      - run: nix build .# .#mockfs
 
   clean:
     runs-on: ubuntu-latest

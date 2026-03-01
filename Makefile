@@ -4,7 +4,7 @@ GOPLS     ?= go tool gopls
 GINKGO    ?= go tool ginkgo
 
 build:
-	nix build .#
+	nix build .# .#mockfs --no-link
 
 test:
 	$(GINKGO) -r
@@ -15,7 +15,7 @@ coverprofile.out: $(shell find . -name '*.go')
 	$(GINKGO) -r --cover
 
 clean:
-	find . -name '*cover*' -delete
+	find . -name '*cover*' -o -name 'result*' -delete
 
 format fmt:
 	nix fmt
