@@ -28,7 +28,7 @@ format fmt:
 validate:
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
-generate gen:
+generate gen: .golangci-lint-version
 	cd mockfs && $(GO) generate ./...
 
 snapshot:
