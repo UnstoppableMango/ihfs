@@ -6,7 +6,7 @@ tool go.uber.org/mock/mockgen
 
 require (
 	github.com/unmango/go v0.15.1
-	github.com/unstoppablemango/ihfs v0.0.0-20260301044319-5c1c6e196ed6
+	github.com/unstoppablemango/ihfs v0.0.0-20260301072452-8f2ec5a85989
 	go.uber.org/mock v0.6.0
 )
 
