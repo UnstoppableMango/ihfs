@@ -132,6 +132,50 @@ fs := corfs.New(base, cache)
 fs = corfs.New(base, cache, corfs.WithCacheTime(5*time.Minute))
 ```
 
+### testfs
+
+Hand-written test doubles with function-field overrides.
+Useful for simple unit tests that need a configurable fake filesystem without a full mock framework.
+
+```go
+import "github.com/unstoppablemango/ihfs/testfs"
+
+fs := testfs.New(
+    testfs.WithOpen(func(name string) (ihfs.File, error) {
+        return testfs.NewFile(name), nil
+    }),
+)
+```
+
+### mockfs
+
+Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
+Provides call tracking, argument matchers, and controller-based verification.
+
+```go
+import (
+    "testing"
+
+    "go.uber.org/mock/gomock"
+    "github.com/unstoppablemango/ihfs/mockfs"
+)
+
+func TestMyCode(t *testing.T) {
+    ctrl := gomock.NewController(t)
+
+    fs := mockfs.NewMockCreateFS(ctrl)
+    fs.EXPECT().Create("foo.txt").Return(mockfs.NewMockFile(ctrl), nil)
+
+    // pass fs to code under test
+}
+```
+
+`mockfs` is a separate Go module:
+
+```
+go get github.com/unstoppablemango/ihfs/mockfs
+```
+
 ## Attribution
 
 Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically the `corfs`, `cowfs`, and `union` packages.
