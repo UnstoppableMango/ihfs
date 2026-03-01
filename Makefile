@@ -23,9 +23,16 @@ format fmt:
 validate:
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
+generate gen:
+	cd mockfs && $(GO) generate ./...
+
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
 	$(GOMOD2NIX) generate
+
+mockfs/gomod2nix.toml: export GOWORK := off
+mockfs/gomod2nix.toml: mockfs/go.mod mockfs/go.sum
+	cd mockfs && $(GOMOD2NIX) generate
 
 .PHONY: docs/gopls.instructions.md
 docs/gopls.instructions.md:

@@ -43,10 +43,18 @@
             modules = ./gomod2nix.toml;
           };
 
+          packages.mockfs = buildGoApplication {
+            pname = "mockfs";
+            version = "0.0.1";
+            src = ./mockfs;
+            modules = ./mockfs/gomod2nix.toml;
+          };
+
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               bashInteractive
               ginkgo
+              gnumake
               go
               goEnv
               gomod2nix
