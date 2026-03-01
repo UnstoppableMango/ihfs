@@ -1,5 +1,6 @@
 GO        ?= go
 GOMOD2NIX ?= go tool gomod2nix
+GOPLS     ?= go tool gopls
 GINKGO    ?= go tool ginkgo
 
 build:
@@ -24,4 +25,8 @@ validate:
 
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
-	$(GOMOD2NIX)
+	$(GOMOD2NIX) generate
+
+.PHONY: docs/gopls.instructions.md
+docs/gopls.instructions.md:
+	$(GOPLS) mcp -instructions > $@
