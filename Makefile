@@ -15,7 +15,7 @@ coverprofile.out: $(shell find . -name '*.go')
 	$(GINKGO) -r --cover
 
 clean:
-	find . -name '*cover*' -o -name 'result*' -delete
+	find . \( -name '*cover*' -o -name 'result*' \) -delete
 
 format fmt:
 	nix fmt
