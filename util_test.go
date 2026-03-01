@@ -40,7 +40,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return false when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -52,7 +52,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, testErr
 			}))
 
@@ -90,7 +90,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return false when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -102,7 +102,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, testErr
 			}))
 
@@ -140,7 +140,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return error when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -153,7 +153,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, testErr
 			}))
 
@@ -208,7 +208,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return error when reading fails", func() {
-			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+			fsys := testfs.New(testfs.WithWriteFile(func(string, []byte, ihfs.FileMode) error {
 				return nil
 			}))
 
@@ -222,7 +222,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when WriteFile fails", func() {
 			writeErr := errors.New("write error")
-			fsys := testfs.New(testfs.WithWriteFile(func(name string, data []byte, perm ihfs.FileMode) error {
+			fsys := testfs.New(testfs.WithWriteFile(func(string, []byte, ihfs.FileMode) error {
 				return writeErr
 			}))
 
@@ -263,7 +263,7 @@ var _ = Describe("Util", func() {
 
 		It("should propagate errors from underlying Mkdir", func() {
 			mkdirErr := errors.New("mkdir error")
-			fsys := testfs.New(testfs.WithMkdir(func(path string, perm ihfs.FileMode) error {
+			fsys := testfs.New(testfs.WithMkdir(func(string, ihfs.FileMode) error {
 				return mkdirErr
 			}))
 
@@ -304,7 +304,7 @@ var _ = Describe("Util", func() {
 			var capturedPath string
 
 			fsys := &mkdirOnlyFS{
-				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+				mkdirFunc: func(path string, _ ihfs.FileMode) error {
 					capturedPath = path
 					return nil
 				},
@@ -321,7 +321,7 @@ var _ = Describe("Util", func() {
 			callCount := 0
 
 			fsys := &mkdirOnlyFS{
-				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+				mkdirFunc: func(path string, _ ihfs.FileMode) error {
 					callCount++
 					if callCount == 1 && path == "parent/child" {
 						return fs.ErrNotExist
@@ -340,7 +340,7 @@ var _ = Describe("Util", func() {
 
 		It("should stop at root when parent equals current path", func() {
 			fsys := &mkdirOnlyFS{
-				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+				mkdirFunc: func(string, ihfs.FileMode) error {
 					return fs.ErrNotExist
 				},
 			}
@@ -354,7 +354,7 @@ var _ = Describe("Util", func() {
 		It("should return error when Mkdir fails with non-ErrNotExist", func() {
 			mkdirErr := errors.New("permission denied")
 			fsys := &mkdirOnlyFS{
-				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+				mkdirFunc: func(string, ihfs.FileMode) error {
 					return mkdirErr
 				},
 			}
@@ -370,7 +370,7 @@ var _ = Describe("Util", func() {
 			callCount := 0
 
 			fsys := &mkdirOnlyFS{
-				mkdirFunc: func(path string, perm ihfs.FileMode) error {
+				mkdirFunc: func(path string, _ ihfs.FileMode) error {
 					callCount++
 					if callCount == 1 && path == "parent/child" {
 						return fs.ErrNotExist
@@ -390,7 +390,7 @@ var _ = Describe("Util", func() {
 
 		It("should propagate errors from underlying MkdirAll", func() {
 			mkdirAllErr := errors.New("mkdirall error")
-			fsys := testfs.New(testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+			fsys := testfs.New(testfs.WithMkdirAll(func(string, ihfs.FileMode) error {
 				return mkdirAllErr
 			}))
 
@@ -437,7 +437,7 @@ type errorReader struct {
 	err error
 }
 
-func (r *errorReader) Read(p []byte) (n int, err error) {
+func (r *errorReader) Read(_ []byte) (n int, err error) {
 	return 0, r.err
 }
 
@@ -445,7 +445,7 @@ type mkdirOnlyFS struct {
 	mkdirFunc func(string, ihfs.FileMode) error
 }
 
-func (m *mkdirOnlyFS) Open(name string) (ihfs.File, error) {
+func (m *mkdirOnlyFS) Open(_ string) (ihfs.File, error) {
 	return nil, fs.ErrNotExist
 }
 

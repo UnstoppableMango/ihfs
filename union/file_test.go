@@ -135,7 +135,7 @@ var _ = Describe("File", func() {
 					},
 				},
 				&testfs.File{
-					ReadFunc: func(p []byte) (int, error) {
+					ReadFunc: func([]byte) (int, error) {
 						return 1, io.EOF
 					},
 				},
@@ -151,7 +151,7 @@ var _ = Describe("File", func() {
 			seekErr := errors.New("seek failed")
 			file := union.NewFile(
 				&testfs.File{
-					SeekFunc: func(offset int64, whence int) (int64, error) {
+					SeekFunc: func(int64, int) (int64, error) {
 						return 0, seekErr
 					},
 				},
@@ -179,7 +179,7 @@ var _ = Describe("File", func() {
 		It("should return read error", func() {
 			readErr := errors.New("read error")
 			file := union.NewFile(nil, &testfs.File{
-				ReadFunc: func(p []byte) (int, error) {
+				ReadFunc: func([]byte) (int, error) {
 					return 0, readErr
 				},
 			})
@@ -241,12 +241,12 @@ var _ = Describe("File", func() {
 			sharedEntry := testfs.NewDirEntry("shared.txt", false)
 
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{baseEntry, sharedEntry}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{layerEntry, sharedEntry}, nil
 				},
 			}
@@ -272,18 +272,18 @@ var _ = Describe("File", func() {
 			layerEntry := testfs.NewDirEntry("layer.txt", false)
 
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{baseEntry}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{layerEntry}, nil
 				},
 			}
 
 			file := union.NewFile(baseFile, layerFile, union.WithMergeStrategy(
-				func(layer, base []ihfs.DirEntry) ([]ihfs.DirEntry, error) {
+				func([]ihfs.DirEntry, []ihfs.DirEntry) ([]ihfs.DirEntry, error) {
 					return nil, mergeErr
 				},
 			))
@@ -297,12 +297,12 @@ var _ = Describe("File", func() {
 			sharedEntry := testfs.NewDirEntry("shared.txt", false)
 
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{sharedEntry}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{sharedEntry}, nil
 				},
 			}
@@ -320,7 +320,7 @@ var _ = Describe("File", func() {
 			entry2 := testfs.NewDirEntry("file2.txt", false)
 
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry1, entry2}, nil
 				},
 			}
@@ -342,7 +342,7 @@ var _ = Describe("File", func() {
 		It("should return EOF when pagination exhausted", func() {
 			entry := testfs.NewDirEntry("file.txt", false)
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry}, nil
 				},
 			}
@@ -358,7 +358,7 @@ var _ = Describe("File", func() {
 		It("should return error when layer ReadDir fails", func() {
 			layerErr := errors.New("layer readdir failed")
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return nil, layerErr
 				},
 			}
@@ -373,7 +373,7 @@ var _ = Describe("File", func() {
 		It("should return error when base ReadDir fails", func() {
 			baseErr := errors.New("base readdir failed")
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return nil, baseErr
 				},
 			}
@@ -388,7 +388,7 @@ var _ = Describe("File", func() {
 		It("should handle layer not implementing ReadDirFile", func() {
 			baseEntry := testfs.NewDirEntry("base.txt", false)
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{baseEntry}, nil
 				},
 			}
@@ -405,7 +405,7 @@ var _ = Describe("File", func() {
 		It("should handle base not implementing ReadDirFile", func() {
 			layerEntry := testfs.NewDirEntry("layer.txt", false)
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{layerEntry}, nil
 				},
 			}
@@ -434,7 +434,7 @@ var _ = Describe("File", func() {
 			entry3 := testfs.NewDirEntry("file3.txt", false)
 
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry1, entry2, entry3}, nil
 				},
 			}
@@ -495,12 +495,12 @@ var _ = Describe("File", func() {
 			baseErr := errors.New("base error")
 			file := union.NewFile(
 				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
+					WriteFunc: func([]byte) (int, error) {
 						return 0, baseErr
 					},
 				},
 				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
+					WriteFunc: func([]byte) (int, error) {
 						return 0, writeErr
 					},
 				},
@@ -514,12 +514,12 @@ var _ = Describe("File", func() {
 		It("should return layer byte count", func() {
 			file := union.NewFile(
 				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
+					WriteFunc: func([]byte) (int, error) {
 						return 10, nil
 					},
 				},
 				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
+					WriteFunc: func([]byte) (int, error) {
 						return 5, nil
 					},
 				},
@@ -533,7 +533,7 @@ var _ = Describe("File", func() {
 		It("should return layer write error when base not present", func() {
 			writeErr := errors.New("layer write failed")
 			file := union.NewFile(nil, &testfs.File{
-				WriteFunc: func(p []byte) (int, error) {
+				WriteFunc: func([]byte) (int, error) {
 					return 0, writeErr
 				},
 			})
@@ -547,7 +547,7 @@ var _ = Describe("File", func() {
 			baseErr := errors.New("base write failed")
 			file := union.NewFile(
 				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
+					WriteFunc: func([]byte) (int, error) {
 						return 0, baseErr
 					},
 				},

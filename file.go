@@ -26,8 +26,11 @@ var (
 	ErrClosed = fs.ErrClosed
 	// ErrExist is an alias for [fs.ErrExist].
 	ErrExist      = fs.ErrExist
-	ErrInvalid    = fs.ErrInvalid
-	ErrNotExist   = fs.ErrNotExist
+	// ErrInvalid is an alias for [fs.ErrInvalid].
+	ErrInvalid = fs.ErrInvalid
+	// ErrNotExist is an alias for [fs.ErrNotExist].
+	ErrNotExist = fs.ErrNotExist
+	// ErrPermission is an alias for [fs.ErrPermission].
 	ErrPermission = fs.ErrPermission
 )
 

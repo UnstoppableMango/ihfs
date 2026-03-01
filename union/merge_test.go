@@ -18,12 +18,12 @@ var _ = Describe("MergeStrategy", func() {
 			entry4 := testfs.NewDirEntry("delta.txt", false)
 
 			baseFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry1, entry3}, nil
 				},
 			}
 			layerFile := &testfs.File{
-				ReadDirFunc: func(n int) ([]ihfs.DirEntry, error) {
+				ReadDirFunc: func(int) ([]ihfs.DirEntry, error) {
 					return []ihfs.DirEntry{entry2, entry4}, nil
 				},
 			}

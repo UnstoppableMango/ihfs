@@ -34,6 +34,7 @@ func (f *Fs) Base() ihfs.FS {
 	return f.base
 }
 
+// Name returns the name of the filesystem.
 func (f *Fs) Name() string {
 	return "cowfs"
 }

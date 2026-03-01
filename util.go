@@ -22,7 +22,8 @@ var (
 	Glob = fs.Glob
 	// ReadDir is an alias for [fs.ReadDir].
 	ReadDir = fs.ReadDir
-	Stat    = fs.Stat
+	// Stat is an alias for [fs.Stat].
+	Stat = fs.Stat
 )
 
 // DirExists reports if the given path exists and is a directory.

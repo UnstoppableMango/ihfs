@@ -115,7 +115,7 @@ var _ = Describe("CopyToLayer", func() {
 
 			var mkdirAllPath string
 			layer := testfs.New(
-				testfs.WithMkdirAll(func(path string, perm fs.FileMode) error {
+				testfs.WithMkdirAll(func(path string, _ fs.FileMode) error {
 					mkdirAllPath = path
 					return nil
 				}),
@@ -154,14 +154,14 @@ var _ = Describe("CopyToLayer", func() {
 
 		It("should clean up on copy failure", func() {
 			baseFile := &testfs.File{
-				ReadFunc: func(p []byte) (int, error) {
+				ReadFunc: func([]byte) (int, error) {
 					return 0, errors.New("read failed")
 				},
 				CloseFunc: func() error { return nil },
 			}
 
 			layerFile := &testfs.File{
-				WriteFunc: func(p []byte) (int, error) { return 0, errors.New("write failed") },
+				WriteFunc: func([]byte) (int, error) { return 0, errors.New("write failed") },
 				CloseFunc: func() error { return nil },
 			}
 
@@ -384,7 +384,7 @@ var _ = Describe("CopyToLayer", func() {
 
 		It("should return error when checking directory existence fails", func() {
 			baseFile := &testfs.File{
-				ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
 				CloseFunc: func() error { return nil },
 			}
 
@@ -408,7 +408,7 @@ var _ = Describe("CopyToLayer", func() {
 
 		It("should return error when creating parent directories fails", func() {
 			baseFile := &testfs.File{
-				ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
 				CloseFunc: func() error { return nil },
 			}
 
@@ -423,7 +423,7 @@ var _ = Describe("CopyToLayer", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
-				testfs.WithMkdirAll(func(path string, perm fs.FileMode) error {
+				testfs.WithMkdirAll(func(string, fs.FileMode) error {
 					return expectedErr
 				}),
 			)
@@ -435,7 +435,7 @@ var _ = Describe("CopyToLayer", func() {
 
 		It("should return error when creating layer file fails", func() {
 			baseFile := &testfs.File{
-				ReadFunc:  func(p []byte) (int, error) { return 0, io.EOF },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
 				CloseFunc: func() error { return nil },
 			}
 

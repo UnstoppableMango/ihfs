@@ -47,11 +47,11 @@ var _ = Describe("Fs", func() {
 
 	It("should apply filters to Stat", func() {
 		info := testfs.NewFileInfo("allowed.txt")
-		fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+		fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 			return info, nil
 		}))
 
-		filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
+		filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 			if o.Subject() == "forbidden.txt" {
 				return ihfs.ErrPermission
 			}
@@ -85,7 +85,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
+			filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 				if o.Subject() == "forbidden.txt" {
 					return ihfs.ErrPermission
 				}
@@ -106,13 +106,13 @@ var _ = Describe("Fs", func() {
 			}))
 
 			filtered := ihfs.Filter(fsys,
-				func(f *ihfs.FilterFS, o ihfs.Operation) error {
+				func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden1.txt" {
 						return ihfs.ErrPermission
 					}
 					return nil
 				},
-				func(f *ihfs.FilterFS, o ihfs.Operation) error {
+				func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden2.txt" {
 						return ihfs.ErrPermission
 					}
