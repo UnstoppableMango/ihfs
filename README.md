@@ -138,7 +138,10 @@ Hand-written test doubles with function-field overrides.
 Useful for simple unit tests that need a configurable fake filesystem without a full mock framework.
 
 ```go
-import "github.com/unstoppablemango/ihfs/testfs"
+import (
+    "github.com/unstoppablemango/ihfs"
+    "github.com/unstoppablemango/ihfs/testfs"
+)
 
 fs := testfs.New(
     testfs.WithOpen(func(name string) (ihfs.File, error) {
