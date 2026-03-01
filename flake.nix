@@ -70,6 +70,7 @@
               goEnv
               gomod2nix
               gopls
+              goreleaser
               nixfmt
               ripgrep
               watchexec
@@ -79,6 +80,7 @@
             GO = "${pkgs.go}/bin/go";
             GOMOD2NIX = "${gomod2nix}/bin/gomod2nix";
             GOPLS = "${pkgs.gopls}/bin/gopls";
+            GORELEASER = "${pkgs.goreleaser}/bin/goreleaser";
             NIXFMT = "${pkgs.nixfmt}/bin/nixfmt";
           };
 

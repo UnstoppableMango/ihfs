@@ -1,7 +1,8 @@
-GO        ?= go
-GOMOD2NIX ?= go tool gomod2nix
-GOPLS     ?= go tool gopls
-GINKGO    ?= go tool ginkgo
+GO          ?= go
+GOMOD2NIX   ?= go tool gomod2nix
+GOPLS       ?= go tool gopls
+GINKGO      ?= go tool ginkgo
+GORELEASER  ?= goreleaser
 
 build:
 	nix build .# .#mockfs --no-link
@@ -25,6 +26,10 @@ validate:
 
 generate gen:
 	cd mockfs && $(GO) generate ./...
+
+snapshot:
+	$(GORELEASER) release --snapshot --clean
+	cd mockfs && $(GORELEASER) release --snapshot --clean
 
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
