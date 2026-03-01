@@ -215,7 +215,9 @@ var _ = Describe("Fs", func() {
 				Size: 1000,
 				Mode: 0600,
 			})).To(Succeed())
-			_, _ = tw.Write([]byte("short"))
+			n, err := tw.Write([]byte("short"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(n).To(Equal(len("short")))
 
 			tmpDir := GinkgoT().TempDir()
 			testPath := tmpDir + "/incomplete.tar"
