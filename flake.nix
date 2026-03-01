@@ -29,6 +29,7 @@
 
       imports = [
         inputs.treefmt-nix.flakeModule
+
         ./mockfs
         ./ghfs
       ];
@@ -50,32 +51,24 @@
             version = "0.0.1";
 
             src = lib.cleanSourceWith {
-              src = ./.;
+              src = lib.cleanSource ./.;
               filter =
                 path: type:
-                lib.cleanSourceFilter path type
-                && !(lib.any (prefix: lib.hasPrefix prefix path) (map toString [ ./mockfs ]));
+                !(lib.any (prefix: lib.hasPrefix prefix path) (
+                  map toString [
+                    ./ghfs
+                    ./mockfs
+                  ]
+                ));
             };
-<<<<<<< HEAD
-=======
-            modules = ./gomod2nix.toml;
 
-            src =
-              with lib;
-              cleanSourceWith {
-                src = cleanSource ./.;
-                filter = name: _: !hasPrefix (baseNameOf name) "ghfs";
-              };
+            modules = ./gomod2nix.toml;
           };
         in
         {
           packages = {
             inherit ihfs;
             default = ihfs;
-          };
->>>>>>> cc302f5 (Nix and more ghfs stubbing)
-
-            modules = ./gomod2nix.toml;
           };
 
           devShells.default = pkgs.mkShellNoCC {
