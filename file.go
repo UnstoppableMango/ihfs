@@ -25,7 +25,7 @@ var (
 	// ErrClosed is an alias for [fs.ErrClosed].
 	ErrClosed = fs.ErrClosed
 	// ErrExist is an alias for [fs.ErrExist].
-	ErrExist      = fs.ErrExist
+	ErrExist = fs.ErrExist
 	// ErrInvalid is an alias for [fs.ErrInvalid].
 	ErrInvalid = fs.ErrInvalid
 	// ErrNotExist is an alias for [fs.ErrNotExist].
