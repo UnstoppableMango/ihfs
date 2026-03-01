@@ -61,3 +61,6 @@ jobs:
 
       - run: go tool gomod2nix
       - run: git diff --exit-code gomod2nix.toml
+
+      - run: make generate
+      - run: git diff --exit-code
