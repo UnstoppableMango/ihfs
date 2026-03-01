@@ -163,8 +163,8 @@ import (
 func TestMyCode(t *testing.T) {
     ctrl := gomock.NewController(t)
 
-    fs := mockfs.NewMockCreateFS(ctrl)
-    fs.EXPECT().Create("foo.txt").Return(mockfs.NewMockFile(ctrl), nil)
+    fs := mockfs.NewCreateFS(ctrl)
+    fs.EXPECT().Create("foo.txt").Return(mockfs.NewFile(ctrl), nil)
 
     // pass fs to code under test
 }

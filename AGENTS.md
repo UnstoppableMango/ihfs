@@ -128,6 +128,7 @@ func (fs *Fs) Open(name string) (ihfs.File, error) {
 2. Update all implementations
 3. Update tests across all packages
 4. Verify with `make test` and `make cover`
+5. If adding a new interface, add it to the appropriate array in `mockfs/generate.sh` and run `make generate`
 
 ### Writing Tests
 
