@@ -50,6 +50,7 @@
               go
               goEnv
               gomod2nix
+              gopls
               nixfmt
               ripgrep
               watchexec
@@ -58,6 +59,7 @@
             GINKGO = "${pkgs.ginkgo}/bin/ginkgo";
             GO = "${pkgs.go}/bin/go";
             GOMOD2NIX = "${gomod2nix}/bin/gomod2nix";
+            GOPLS = "${pkgs.gopls}/bin/gopls";
             NIXFMT = "${pkgs.nixfmt}/bin/nixfmt";
           };
 
