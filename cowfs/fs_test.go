@@ -153,8 +153,9 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return joined error when base open fails", func() {
+			layerClosed := false
 			layerDir := &testfs.File{
-				CloseFunc: func() error { return nil },
+				CloseFunc: func() error { layerClosed = true; return nil },
 				StatFunc: func() (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
@@ -190,10 +191,13 @@ var _ = Describe("Fs", func() {
 			Expect(errors.As(err, &pathErr)).To(BeTrue())
 			Expect(pathErr.Op).To(Equal("open"))
 			Expect(pathErr.Path).To(Equal("dir"))
+			Expect(layerClosed).To(BeTrue())
 		})
 
 		It("should return joined error when layer open fails", func() {
+			baseClosed := false
 			baseDir := &testfs.File{
+				CloseFunc: func() error { baseClosed = true; return nil },
 				StatFunc: func() (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo("not applicable")
 					fi.IsDirFunc = func() bool { return true }
@@ -229,6 +233,7 @@ var _ = Describe("Fs", func() {
 			Expect(errors.As(err, &pathErr)).To(BeTrue())
 			Expect(pathErr.Op).To(Equal("open"))
 			Expect(pathErr.Path).To(Equal("dir"))
+			Expect(baseClosed).To(BeTrue())
 		})
 
 		It("should return error when file doesn't exist", func() {

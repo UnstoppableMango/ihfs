@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io/fs"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,23 +13,13 @@ import (
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
-type mockFileInfo struct {
-	name  string
-	isDir bool
-}
-
-func (m mockFileInfo) Name() string       { return m.name }
-func (m mockFileInfo) Size() int64        { return 0 }
-func (m mockFileInfo) Mode() fs.FileMode  { return 0 }
-func (m mockFileInfo) ModTime() time.Time { return time.Time{} }
-func (m mockFileInfo) IsDir() bool        { return m.isDir }
-func (m mockFileInfo) Sys() any           { return nil }
-
 var _ = Describe("Util", func() {
 	Describe("DirExists", func() {
 		It("should return true when path is a directory", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: true}, nil
+				fi := testfs.NewFileInfo(s)
+				fi.IsDirFunc = func() bool { return true }
+				return fi, nil
 			}))
 
 			exists, err := ihfs.DirExists(fsys, "dir")
@@ -41,7 +30,7 @@ var _ = Describe("Util", func() {
 
 		It("should return false when path is a file", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: false}, nil
+				return testfs.NewFileInfo(s), nil
 			}))
 
 			exists, err := ihfs.DirExists(fsys, "file.txt")
@@ -78,7 +67,7 @@ var _ = Describe("Util", func() {
 	Describe("Exists", func() {
 		It("should return true for file", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: false}, nil
+				return testfs.NewFileInfo(s), nil
 			}))
 
 			exists, err := ihfs.Exists(fsys, "file.txt")
@@ -89,7 +78,9 @@ var _ = Describe("Util", func() {
 
 		It("should return true for directory", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: true}, nil
+				fi := testfs.NewFileInfo(s)
+				fi.IsDirFunc = func() bool { return true }
+				return fi, nil
 			}))
 
 			exists, err := ihfs.Exists(fsys, "dir")
@@ -126,7 +117,9 @@ var _ = Describe("Util", func() {
 	Describe("IsDir", func() {
 		It("should return true when path is a directory", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: true}, nil
+				fi := testfs.NewFileInfo(s)
+				fi.IsDirFunc = func() bool { return true }
+				return fi, nil
 			}))
 
 			isDir, err := ihfs.IsDir(fsys, "dir")
@@ -137,7 +130,7 @@ var _ = Describe("Util", func() {
 
 		It("should return false when path is a file", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				return mockFileInfo{name: s, isDir: false}, nil
+				return testfs.NewFileInfo(s), nil
 			}))
 
 			isDir, err := ihfs.IsDir(fsys, "file.txt")
