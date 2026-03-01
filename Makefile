@@ -27,6 +27,8 @@ docs/gopls.instructions.md:
 .golangci-lint-version: flake.nix flake.lock
 	$(GOLANGCI) version --short > $@
 
-.PHONY: mockfs
+.PHONY: ghfs mockfs
+ghfs:
+	$(MAKE) -C ghfs
 mockfs:
-	$(MAKE) -C mockfs generate
+	$(MAKE) -C mockfs
