@@ -2,6 +2,7 @@ GO          ?= go
 GOMOD2NIX   ?= go tool gomod2nix
 GOPLS       ?= go tool gopls
 GINKGO      ?= go tool ginkgo
+GOLANGCI    ?= go tool golangci-lint
 GORELEASER  ?= goreleaser
 
 build:
@@ -17,6 +18,9 @@ coverprofile.out: $(shell find . -name '*.go')
 
 clean:
 	find . \( -name '*cover*' -o -name 'result*' \) -delete
+
+lint:
+	$(GOLANGCI) run ./...
 
 format fmt:
 	nix fmt
