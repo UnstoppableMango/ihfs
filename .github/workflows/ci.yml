@@ -73,10 +73,10 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - run: go tool gomod2nix
+      - run: go tool gomod2nix generate
       - run: git diff --exit-code gomod2nix.toml
 
-      - run: go -C mockfs tool gomod2nix
+      - run: go -C mockfs tool gomod2nix generate
       - run: git diff --exit-code mockfs/gomod2nix.toml
 
       - run: make generate
