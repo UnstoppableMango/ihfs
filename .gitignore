@@ -6,3 +6,5 @@ cover*
 *.test
 go.work*
 *.local.*
+.vscode/*
+!.vscode/extensions.json
