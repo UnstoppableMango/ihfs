@@ -221,7 +221,7 @@ var _ = Describe("Fs", func() {
 
 			tmpDir := GinkgoT().TempDir()
 			testPath := tmpDir + "/incomplete.tar"
-			err := os.WriteFile(testPath, buf.Bytes(), 0644)
+			err = os.WriteFile(testPath, buf.Bytes(), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
 			tfs, err := tarfs.Open(testPath)
