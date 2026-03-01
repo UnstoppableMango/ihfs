@@ -23,16 +23,12 @@ nix build .#ihfs
 
 # Run tests
 make test
-# OR
-go tool ginkgo -r
 
 # Generate coverage
 make cover
 
 # Format code
-make fmt
-# OR
-nix fmt
+make format
 ```
 
 ### Testing Guidelines
@@ -91,7 +87,7 @@ nix fmt
 2. Run `make test` to ensure tests pass
 3. Run `make fmt` to format code
 4. **Check coverage with `make cover` - aim for 100% on implementation packages**
-5. Update `go.mod` if adding dependencies, then run `go tool gomod2nix`
+5. Update `go.mod` if adding dependencies, then run `go tool gomod2nix generate`
 
 **Note**: While `codecov.yml` sets a minimum threshold of 60% for CI purposes, the project standard is to maintain 100% coverage for all implementation code. The lower threshold in codecov.yml is only to prevent CI failures during development of new features.
 
@@ -99,7 +95,7 @@ nix fmt
 
 ### Module Information
 - **Module Path**: `github.com/unstoppablemango/ihfs`
-- **Go Version**: 1.25.5
+- **Go Version**: Refer to go.mod
 
 ### Entry Points & Core Files
 

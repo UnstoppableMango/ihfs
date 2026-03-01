@@ -1,6 +1,6 @@
 GO        ?= go
 GOMOD2NIX ?= go tool gomod2nix
-GOPLS     ?= gopls
+GOPLS     ?= go tool gopls
 GINKGO    ?= go tool ginkgo
 
 build:
