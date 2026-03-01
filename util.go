@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 )
 
+// ErrNotImplemented is returned when a filesystem operation is not supported.
 var ErrNotImplemented = errors.New("not implemented")
 
 // Convenience functions below use fallback strategies when the FS does not
@@ -17,9 +18,12 @@ var ErrNotImplemented = errors.New("not implemented")
 // instead of falling back, see the try package.
 
 var (
-	Glob    = fs.Glob
+	// Glob is an alias for [fs.Glob].
+	Glob = fs.Glob
+	// ReadDir is an alias for [fs.ReadDir].
 	ReadDir = fs.ReadDir
-	Stat    = fs.Stat
+	// Stat is an alias for [fs.Stat].
+	Stat = fs.Stat
 )
 
 // DirExists reports if the given path exists and is a directory.
@@ -27,34 +31,36 @@ var (
 // It differs from IsDir in that it returns false if the
 // path does not exist, rather than returning an error.
 func DirExists(fsys FS, path string) (bool, error) {
-	if isDir, err := IsDir(fsys, path); err == nil {
+	isDir, err := IsDir(fsys, path)
+	if err == nil {
 		return isDir, nil
-	} else if errors.Is(err, ErrNotExist) {
-		return false, nil
-	} else {
-		return false, err
 	}
+	if errors.Is(err, ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
 
 // Exists reports if the given path exists.
 func Exists(fsys FS, path string) (bool, error) {
-	if _, err := Stat(fsys, path); err == nil {
+	_, err := Stat(fsys, path)
+	if err == nil {
 		return true, nil
-	} else if errors.Is(err, ErrNotExist) {
-		return false, nil
-	} else {
-		return false, err
 	}
+	if errors.Is(err, ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
 
 // IsDir reports if the given path exists and is a directory.
 // It calls [Stat] on fsys and returns the result of FileInfo.IsDir().
 func IsDir(fsys FS, path string) (bool, error) {
-	if info, err := Stat(fsys, path); err != nil {
+	info, err := Stat(fsys, path)
+	if err != nil {
 		return false, err
-	} else {
-		return info.IsDir(), nil
 	}
+	return info.IsDir(), nil
 }
 
 // Mkdir creates a new directory with the specified name and permission bits.
@@ -130,9 +136,9 @@ func WriteFile(fsys FS, name string, data []byte, perm FileMode) error {
 // WriteReader reads all data from r and writes it to name in fsys using [WriteFile].
 // It returns an error if reading from r fails or if [WriteFile] reports an error.
 func WriteReader(fsys FS, name string, r io.Reader, perm FileMode) error {
-	if data, err := io.ReadAll(r); err != nil {
+	data, err := io.ReadAll(r)
+	if err != nil {
 		return fmt.Errorf("reading: %w", err)
-	} else {
-		return WriteFile(fsys, name, data, perm)
 	}
+	return WriteFile(fsys, name, data, perm)
 }

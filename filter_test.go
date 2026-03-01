@@ -40,18 +40,18 @@ var _ = Describe("Fs", func() {
 		filtered := ihfs.Filter(fsys)
 		result, err := filtered.Stat("test.txt")
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(BeIdenticalTo(info))
 		Expect(called).To(BeTrue())
 	})
 
 	It("should apply filters to Stat", func() {
 		info := testfs.NewFileInfo("allowed.txt")
-		fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+		fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 			return info, nil
 		}))
 
-		filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
+		filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 			if o.Subject() == "forbidden.txt" {
 				return ihfs.ErrPermission
 			}
@@ -61,7 +61,7 @@ var _ = Describe("Fs", func() {
 		_, err := filtered.Stat("forbidden.txt")
 		Expect(err).To(MatchError(ihfs.ErrPermission))
 		result, err := filtered.Stat("allowed.txt")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(BeIdenticalTo(info))
 	})
 
@@ -74,7 +74,7 @@ var _ = Describe("Fs", func() {
 		filtered := ihfs.Filter(fsys)
 
 		f, err := filtered.Open("somefile.txt")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(f).To(BeIdenticalTo(file))
 	})
 
@@ -85,7 +85,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := ihfs.Filter(fsys, func(f *ihfs.FilterFS, o ihfs.Operation) error {
+			filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 				if o.Subject() == "forbidden.txt" {
 					return ihfs.ErrPermission
 				}
@@ -95,7 +95,7 @@ var _ = Describe("Fs", func() {
 			_, err := filtered.Open("forbidden.txt")
 			Expect(err).To(MatchError(ihfs.ErrPermission))
 			f, err := filtered.Open("allowed.txt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(f).To(BeIdenticalTo(file))
 		})
 
@@ -106,13 +106,13 @@ var _ = Describe("Fs", func() {
 			}))
 
 			filtered := ihfs.Filter(fsys,
-				func(f *ihfs.FilterFS, o ihfs.Operation) error {
+				func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden1.txt" {
 						return ihfs.ErrPermission
 					}
 					return nil
 				},
-				func(f *ihfs.FilterFS, o ihfs.Operation) error {
+				func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden2.txt" {
 						return ihfs.ErrPermission
 					}
@@ -125,7 +125,7 @@ var _ = Describe("Fs", func() {
 			_, err = filtered.Open("forbidden2.txt")
 			Expect(err).To(MatchError(ihfs.ErrPermission))
 			f, err := filtered.Open("allowed.txt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(f).To(BeIdenticalTo(file))
 		})
 	})
@@ -144,7 +144,7 @@ var _ = Describe("Fs", func() {
 			_, err := filtered.Open("forbidden.txt")
 			Expect(err).To(MatchError(ihfs.ErrPermission))
 			f, err := filtered.Open("allowed.txt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(f).To(BeIdenticalTo(file))
 		})
 
@@ -168,7 +168,7 @@ var _ = Describe("Fs", func() {
 			_, err = filtered.Open("forbidden2.txt")
 			Expect(err).To(MatchError(ihfs.ErrPermission))
 			f, err := filtered.Open("allowed.txt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(f).To(BeIdenticalTo(file))
 		})
 	})

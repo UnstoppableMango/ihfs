@@ -114,7 +114,7 @@ var _ = Describe("File", func() {
 			// Open "parent" — synthetic dir, but "parent/child" is a real cached entry
 			parentFile, err := tfs.Open("parent")
 			Expect(err).NotTo(HaveOccurred())
-			defer parentFile.Close()
+			DeferCleanup(parentFile.Close)
 
 			rdFile, ok := parentFile.(fs.ReadDirFile)
 			Expect(ok).To(BeTrue())
@@ -144,13 +144,13 @@ var _ = Describe("File", func() {
 			// Open root first to fully hydrate the cache (including "mydir/file.txt")
 			root, err := tfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
-			root.Close()
+			Expect(root.Close()).To(Succeed())
 
 			// Open "mydir" — hits cache, gets the fileData whose hdr.Name is "mydir/"
 			// fileData.file() sets File.name = "mydir/", so ReadDir builds prefix "mydir//"
 			dir, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
-			defer dir.Close()
+			DeferCleanup(dir.Close)
 
 			rdFile, ok := dir.(fs.ReadDirFile)
 			Expect(ok).To(BeTrue())
@@ -186,11 +186,11 @@ var _ = Describe("File", func() {
 			// This ensures the snapshot captures all three entries on the first ReadDir.
 			root, err := tfs.Open(".")
 			Expect(err).NotTo(HaveOccurred())
-			root.Close()
+			Expect(root.Close()).To(Succeed())
 
 			dirFile, err := tfs.Open("dir")
 			Expect(err).NotTo(HaveOccurred())
-			defer dirFile.Close()
+			DeferCleanup(dirFile.Close)
 
 			rdFile, ok := dirFile.(fs.ReadDirFile)
 			Expect(ok).To(BeTrue())

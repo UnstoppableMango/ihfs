@@ -104,30 +104,30 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 		var layerEntries []ihfs.DirEntry
 		if f.layer != nil {
 			if dir, ok := f.layer.(fs.ReadDirFile); ok {
-				if entries, err := dir.ReadDir(-1); err != nil {
+				entries, err := dir.ReadDir(-1)
+				if err != nil {
 					return nil, err
-				} else {
-					layerEntries = entries
 				}
+				layerEntries = entries
 			}
 		}
 
 		var baseEntries []ihfs.DirEntry
 		if f.base != nil {
 			if dir, ok := f.base.(fs.ReadDirFile); ok {
-				if entries, err := dir.ReadDir(-1); err != nil {
+				entries, err := dir.ReadDir(-1)
+				if err != nil {
 					return nil, err
-				} else {
-					baseEntries = entries
 				}
+				baseEntries = entries
 			}
 		}
 
-		if merged, err := f.merge(layerEntries, baseEntries); err != nil {
+		merged, err := f.merge(layerEntries, baseEntries)
+		if err != nil {
 			return nil, err
-		} else {
-			f.entries = merged
 		}
+		f.entries = merged
 	}
 
 	if n <= 0 {

@@ -68,6 +68,7 @@
               gnumake
               go
               goEnv
+              golangci-lint
               gomod2nix
               gopls
               goreleaser

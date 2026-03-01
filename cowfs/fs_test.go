@@ -40,7 +40,7 @@ var _ = Describe("Fs", func() {
 				},
 			}
 			base := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
+				testfs.WithOpen(func(string) (ihfs.File, error) {
 					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
@@ -66,7 +66,7 @@ var _ = Describe("Fs", func() {
 			}
 			base := testfs.New()
 			layer := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
+				testfs.WithOpen(func(string) (ihfs.File, error) {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
@@ -100,7 +100,7 @@ var _ = Describe("Fs", func() {
 			}
 
 			base := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
+				testfs.WithOpen(func(string) (ihfs.File, error) {
 					return baseDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
@@ -110,7 +110,7 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 			layer := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
+				testfs.WithOpen(func(string) (ihfs.File, error) {
 					return layerDir, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
@@ -128,7 +128,7 @@ var _ = Describe("Fs", func() {
 
 		It("should return error when base stat fails", func() {
 			base := testfs.New(
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+				testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 					return nil, errors.New("stat error")
 				}),
 			)
@@ -142,7 +142,7 @@ var _ = Describe("Fs", func() {
 		It("should return error when layer stat fails", func() {
 			base := testfs.New()
 			layer := testfs.New(
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+				testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 					return nil, errors.New("stat error")
 				}),
 			)

@@ -31,7 +31,7 @@ var _ = Describe("Catch", func() {
 	})
 
 	It("should return error when iteration encounters error", func() {
-		fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
+		fsys := testfs.New(testfs.WithOpen(func(string) (ihfs.File, error) {
 			return nil, fs.ErrNotExist
 		}))
 		seq := ihfs.Iter(fsys, "/nonexistent")
@@ -45,7 +45,7 @@ var _ = Describe("Catch", func() {
 
 var _ = Describe("Iter", func() {
 	It("should return open errors", func() {
-		fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
+		fsys := testfs.New(testfs.WithOpen(func(string) (ihfs.File, error) {
 			return nil, fs.ErrNotExist
 		}))
 

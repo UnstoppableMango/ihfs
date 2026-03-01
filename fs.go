@@ -8,14 +8,22 @@ import (
 )
 
 type (
-	FS         = fs.FS
-	GlobFS     = fs.GlobFS
-	OsFS       = os.Fs
-	ReadDirFS  = fs.ReadDirFS
+	// FS is an alias for [fs.FS].
+	FS = fs.FS
+	// GlobFS is an alias for [fs.GlobFS].
+	GlobFS = fs.GlobFS
+	// OsFS is an alias for [os.Fs].
+	OsFS = os.Fs
+	// ReadDirFS is an alias for [fs.ReadDirFS].
+	ReadDirFS = fs.ReadDirFS
+	// ReadFileFS is an alias for [fs.ReadFileFS].
 	ReadFileFS = fs.ReadFileFS
+	// ReadLinkFS is an alias for [fs.ReadLinkFS].
 	ReadLinkFS = fs.ReadLinkFS
-	StatFS     = fs.StatFS
-	SubFS      = fs.SubFS
+	// StatFS is an alias for [fs.StatFS].
+	StatFS = fs.StatFS
+	// SubFS is an alias for [fs.SubFS].
+	SubFS = fs.SubFS
 )
 
 // Ensure interface compliance with [os.Os].

@@ -484,7 +484,7 @@ var _ = Describe("Fs", func() {
 			dirFile := file.(ihfs.ReadDirFile)
 			entries, err := dirFile.ReadDir(-1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(entries)).To(Equal(2))
+			Expect(entries).To(HaveLen(2))
 		})
 	})
 
@@ -629,7 +629,7 @@ var _ = Describe("Fs", func() {
 				Expect(entries).To(BeNil())
 			} else {
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(entries)).To(Equal(0))
+				Expect(entries).To(BeEmpty())
 			}
 		})
 
@@ -650,11 +650,11 @@ var _ = Describe("Fs", func() {
 			dirFile := file.(ihfs.ReadDirFile)
 			entries, err := dirFile.ReadDir(2)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(entries)).To(Equal(2))
+			Expect(entries).To(HaveLen(2))
 
 			entries, err = dirFile.ReadDir(2)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(entries)).To(Equal(1))
+			Expect(entries).To(HaveLen(1))
 
 			_, err = dirFile.ReadDir(2)
 			Expect(err).To(Equal(io.EOF))
@@ -995,7 +995,7 @@ var _ = Describe("Fs", func() {
 			if err != io.EOF {
 				Expect(err).NotTo(HaveOccurred())
 			}
-			Expect(len(entries)).To(Equal(0))
+			Expect(entries).To(BeEmpty())
 		})
 
 		It("should handle Seek with SeekCurrent", func() {
@@ -1096,7 +1096,7 @@ var _ = Describe("Fs", func() {
 			// Verify we can still read the original file
 			file, err = mfs.Open("file.txt")
 			Expect(err).NotTo(HaveOccurred())
-			defer file.Close()
+			DeferCleanup(file.Close)
 			content := make([]byte, 12)
 			n, err := file.Read(content)
 			Expect(err).NotTo(HaveOccurred())

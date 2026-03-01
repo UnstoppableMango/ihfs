@@ -37,10 +37,24 @@ jobs:
           fail_ci_if_error: true
           files: cover.out
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: actions/setup-go@v6.3.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - uses: golangci/golangci-lint-action@v9.2.0
+        with:
+          version-file: .golangci-lint-version
+
   nix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - uses: cachix/install-nix-action@v31.9.1
         with:
@@ -52,15 +66,18 @@ jobs:
   clean:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6.3.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - run: go tool gomod2nix
+      - run: go tool gomod2nix generate
       - run: git diff --exit-code gomod2nix.toml
+
+      - run: go -C mockfs tool gomod2nix generate
+      - run: git diff --exit-code mockfs/gomod2nix.toml
 
       - run: make generate
       - run: git diff --exit-code

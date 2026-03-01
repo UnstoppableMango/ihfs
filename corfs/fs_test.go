@@ -464,7 +464,7 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
-				testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+				testfs.WithMkdirAll(func(string, ihfs.FileMode) error {
 					return errors.New("mkdirall failed")
 				}),
 			)
@@ -802,7 +802,7 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
-				testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+				testfs.WithMkdirAll(func(string, ihfs.FileMode) error {
 					return errors.New("mkdirall error")
 				}),
 			)
@@ -874,7 +874,7 @@ var _ = Describe("Fs", func() {
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
 				}),
-				testfs.WithMkdirAll(func(path string, perm ihfs.FileMode) error {
+				testfs.WithMkdirAll(func(string, ihfs.FileMode) error {
 					return nil
 				}),
 			)

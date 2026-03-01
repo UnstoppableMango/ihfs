@@ -42,7 +42,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -89,7 +89,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -139,7 +139,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -187,7 +187,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
+			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
 				return nil, fs.ErrNotExist
 			}))
 
@@ -284,11 +284,11 @@ var _ = Describe("Try Util", func() {
 	Describe("Chown", func() {
 		It("should call Chown on the filesystem", func() {
 			var capturedName string
-			var capturedUid, capturedGid int
+			var capturedUID, capturedGid int
 
 			fsys := testfs.New(testfs.WithChown(func(name string, uid, gid int) error {
 				capturedName = name
-				capturedUid = uid
+				capturedUID = uid
 				capturedGid = gid
 				return nil
 			}))
@@ -297,7 +297,7 @@ var _ = Describe("Try Util", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(capturedName).To(Equal("file.txt"))
-			Expect(capturedUid).To(Equal(1000))
+			Expect(capturedUID).To(Equal(1000))
 			Expect(capturedGid).To(Equal(1000))
 		})
 

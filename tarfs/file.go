@@ -26,10 +26,12 @@ func (f *File) Close() error {
 	return nil
 }
 
+// FileInfo returns the [fs.FileInfo] for the tar entry.
 func (f *File) FileInfo() fs.FileInfo {
 	return f.hdr.FileInfo()
 }
 
+// IsDir reports whether the tar entry is a directory.
 func (f *File) IsDir() bool {
 	return f.FileInfo().IsDir()
 }
@@ -141,6 +143,7 @@ func (f *File) perror(op string, err error) error {
 	return &fs.PathError{Op: op, Path: f.name, Err: err}
 }
 
+// DirEntry represents a directory entry in a tar archive.
 type DirEntry struct {
 	hdr  *tar.Header
 	name string

@@ -34,6 +34,7 @@ func (f *Fs) Base() ihfs.FS {
 	return f.base
 }
 
+// Name returns the name of the filesystem.
 func (f *Fs) Name() string {
 	return "cowfs"
 }
@@ -64,10 +65,10 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	}
 
 	if bFile != nil {
-		bFile.Close()
+		_ = bFile.Close()
 	}
 	if lFile != nil {
-		lFile.Close()
+		_ = lFile.Close()
 	}
 
 	return nil, &ihfs.PathError{

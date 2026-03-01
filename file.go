@@ -1,3 +1,4 @@
+// Package ihfs provides composable filesystem interfaces aligned with Go's io/fs package philosophy.
 package ihfs
 
 import (
@@ -6,19 +7,30 @@ import (
 )
 
 type (
-	DirEntry    = fs.DirEntry
-	File        = fs.File
-	FileInfo    = fs.FileInfo
-	FileMode    = fs.FileMode
-	PathError   = fs.PathError
+	// DirEntry is an alias for [fs.DirEntry].
+	DirEntry = fs.DirEntry
+	// File is an alias for [fs.File].
+	File = fs.File
+	// FileInfo is an alias for [fs.FileInfo].
+	FileInfo = fs.FileInfo
+	// FileMode is an alias for [fs.FileMode].
+	FileMode = fs.FileMode
+	// PathError is an alias for [fs.PathError].
+	PathError = fs.PathError
+	// ReadDirFile is an alias for [fs.ReadDirFile].
 	ReadDirFile = fs.ReadDirFile
 )
 
 var (
-	ErrClosed     = fs.ErrClosed
-	ErrExist      = fs.ErrExist
-	ErrInvalid    = fs.ErrInvalid
-	ErrNotExist   = fs.ErrNotExist
+	// ErrClosed is an alias for [fs.ErrClosed].
+	ErrClosed = fs.ErrClosed
+	// ErrExist is an alias for [fs.ErrExist].
+	ErrExist = fs.ErrExist
+	// ErrInvalid is an alias for [fs.ErrInvalid].
+	ErrInvalid = fs.ErrInvalid
+	// ErrNotExist is an alias for [fs.ErrNotExist].
+	ErrNotExist = fs.ErrNotExist
+	// ErrPermission is an alias for [fs.ErrPermission].
 	ErrPermission = fs.ErrPermission
 )
 

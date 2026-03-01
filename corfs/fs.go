@@ -96,6 +96,7 @@ func (f *Fs) Base() ihfs.FS {
 	return f.base
 }
 
+// Name returns the filesystem name.
 func (f *Fs) Name() string {
 	return "corfs"
 }
@@ -116,9 +117,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		if bfi.IsDir() {
-			// For directories, fall through to merge logic below
-		} else {
+		if !bfi.IsDir() {
 			if err := f.copyToLayer(name); err != nil {
 				return nil, err
 			}

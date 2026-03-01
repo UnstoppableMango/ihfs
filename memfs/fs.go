@@ -287,7 +287,7 @@ func (f *Fs) Chown(name string, uid, gid int) error {
 }
 
 // Chtimes implements ihfs.ChtimesFS.
-func (f *Fs) Chtimes(name string, atime, mtime time.Time) error {
+func (f *Fs) Chtimes(name string, _, mtime time.Time) error {
 	name = normalizePath(name)
 
 	f.mu.RLock()
