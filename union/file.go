@@ -10,10 +10,10 @@ import (
 	"github.com/unstoppablemango/ihfs/try"
 )
 
-// File represents a file in the copy-on-write filesystem. It wraps a file from
+// File represents a file in a layered filesystem. It wraps a file from
 // the base layer and a file from the overlay layer. Reads are served from the
-// overlay if present, otherwise from the base. Writes are directed to the
-// overlay.
+// overlay if present, otherwise from the base. Writes are directed to both
+// layers to keep them in sync.
 type File struct {
 	base    ihfs.File
 	layer   ihfs.File

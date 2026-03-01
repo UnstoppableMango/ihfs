@@ -63,8 +63,12 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return union.NewFile(bFile, lFile, f.fopts...), nil
 	}
 
-	// TODO: possible file handle leaking
-	// https://github.com/UnstoppableMango/ihfs/pull/14#discussion_r2737484821
+	if bFile != nil {
+		bFile.Close()
+	}
+	if lFile != nil {
+		lFile.Close()
+	}
 
 	return nil, &ihfs.PathError{
 		Op:   "open",

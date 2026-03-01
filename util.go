@@ -10,6 +10,12 @@ import (
 
 var ErrNotImplemented = errors.New("not implemented")
 
+// Convenience functions below use fallback strategies when the FS does not
+// implement a specific interface. For example, Stat delegates to fs.Stat which
+// may open the file and call Stat on the handle, and MkdirAll falls back to
+// recursive Mkdir calls. For strict alternatives that return ErrNotImplemented
+// instead of falling back, see the try package.
+
 var (
 	Glob    = fs.Glob
 	ReadDir = fs.ReadDir
