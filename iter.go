@@ -35,9 +35,8 @@ func Catch(seq iter.Seq3[string, DirEntry, error]) (iter.Seq2[string, DirEntry],
 
 	if final != nil {
 		return nil, final
-	} else {
-		return slices.Zip(paths, entries), nil
 	}
+	return slices.Zip(paths, entries), nil
 }
 
 // Iter returns a sequence that walks the file system fsys.

@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	// Deprecated: use ErrNotImplemented instead.
-	ErrNotSupported   = ihfs.ErrNotImplemented
+	// ErrNotSupported is deprecated: use ErrNotImplemented instead.
+	ErrNotSupported = ihfs.ErrNotImplemented
+	// ErrNotImplemented is returned when the filesystem does not implement the requested operation.
 	ErrNotImplemented = ihfs.ErrNotImplemented
 )
 
@@ -47,8 +48,8 @@ func Chtimes(fsys ihfs.FS, name string, atime, mtime time.Time) error {
 // If the FS does not implement [ihfs.CopyFS], Copy returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Copy(fsys ihfs.FS, dir string, src ihfs.FS) error {
-	if copy, ok := fsys.(ihfs.CopyFS); ok {
-		return copy.Copy(dir, src)
+	if cfs, ok := fsys.(ihfs.CopyFS); ok {
+		return cfs.Copy(dir, src)
 	}
 	return fmt.Errorf("copy: %w", ErrNotImplemented)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/unstoppablemango/ihfs/union"
 )
 
+// Option configures a corfs [Fs].
 type Option func(*Fs)
 
 func WithCacheTime(cacheTime time.Duration) Option {

@@ -1,2 +1,2 @@
-// package op contains file system operations modeled as values.
+// Package op contains file system operations modeled as values.
 package op

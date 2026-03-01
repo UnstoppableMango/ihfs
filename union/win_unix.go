@@ -6,4 +6,5 @@ package union
 
 import "syscall"
 
+// BADFD is the "bad file descriptor" error code for non-Unix platforms.
 const BADFD = syscall.EBADFD

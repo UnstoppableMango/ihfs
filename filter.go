@@ -5,10 +5,13 @@ import (
 )
 
 type (
+	// FilterFunc is a function that filters filesystem operations.
 	FilterFunc func(*FilterFS, Operation) error
-	Predicate  func(Operation) bool
+	// Predicate is a function that returns true if an operation should be allowed.
+	Predicate func(Operation) bool
 )
 
+// Filter implements [FilterFunc] for a Predicate, returning [ErrPermission] when the predicate returns false.
 func (p Predicate) Filter(_ *FilterFS, op Operation) error {
 	if p(op) {
 		return nil
@@ -40,6 +43,7 @@ func (f *FilterFS) Base() FS {
 	return f.fs
 }
 
+// Name returns the name of the filter filesystem.
 func (f *FilterFS) Name() string {
 	return "filter"
 }

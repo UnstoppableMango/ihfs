@@ -1,3 +1,4 @@
+// Package union provides a union filesystem that merges multiple filesystems.
 package union
 
 import (
@@ -31,7 +32,7 @@ func CopyToLayer(base, layer ihfs.FS, name string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	return copyFile(layer, name, file)
 }
@@ -59,8 +60,8 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	// Ensure the file supports writing
 	writer, ok := lFile.(io.Writer)
 	if !ok {
-		lFile.Close()
-		try.Remove(layer, name)
+		_ = lFile.Close()
+		_ = try.Remove(layer, name)
 		return &ihfs.PathError{
 			Op:   "copy",
 			Path: name,
@@ -72,28 +73,28 @@ func copyFile(layer ihfs.FS, name string, file ihfs.File) error {
 	n, err := io.Copy(writer, file)
 	if err != nil {
 		// If anything fails, clean up the file
-		lFile.Close()
-		try.Remove(layer, name)
+		_ = lFile.Close()
+		_ = try.Remove(layer, name)
 		return err
 	}
 
 	// Verify the copy was complete
 	bFile, err := file.Stat()
 	if err != nil {
-		lFile.Close()
-		try.Remove(layer, name)
+		_ = lFile.Close()
+		_ = try.Remove(layer, name)
 		return err
 	}
 
 	if bFile.Size() != n {
-		lFile.Close()
-		try.Remove(layer, name)
+		_ = lFile.Close()
+		_ = try.Remove(layer, name)
 		return syscall.EIO
 	}
 
 	// Close the file before setting times
 	if err = lFile.Close(); err != nil {
-		try.Remove(layer, name)
+		_ = try.Remove(layer, name)
 		return err
 	}
 

@@ -33,11 +33,11 @@ func Open(name string) (*TarFile, error) {
 
 // OpenFS opens a tar file from fs as a read-only file system.
 func OpenFS(fs ihfs.FS, name string) (*TarFile, error) {
-	if f, err := fs.Open(name); err != nil {
+	f, err := fs.Open(name)
+	if err != nil {
 		return nil, err
-	} else {
-		return FromReader(name, f), nil
 	}
+	return FromReader(name, f), nil
 }
 
 // FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
@@ -236,13 +236,14 @@ func next(tr *tar.Reader) (*fileData, error) {
 		return nil, err
 	}
 
-	if data, err := io.ReadAll(tr); err != nil {
+	data, err := io.ReadAll(tr)
+	if err != nil {
 		return nil, err
-	} else {
-		return &fileData{hdr, data}, nil
 	}
+	return &fileData{hdr, data}, nil
 }
 
+// TarError represents an error that occurred while accessing a file in a tar archive.
 type TarError struct {
 	Archive, Name string
 	Err, Cause    error

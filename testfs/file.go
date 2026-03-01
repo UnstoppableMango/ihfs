@@ -6,6 +6,7 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+// File is a configurable test file implementation.
 type File struct {
 	name string
 
@@ -23,6 +24,7 @@ type File struct {
 	ReadDirNamesFunc func(n int) ([]string, error)
 }
 
+// Close implements [ihfs.File].
 func (f *File) Close() error {
 	if f.CloseFunc != nil {
 		return f.CloseFunc()
@@ -30,10 +32,12 @@ func (f *File) Close() error {
 	return nil
 }
 
+// Name returns the file's name.
 func (f *File) Name() string {
 	return f.name
 }
 
+// Read implements [io.Reader].
 func (f *File) Read(p []byte) (n int, err error) {
 	if f.ReadFunc != nil {
 		return f.ReadFunc(p)
@@ -41,6 +45,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("read: %w", ErrNotImplemented)
 }
 
+// Stat implements [fs.File].
 func (f *File) Stat() (ihfs.FileInfo, error) {
 	if f.StatFunc != nil {
 		return f.StatFunc()
@@ -48,6 +53,7 @@ func (f *File) Stat() (ihfs.FileInfo, error) {
 	return nil, fmt.Errorf("stat: %w", ErrNotImplemented)
 }
 
+// Seek implements [io.Seeker].
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.SeekFunc != nil {
 		return f.SeekFunc(offset, whence)
@@ -55,6 +61,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return 0, fmt.Errorf("seek: %w", ErrNotImplemented)
 }
 
+// Write implements [io.Writer].
 func (f *File) Write(p []byte) (n int, err error) {
 	if f.WriteFunc != nil {
 		return f.WriteFunc(p)
@@ -62,6 +69,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("write: %w", ErrNotImplemented)
 }
 
+// ReadDir implements [fs.ReadDirFile].
 func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	if f.ReadDirFunc != nil {
 		return f.ReadDirFunc(n)
@@ -69,6 +77,7 @@ func (f *File) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	return nil, fmt.Errorf("readdir: %w", ErrNotImplemented)
 }
 
+// ReadAt implements [io.ReaderAt].
 func (f *File) ReadAt(p []byte, off int64) (int, error) {
 	if f.ReadAtFunc != nil {
 		return f.ReadAtFunc(p, off)
@@ -76,6 +85,7 @@ func (f *File) ReadAt(p []byte, off int64) (int, error) {
 	return 0, fmt.Errorf("readat: %w", ErrNotImplemented)
 }
 
+// WriteAt implements [io.WriterAt].
 func (f *File) WriteAt(p []byte, off int64) (int, error) {
 	if f.WriteAtFunc != nil {
 		return f.WriteAtFunc(p, off)
@@ -83,6 +93,7 @@ func (f *File) WriteAt(p []byte, off int64) (int, error) {
 	return 0, fmt.Errorf("writeat: %w", ErrNotImplemented)
 }
 
+// WriteString implements [io.StringWriter].
 func (f *File) WriteString(s string) (int, error) {
 	if f.WriteStringFunc != nil {
 		return f.WriteStringFunc(s)
@@ -90,6 +101,7 @@ func (f *File) WriteString(s string) (int, error) {
 	return 0, fmt.Errorf("writestring: %w", ErrNotImplemented)
 }
 
+// Sync implements [ihfs.SyncFile].
 func (f *File) Sync() error {
 	if f.SyncFunc != nil {
 		return f.SyncFunc()
@@ -97,6 +109,7 @@ func (f *File) Sync() error {
 	return fmt.Errorf("sync: %w", ErrNotImplemented)
 }
 
+// Truncate implements [ihfs.TruncateFile].
 func (f *File) Truncate(size int64) error {
 	if f.TruncateFunc != nil {
 		return f.TruncateFunc(size)
@@ -104,6 +117,7 @@ func (f *File) Truncate(size int64) error {
 	return fmt.Errorf("truncate: %w", ErrNotImplemented)
 }
 
+// ReadDirNames implements [ihfs.ReadDirNamesFile].
 func (f *File) ReadDirNames(n int) ([]string, error) {
 	if f.ReadDirNamesFunc != nil {
 		return f.ReadDirNamesFunc(n)
@@ -111,6 +125,7 @@ func (f *File) ReadDirNames(n int) ([]string, error) {
 	return nil, fmt.Errorf("readdirnames: %w", ErrNotImplemented)
 }
 
+// DirEntry is a configurable test directory entry implementation.
 type DirEntry struct {
 	name string
 
@@ -119,6 +134,7 @@ type DirEntry struct {
 	InfoFunc  func() (ihfs.FileInfo, error)
 }
 
+// NewDirEntry creates a new [DirEntry] with the given name and directory flag.
 func NewDirEntry(name string, isDir bool) *DirEntry {
 	return &DirEntry{
 		name:      name,
@@ -132,18 +148,22 @@ func NewDirEntry(name string, isDir bool) *DirEntry {
 	}
 }
 
+// Name implements [fs.DirEntry].
 func (d *DirEntry) Name() string {
 	return d.name
 }
 
+// IsDir implements [fs.DirEntry].
 func (d *DirEntry) IsDir() bool {
 	return d.IsDirFunc()
 }
 
+// Type implements [fs.DirEntry].
 func (d *DirEntry) Type() ihfs.FileMode {
 	return d.TypeFunc()
 }
 
+// Info implements [fs.DirEntry].
 func (d *DirEntry) Info() (ihfs.FileInfo, error) {
 	if d.InfoFunc != nil {
 		return d.InfoFunc()

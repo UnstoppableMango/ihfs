@@ -2,8 +2,10 @@ package union
 
 import "github.com/unstoppablemango/ihfs"
 
+// MergeStrategy is a function that merges directory entries from a layer and base filesystem.
 type MergeStrategy func(layer, base []ihfs.DirEntry) ([]ihfs.DirEntry, error)
 
+// DefaultMergeStrategy is the default [MergeStrategy] used by union filesystems.
 var DefaultMergeStrategy MergeStrategy = mergeDirEntries
 
 // mergeDirEntries merges directory entries from the layer and base,
