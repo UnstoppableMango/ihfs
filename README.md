@@ -153,31 +153,7 @@ fs := testfs.New(
 ### mockfs
 
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
-Provides call tracking, argument matchers, and controller-based verification.
-
-```go
-import (
-    "testing"
-
-    "go.uber.org/mock/gomock"
-    "github.com/unstoppablemango/ihfs/mockfs"
-)
-
-func TestMyCode(t *testing.T) {
-    ctrl := gomock.NewController(t)
-
-    fs := mockfs.NewCreateFS(ctrl)
-    fs.EXPECT().Create("foo.txt").Return(mockfs.NewFile(ctrl), nil)
-
-    // pass fs to code under test
-}
-```
-
-`mockfs` is a separate Go module:
-
-```
-go get github.com/unstoppablemango/ihfs/mockfs
-```
+See the [mockfs README](mockfs/README.md) for details.
 
 ## Attribution
 

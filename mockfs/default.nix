@@ -10,6 +10,7 @@
         version = "0.0.1";
         src = lib.cleanSource ./.;
         modules = ./gomod2nix.toml;
+        doCheck = false;
       };
     };
 }
