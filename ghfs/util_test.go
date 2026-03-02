@@ -114,7 +114,7 @@ var _ = Describe("OpenOwner errors", func() {
 				mock.GetUsersByUsername,
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(`{"message": "Not Found"}`))
+					_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 				}),
 			),
 		)
@@ -130,7 +130,7 @@ var _ = Describe("OpenOwner errors", func() {
 			mock.WithRequestMatchHandler(
 				mock.GetUsersByUsername,
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Write([]byte("invalid json"))
+					_, _ = w.Write([]byte("invalid json"))
 				}),
 			),
 		)

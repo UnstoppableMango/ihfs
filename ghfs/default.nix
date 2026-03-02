@@ -7,7 +7,7 @@
       ...
     }:
     let
-      inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix;
+      inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication;
     in
     {
       packages.ghfs = buildGoApplication {
