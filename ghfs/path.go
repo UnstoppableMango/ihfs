@@ -17,12 +17,28 @@ var hosts = []string{
 func normalize(name string) (string, error) {
 	if u, err := url.Parse(name); err == nil {
 		switch u.Hostname() {
-		case "api.github.com", "":
-			return u.Path, nil
+		case "api.github.com":
+			return u.RequestURI(), nil
 		case "github.com":
 			return fromWebURL(u.Path)
 		case "raw.githubusercontent.com":
 			return fromRawURL(u.Path)
+		case "":
+			path := u.Path
+			switch {
+			case strings.HasPrefix(path, "github.com"):
+				return fromWebURL(path)
+			case strings.HasPrefix(path, "api.github.com"):
+				cleaned := clean(path)
+				if u.RawQuery != "" {
+					return cleaned + "?" + u.RawQuery, nil
+				}
+				return cleaned, nil
+			case strings.HasPrefix(path, "raw.githubusercontent.com"):
+				return fromRawURL(path)
+			default:
+				return u.RequestURI(), nil
+			}
 		}
 	}
 
@@ -78,7 +94,21 @@ func fromWebURL(name string) (string, error) {
 }
 
 func fromRawURL(name string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	parts := strings.Split(clean(name), "/")
+
+	switch len(parts) {
+	case 1:
+		if p := parts[0]; p != "" {
+			return ownerPath(p), nil
+		}
+		return "user", nil
+	case 2:
+		return repoPath(parts[0], parts[1]), nil
+	case 3:
+		return branchPath(parts[0], parts[1], parts[2]), nil
+	}
+
+	return contentPath(parts[0], parts[1], parts[2], strings.Join(parts[3:], "/")), nil
 }
 
 func clean(path string) string {
@@ -118,7 +148,7 @@ func releasePath(owner, repository, name string) string {
 	)
 }
 
-func assetPath(owner, repository, release, name string) string {
+func assetPath(owner, repository string, _ string, name string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/releases/assets/%v",
 		owner, repository, name,

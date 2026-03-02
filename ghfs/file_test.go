@@ -37,7 +37,7 @@ var _ = Describe("File", func() {
 
 			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
 			var err error
-			file, err = fsys.Open("test-user")
+			file, err = fsys.Open("users/test-user")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -133,7 +133,7 @@ var _ = Describe("File", func() {
 		})
 
 		It("should return error when User decode fails", func() {
-			f, err := ghfs.Open(fsys, "test-user")
+			f, err := ghfs.Open(fsys, "users/test-user")
 			Expect(err).NotTo(HaveOccurred())
 
 			var owner github.User
