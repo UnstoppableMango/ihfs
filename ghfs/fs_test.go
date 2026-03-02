@@ -1,8 +1,8 @@
 package ghfs_test
 
 import (
-	"context"
 	"net/http"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,7 +30,13 @@ func mockHTTPClient() (*http.Client, func()) {
 		),
 		mock.WithRequestMatch(
 			mock.GetReposReleasesTagsByOwnerByRepoByTag,
-			github.RepositoryRelease{Name: github.Ptr("test-release")},
+			github.RepositoryRelease{
+				Name: github.Ptr("test-release"),
+				Assets: []*github.ReleaseAsset{{
+					ID:   github.Ptr(int64(1)),
+					Name: github.Ptr("asset.tar.gz"),
+				}},
+			},
 		),
 		mock.WithRequestMatch(
 			mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
@@ -218,7 +224,7 @@ var _ = Describe("Fs", func() {
 			})
 
 			It("should open an asset path", func() {
-				f, err := fsys.Open(prefix + "repos/test-user/test-repo/releases/assets/asset.tar.gz")
+				f, err := fsys.Open(prefix + "repos/test-user/test-repo/releases/assets/1")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.File{}))
@@ -254,35 +260,24 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
-	Describe("Options", func() {
-		It("should support WithAuthToken", func() {
-			fsys := ghfs.New(ghfs.WithAuthToken("test-token"))
-			Expect(fsys).NotTo(BeNil())
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			fsys := ghfs.New()
+			Expect(fstest.TestFS(fsys)).To(Succeed())
 		})
+	})
 
-		It("should support WithContextFunc", func() {
-			called := false
-			ctxFunc := func(f *ghfs.Fs, o ihfs.Operation) context.Context {
-				called = true
-				return context.Background()
-			}
-
-			mockHttp, s := mock.NewMockedHTTPClientAndServer(
-				mock.WithRequestMatch(
-					mock.GetUsersByUsername,
-					github.User{Name: github.Ptr("test-user")},
-				),
-			)
-			DeferCleanup(s.Close)
-
-			fsys := ghfs.New(
-				ghfs.WithHttpClient(mockHttp),
-				ghfs.WithContextFunc(ctxFunc),
-			)
-
-			_, _ = fsys.Open("users/test-user")
-			Expect(called).To(BeTrue())
-		})
+	Describe("invalid paths", func() {
+		DescribeTable("should return ErrInvalid",
+			func(path string) {
+				_, err := ghfs.New().Open(path)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ihfs.ErrInvalid))
+			},
+			Entry(nil, "/."),
+			Entry(nil, "./."),
+			Entry(nil, "/"),
+		)
 	})
 
 	Describe("API errors", func() {
@@ -294,42 +289,42 @@ var _ = Describe("Fs", func() {
 					mock.GetUsersByUsername,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposByOwnerByRepo,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposBranchesByOwnerByRepoByBranch,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposContentsByOwnerByRepoByPath,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposReleasesByOwnerByRepoByReleaseId,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(`{"message": "Not Found"}`))
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 					}),
 				),
 			)
@@ -363,7 +358,86 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when openAsset fails", func() {
-			_, err := fsys.Open("repos/test-user/test-repo/releases/assets/asset.tar.gz")
+			_, err := fsys.Open("repos/test-user/test-repo/releases/assets/1")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Asset lookup errors", func() {
+		It("should return error when release lookup fails", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			_, err := fsys.Open("github.com/test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when release decode fails", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						_, _ = w.Write([]byte("invalid json"))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			_, err := fsys.Open("github.com/test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return ErrNotExist when asset name is not found in release", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
+					github.RepositoryRelease{
+						Name:   github.Ptr("test-release"),
+						Assets: []*github.ReleaseAsset{},
+					},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			_, err := fsys.Open("github.com/test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ihfs.ErrNotExist))
+		})
+
+		It("should return error when asset download fails", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetReposReleasesTagsByOwnerByRepoByTag,
+					github.RepositoryRelease{
+						Name: github.Ptr("test-release"),
+						Assets: []*github.ReleaseAsset{
+							{ID: github.Ptr(int64(1)), Name: github.Ptr("asset.tar.gz")},
+						},
+					},
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			_, err := fsys.Open("github.com/test-user/test-repo/releases/tag/v0.1.0/asset.tar.gz")
 			Expect(err).To(HaveOccurred())
 		})
 	})

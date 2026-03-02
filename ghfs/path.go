@@ -8,6 +8,8 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+const assetLookupPrefix = "ghfs-asset:"
+
 var hosts = []string{
 	"github.com",
 	"api.github.com",
@@ -15,38 +17,54 @@ var hosts = []string{
 }
 
 func normalize(name string) (string, error) {
-	if u, err := url.Parse(name); err == nil {
-		switch u.Hostname() {
-		case "api.github.com":
-			return u.RequestURI(), nil
-		case "github.com":
-			return fromWebURL(u.Path)
-		case "raw.githubusercontent.com":
-			return fromRawURL(u.Path)
-		case "":
-			path := u.Path
-			switch {
-			case strings.HasPrefix(path, "github.com"):
-				return fromWebURL(path)
-			case strings.HasPrefix(path, "api.github.com"):
-				cleaned := clean(path)
-				if u.RawQuery != "" {
-					return cleaned + "?" + u.RawQuery, nil
-				}
-				return cleaned, nil
-			case strings.HasPrefix(path, "raw.githubusercontent.com"):
-				return fromRawURL(path)
-			default:
-				return u.RequestURI(), nil
-			}
+	u, err := url.Parse(name)
+	if err != nil {
+		return "", &ihfs.PathError{
+			Op:   "open",
+			Path: name,
+			Err:  ihfs.ErrNotExist,
 		}
 	}
 
-	return name, nil
+	switch u.Hostname() {
+	case "api.github.com":
+		return u.RequestURI(), nil
+	case "github.com":
+		return fromWebURL(u.EscapedPath())
+	case "raw.githubusercontent.com":
+		return fromRawURL(u.EscapedPath())
+	case "":
+		path := u.EscapedPath()
+		switch {
+		case path == "github.com" || strings.HasPrefix(path, "github.com/"):
+			return fromWebURL(strings.TrimPrefix(path, "github.com"))
+		case path == "api.github.com" || strings.HasPrefix(path, "api.github.com/"):
+			cleaned := clean(strings.TrimPrefix(path, "api.github.com"))
+			if u.RawQuery != "" {
+				return cleaned + "?" + u.RawQuery, nil
+			}
+			return cleaned, nil
+		case path == "raw.githubusercontent.com" || strings.HasPrefix(path, "raw.githubusercontent.com/"):
+			return fromRawURL(strings.TrimPrefix(path, "raw.githubusercontent.com"))
+		default:
+			return u.RequestURI(), nil
+		}
+	default:
+		return "", &ihfs.PathError{
+			Op:   "open",
+			Path: name,
+			Err:  ihfs.ErrNotExist,
+		}
+	}
 }
 
 func fromWebURL(name string) (string, error) {
 	parts := strings.Split(clean(name), "/")
+	for i, p := range parts {
+		if unescaped, err := url.PathUnescape(p); err == nil {
+			parts[i] = unescaped
+		}
+	}
 
 	switch len(parts) {
 	case 1:
@@ -64,11 +82,16 @@ func fromWebURL(name string) (string, error) {
 	case 5:
 		// Expected patterns:
 		// - owner/repo/blob/branch/path
+		// - owner/repo/tree/branch/path
 		// - owner/repo/releases/(tag|download)/TAG
-		if parts[2] == "blob" {
+		switch parts[2] {
+		case "blob", "tree":
 			return contentPath(parts[0], parts[1], parts[3], parts[4]), nil
+		case "releases":
+			if parts[3] == "tag" || parts[3] == "download" {
+				return releasePath(parts[0], parts[1], parts[4]), nil
+			}
 		}
-		return releasePath(parts[0], parts[1], parts[4]), nil
 	}
 
 	if len(parts) >= 6 {
@@ -95,6 +118,11 @@ func fromWebURL(name string) (string, error) {
 
 func fromRawURL(name string) (string, error) {
 	parts := strings.Split(clean(name), "/")
+	for i, p := range parts {
+		if unescaped, err := url.PathUnescape(p); err == nil {
+			parts[i] = unescaped
+		}
+	}
 
 	switch len(parts) {
 	case 1:
@@ -113,7 +141,7 @@ func fromRawURL(name string) (string, error) {
 
 func clean(path string) string {
 	if u, err := url.Parse(path); err == nil {
-		path = u.Path
+		path = u.EscapedPath()
 	}
 	for _, h := range hosts {
 		path = strings.TrimPrefix(path, h)
@@ -131,26 +159,34 @@ func repoPath(owner, repository string) string {
 }
 
 func branchPath(owner, repository, branch string) string {
-	return fmt.Sprintf("repos/%v/%v/branches/%v", owner, repository, branch)
+	return fmt.Sprintf("repos/%v/%v/branches/%v", owner, repository, url.PathEscape(branch))
 }
 
 func contentPath(owner, repository, branch, name string) string {
+	segments := strings.Split(name, "/")
+	for i, s := range segments {
+		segments[i] = url.PathEscape(s)
+	}
 	return fmt.Sprintf(
 		"repos/%v/%v/contents/%v?ref=%v",
-		owner, repository, name, url.QueryEscape(branch),
+		owner, repository, strings.Join(segments, "/"), url.QueryEscape(branch),
 	)
 }
 
 func releasePath(owner, repository, name string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/releases/tags/%v",
-		owner, repository, name,
+		owner, repository, url.PathEscape(name),
 	)
 }
 
-func assetPath(owner, repository string, _ string, name string) string {
+func assetPath(owner, repository, tag, name string) string {
 	return fmt.Sprintf(
-		"repos/%v/%v/releases/assets/%v",
-		owner, repository, name,
+		"%v%v/%v/%v/%v",
+		assetLookupPrefix,
+		owner,
+		repository,
+		url.PathEscape(tag),
+		url.PathEscape(name),
 	)
 }

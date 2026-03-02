@@ -28,11 +28,14 @@ func OpenRelease(fsys ihfs.FS, owner, repo, tag string) (*github.RepositoryRelea
 }
 
 func openDecode[T any](fsys ihfs.FS, path string) (*T, error) {
-	if f, err := fsys.Open(path); err != nil {
+	f, err := fsys.Open(path)
+	if err != nil {
 		return nil, err
-	} else {
-		return decode[T](f)
 	}
+	defer func() {
+		_ = f.Close()
+	}()
+	return decode[T](f)
 }
 
 func decode[T any](f ihfs.File) (*T, error) {
