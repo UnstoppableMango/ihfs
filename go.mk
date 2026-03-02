@@ -15,7 +15,7 @@ coverprofile.out: $(shell find . -name '*.go')
 
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum
-	$(GOMOD2NIX)
+	$(GOMOD2NIX) generate
 
 snapshot:
 	$(GORELEASER) release --snapshot --clean

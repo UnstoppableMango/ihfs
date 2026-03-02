@@ -49,13 +49,18 @@ fs.EXPECT().WriteFile("config.json", data, 0o644).Return(nil)
 ### Returning errors
 
 ```go
-fs := mockfs.NewStatFS(ctrl)
-fs.EXPECT().Stat("missing.txt").Return(nil, fs.ErrNotExist)
+import "io/fs"
+
+mfs := mockfs.NewStatFS(ctrl)
+mfs.EXPECT().Stat("missing.txt").Return(nil, fs.ErrNotExist)
 ```
 
 ### Combining a mock FS with a mock File
 
 ```go
+import "os"
+
+data := []byte("content")
 fsys := mockfs.NewOpenFileFS(ctrl)
 file := mockfs.NewWriter(ctrl)
 
@@ -82,6 +87,8 @@ fs.EXPECT().Stat(gomock.Any()).Return(nil, nil).AnyTimes()
 ### Dynamic responses with DoAndReturn
 
 ```go
+import "os"
+
 fs := mockfs.NewReadFileFS(ctrl)
 fs.EXPECT().
     ReadFile(gomock.Any()).
