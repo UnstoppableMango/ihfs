@@ -1,5 +1,7 @@
 include ./go.mk
+
 .DEFAULT_GOAL := build
+
 build:
 	nix build .# .#mockfs --no-link
 
