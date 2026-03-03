@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v84/github"
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/op"

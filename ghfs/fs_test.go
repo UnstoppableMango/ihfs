@@ -7,9 +7,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/google/go-github/v73/github"
-	githubv82 "github.com/google/go-github/v82/github"
-	"github.com/migueleliasweb/go-github-mock/src/mock"
+	"github.com/google/go-github/v84/github"
+	"github.com/unstoppablemango/go-github-mock/src/mock"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/ghfs"
 )
@@ -444,7 +443,7 @@ var _ = Describe("Fs", func() {
 
 	Describe("NewRequest errors", func() {
 		It("should handle error when creating request with invalid base URL", func() {
-			client := githubv82.NewClient(nil)
+			client := github.NewClient(nil)
 			client.BaseURL.Path = "://invalid"
 			fsys := ghfs.New(ghfs.WithClient(client))
 
