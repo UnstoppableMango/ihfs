@@ -1,6 +1,8 @@
 package ghfs
 
 import (
+	"net/url"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -93,13 +95,13 @@ var _ = Describe("normalize", func() {
 	It("should return ErrNotExist for unknown hostnames", func() {
 		_, err := normalize("https://gitlab.com/owner/repo")
 		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(ihfs.ErrNotExist))
+		Expect(err).To(MatchError("invalid host: gitlab.com"))
 	})
 
 	It("should return ErrNotExist for invalid URLs", func() {
 		_, err := normalize("%%invalid")
 		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(ihfs.ErrNotExist))
+		Expect(err).To(MatchError(url.EscapeError("%%i")))
 	})
 
 	DescribeTable("schemeless api.github.com with query string",
