@@ -225,6 +225,7 @@ func WriteReader(fsys FS, name string, r io.Reader, perm FileMode) error {
 	// TODO: probably a more efficient way to do this
 	if data, err := io.ReadAll(r); err != nil {
 		return fmt.Errorf("reading: %w", err)
+	} else {
+		return WriteFile(fsys, name, data, perm)
 	}
-	return WriteFile(fsys, name, data, perm)
 }
