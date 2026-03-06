@@ -15,6 +15,8 @@ import (
 	"github.com/unstoppablemango/ihfs/op"
 )
 
+var errNotImplemented = fmt.Errorf("github: %w", ihfs.ErrNotImplemented)
+
 type ContextFunc func(*Fs, ihfs.Operation) context.Context
 
 type Fs struct {
@@ -45,7 +47,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return &Dir{name: "."}, nil
 	}
 	if !strings.Contains(name, "://") && !fs.ValidPath(name) {
-		return openErr(name, ihfs.ErrInvalid)
+		return nil, openErr(name, ihfs.ErrInvalid)
 	}
 	return f.open(name)
 }
@@ -63,16 +65,13 @@ func Open(fsys ihfs.FS, name string) (*File, error) {
 		return fs.open(name)
 	}
 
-	return openErr(name, fmt.Errorf("github: %w", ihfs.ErrNotImplemented))
+	return nil, openErr(name, errNotImplemented)
 }
 
 func (f *Fs) open(name string) (*File, error) {
 	path, err := normalize(name)
 	if err != nil {
-		if _, ok := err.(*ihfs.PathError); ok {
-			return nil, err
-		}
-		return openErr(name, err)
+		return nil, openErr(name, err)
 	}
 
 	if rest, ok := strings.CutPrefix(path, assetLookupPrefix); ok {
@@ -87,8 +86,9 @@ func (f *Fs) open(name string) (*File, error) {
 	ctx := f.context(op.Open{Name: name})
 	r, err := f.do(ctx, path)
 	if err != nil {
-		return openErr(name, err)
+		return nil, openErr(name, err)
 	}
+
 	return &File{r, name}, nil
 }
 
@@ -97,13 +97,13 @@ func (f *Fs) openAssetByName(name, owner, repo, tag, assetName string) (*File, e
 
 	releaseBody, err := f.do(ctx, releasePath(owner, repo, tag))
 	if err != nil {
-		return openErr(name, err)
+		return nil, openErr(name, err)
 	}
 	defer releaseBody.Close()
 
 	var release github.RepositoryRelease
 	if err := json.NewDecoder(releaseBody).Decode(&release); err != nil {
-		return openErr(name, err)
+		return nil, openErr(name, err)
 	}
 
 	for _, asset := range release.Assets {
@@ -111,13 +111,13 @@ func (f *Fs) openAssetByName(name, owner, repo, tag, assetName string) (*File, e
 			assetURL := fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repo, asset.GetID())
 			r, err := f.do(ctx, assetURL)
 			if err != nil {
-				return openErr(name, err)
+				return nil, openErr(name, err)
 			}
 			return &File{r, name}, nil
 		}
 	}
 
-	return openErr(name, ihfs.ErrNotExist)
+	return nil, openErr(name, ihfs.ErrNotExist)
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
@@ -138,8 +138,8 @@ func do(ctx context.Context, c *github.Client, url string) (io.ReadCloser, error
 	return resp.Body, nil
 }
 
-func openErr(name string, err error) (*File, error) {
-	return nil, &ihfs.PathError{
+func openErr(name string, err error) error {
+	return &ihfs.PathError{
 		Op:   "open",
 		Path: name,
 		Err:  err,
