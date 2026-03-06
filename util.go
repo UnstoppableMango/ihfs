@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 )
 
@@ -25,6 +26,64 @@ var (
 	// Stat is an alias for [fs.Stat].
 	Stat = fs.Stat
 )
+
+func Copy(dest FS, dir string, src FS) error {
+	if copier, ok := dest.(CopyFS); ok {
+		return copier.Copy(dir, src)
+	}
+
+	return Walk(src, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(dir, filepath.FromSlash(path))
+
+		switch d.Type() {
+		case fs.ModeDir:
+			return MkdirAll(dest, destPath, 0777)
+		case fs.ModeSymlink:
+			target, err := fs.ReadLink(src, path)
+			if err != nil {
+				return err
+			}
+			if linker, ok := dest.(SymlinkFS); ok {
+				return linker.Symlink(target, destPath)
+			}
+			return fmt.Errorf("copy: symlink: %w", ErrNotImplemented)
+		case 0: // regular file
+			r, err := src.Open(path)
+			if err != nil {
+				return err
+			}
+			defer r.Close()
+
+			info, err := r.Stat()
+			if err != nil {
+				return err
+			}
+
+			w, err := OpenFile(dest, destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666|info.Mode()&0111)
+			if err != nil {
+				return err
+			}
+
+			writer, ok := w.(io.Writer)
+			if !ok {
+				w.Close()
+				return fmt.Errorf("copy: %w", ErrNotImplemented)
+			}
+
+			if _, err := io.Copy(writer, r); err != nil {
+				w.Close()
+				return &fs.PathError{Op: "Copy", Path: destPath, Err: err}
+			}
+			return w.Close()
+		default:
+			return &fs.PathError{Op: "CopyFS", Path: path, Err: fs.ErrInvalid}
+		}
+	})
+}
 
 // DirExists reports if the given path exists and is a directory.
 //
@@ -120,6 +179,28 @@ func ReadDirNames(fsys FS, name string) ([]string, error) {
 	return names, nil
 }
 
+// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
+//
+// If the FS does not implement [OpenFileFS], OpenFile returns
+// an error that can be checked with [errors.Is] for [ErrNotImplemented].
+func OpenFile(fsys FS, name string, flag int, perm FileMode) (File, error) {
+	if opener, ok := fsys.(OpenFileFS); ok {
+		return opener.OpenFile(name, flag, perm)
+	}
+	return nil, fmt.Errorf("open file: %w", ErrNotImplemented)
+}
+
+// Remove removes the named file or (empty) directory.
+//
+// If the FS does not implement [RemoveFS], Remove returns
+// an error that can be checked with [errors.Is] for [ErrNotImplemented].
+func Remove(fsys FS, name string) error {
+	if remover, ok := fsys.(RemoveFS); ok {
+		return remover.Remove(name)
+	}
+	return fmt.Errorf("remove: %w", ErrNotImplemented)
+}
+
 // WriteFile writes data to a file named by name in the given FS.
 // The file mode perm is used when creating the file.
 //
@@ -136,9 +217,10 @@ func WriteFile(fsys FS, name string, data []byte, perm FileMode) error {
 // WriteReader reads all data from r and writes it to name in fsys using [WriteFile].
 // It returns an error if reading from r fails or if [WriteFile] reports an error.
 func WriteReader(fsys FS, name string, r io.Reader, perm FileMode) error {
-	data, err := io.ReadAll(r)
-	if err != nil {
+	// TODO: probably a more efficient way to do this
+	if data, err := io.ReadAll(r); err != nil {
 		return fmt.Errorf("reading: %w", err)
+	} else {
+		return WriteFile(fsys, name, data, perm)
 	}
-	return WriteFile(fsys, name, data, perm)
 }
