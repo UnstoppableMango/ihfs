@@ -16,45 +16,39 @@ var hosts = []string{
 	"raw.githubusercontent.com",
 }
 
-func normalize(name string) (string, error) {
-	u, err := url.Parse(name)
-	if err != nil {
-		return "", &ihfs.PathError{
-			Op:   "open",
-			Path: name,
-			Err:  ihfs.ErrNotExist,
+func splitHost(u *url.URL) (host, rest string) {
+	if host = u.Hostname(); host != "" {
+		return host, u.RequestURI()
+	}
+
+	p := u.RequestURI()
+	for _, h := range hosts {
+		if after, ok := strings.CutPrefix(p, h); ok {
+			return h, strings.TrimPrefix(after, "/")
 		}
 	}
 
-	switch u.Hostname() {
+	return "", p
+}
+
+// normalize returns the API path for name
+func normalize(name string) (string, error) {
+	u, err := url.Parse(name)
+	if err != nil {
+		return "", err
+	}
+
+	switch h, p := splitHost(u); h {
 	case "api.github.com":
-		return u.RequestURI(), nil
+		return p, nil
 	case "github.com":
-		return fromWebURL(u.EscapedPath())
+		return fromWebURL(p)
 	case "raw.githubusercontent.com":
-		return fromRawURL(u.EscapedPath())
+		return fromRawURL(p)
 	case "":
-		path := u.EscapedPath()
-		switch {
-		case path == "github.com" || strings.HasPrefix(path, "github.com/"):
-			return fromWebURL(strings.TrimPrefix(path, "github.com"))
-		case path == "api.github.com" || strings.HasPrefix(path, "api.github.com/"):
-			cleaned := clean(strings.TrimPrefix(path, "api.github.com"))
-			if u.RawQuery != "" {
-				return cleaned + "?" + u.RawQuery, nil
-			}
-			return cleaned, nil
-		case path == "raw.githubusercontent.com" || strings.HasPrefix(path, "raw.githubusercontent.com/"):
-			return fromRawURL(strings.TrimPrefix(path, "raw.githubusercontent.com"))
-		default:
-			return u.RequestURI(), nil
-		}
+		return u.RequestURI(), nil
 	default:
-		return "", &ihfs.PathError{
-			Op:   "open",
-			Path: name,
-			Err:  ihfs.ErrNotExist,
-		}
+		return "", fmt.Errorf("invalid host: %s", h)
 	}
 }
 
