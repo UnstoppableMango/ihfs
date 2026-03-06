@@ -39,54 +39,49 @@ func Copy(dest FS, dir string, src FS) error {
 
 		destPath := filepath.Join(dir, filepath.FromSlash(path))
 
-		if d.IsDir() {
-			info, err := d.Info()
+		switch d.Type() {
+		case fs.ModeDir:
+			return MkdirAll(dest, destPath, 0777)
+		case fs.ModeSymlink:
+			target, err := fs.ReadLink(src, path)
 			if err != nil {
 				return err
 			}
-			return MkdirAll(dest, destPath, info.Mode().Perm())
-		}
-
-		src, err := src.Open(path)
-		if err != nil {
-			return err
-		}
-		defer src.Close()
-
-		if _, err := Stat(dest, destPath); err == nil {
-			return &fs.PathError{
-				Op:   "copy",
-				Path: destPath,
-				Err:  fs.ErrExist,
+			if linker, ok := dest.(SymlinkFS); ok {
+				return linker.Symlink(target, destPath)
 			}
-		}
+			return fmt.Errorf("copy: symlink: %w", ErrNotImplemented)
+		case 0: // regular file
+			r, err := src.Open(path)
+			if err != nil {
+				return err
+			}
+			defer r.Close()
 
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
+			info, err := r.Stat()
+			if err != nil {
+				return err
+			}
 
-		destf, err := OpenFile(dest,
-			destPath,
-			os.O_CREATE|os.O_WRONLY|os.O_EXCL,
-			info.Mode().Perm(),
-		)
-		if err != nil {
-			return err
-		}
-		defer destf.Close()
+			w, err := OpenFile(dest, destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666|info.Mode()&0111)
+			if err != nil {
+				return err
+			}
 
-		w, ok := destf.(io.Writer)
-		if !ok {
-			return fmt.Errorf("copy: %w", ErrNotImplemented)
-		}
+			writer, ok := w.(io.Writer)
+			if !ok {
+				w.Close()
+				return fmt.Errorf("copy: %w", ErrNotImplemented)
+			}
 
-		if _, err := io.Copy(w, src); err != nil {
-			_ = Remove(dest, destPath)
-			return err
+			if _, err := io.Copy(writer, r); err != nil {
+				w.Close()
+				return &fs.PathError{Op: "Copy", Path: destPath, Err: err}
+			}
+			return w.Close()
+		default:
+			return &fs.PathError{Op: "CopyFS", Path: path, Err: fs.ErrInvalid}
 		}
-
-		return nil
 	})
 }
 
