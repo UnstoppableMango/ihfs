@@ -32,16 +32,18 @@ func Parse(name string) (p Path, err error) {
 		return Path{}, err
 	}
 
-	host, path := splitHost(name, p.u)
-	parts := strings.Split(path, "/")
-	switch host {
+	var path string
+	p.host, path = splitHost(name, p.u)
+	pathOnly, _, _ := strings.Cut(path, "?")
+	parts := strings.Split(strings.TrimLeft(pathOnly, "/"), "/")
+	switch p.host {
 	case "github.com":
 		asWeb(&p, parts)
-	case "api.github.com":
+	case "api.github.com", "":
 		asAPI(&p, parts)
 	case "raw.githubusercontent.com":
 		asRaw(&p, parts)
-	case "":
+	default:
 		return Path{}, fmt.Errorf("invalid host: %s", p.host)
 	}
 
@@ -59,7 +61,30 @@ func (p Path) Asset() string   { return p.asset }
 func (p Path) Release() string { return p.release }
 
 func (p Path) APIPath() string {
-	return "" // TODO
+	prefix := ""
+	if p.host == "api.github.com" && p.u != nil && p.u.Scheme != "" {
+		prefix = "/"
+	}
+
+	if p.owner == "" {
+		if p.host == "github.com" || p.host == "raw.githubusercontent.com" {
+			return "user"
+		}
+		return prefix
+	}
+	if p.repo == "" {
+		return prefix + ownerPath(p.owner)
+	}
+	if p.release != "" {
+		return prefix + releasePath(p.owner, p.repo, p.tag)
+	}
+	if len(p.content) > 0 {
+		return prefix + contentPath(p.owner, p.repo, p.branch, strings.Join(p.content, "/"))
+	}
+	if p.branch != "" {
+		return prefix + branchPath(p.owner, p.repo, p.branch)
+	}
+	return prefix + repoPath(p.owner, p.repo)
 }
 
 func splitHost(name string, u *url.URL) (host, rest string) {
