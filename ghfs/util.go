@@ -8,23 +8,28 @@ import (
 )
 
 func OpenOwner(fsys ihfs.FS, owner string) (*github.User, error) {
-	return openDecode[github.User](fsys, ownerPath(owner))
+	p := &Path{owner: owner}
+	return openDecode[github.User](fsys, p.ownerPath())
 }
 
 func OpenRepository(fsys ihfs.FS, owner, repo string) (*github.Repository, error) {
-	return openDecode[github.Repository](fsys, repoPath(owner, repo))
+	p := &Path{owner: owner, repo: repo}
+	return openDecode[github.Repository](fsys, p.repoPath())
 }
 
 func OpenBranch(fsys ihfs.FS, owner, repo, branch string) (*github.Branch, error) {
-	return openDecode[github.Branch](fsys, branchPath(owner, repo, branch))
+	p := &Path{owner: owner, repo: repo, branch: branch}
+	return openDecode[github.Branch](fsys, p.branchPath())
 }
 
 func OpenContent(fsys ihfs.FS, owner, repo, ref, path string) (*github.RepositoryContent, error) {
-	return openDecode[github.RepositoryContent](fsys, contentPath(owner, repo, ref, path))
+	p := &Path{owner: owner, repo: repo, branch: ref, content: path}
+	return openDecode[github.RepositoryContent](fsys, p.contentPath())
 }
 
 func OpenRelease(fsys ihfs.FS, owner, repo, tag string) (*github.RepositoryRelease, error) {
-	return openDecode[github.RepositoryRelease](fsys, releasePath(owner, repo, tag))
+	p := &Path{owner: owner, repo: repo, tag: tag}
+	return openDecode[github.RepositoryRelease](fsys, p.releasePath())
 }
 
 func openDecode[T any](fsys ihfs.FS, path string) (*T, error) {

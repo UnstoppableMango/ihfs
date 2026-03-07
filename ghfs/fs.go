@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
 	"strings"
 
 	"github.com/google/go-github/v84/github"
@@ -69,55 +68,48 @@ func Open(fsys ihfs.FS, name string) (*File, error) {
 }
 
 func (f *Fs) open(name string) (*File, error) {
-	path, err := normalize(name)
+	path, err := Parse(name)
 	if err != nil {
 		return nil, openErr(name, err)
 	}
 
-	if rest, ok := strings.CutPrefix(path, assetLookupPrefix); ok {
-		parts := strings.SplitN(rest, "/", 4)
-		if len(parts) == 4 {
-			tag, _ := url.PathUnescape(parts[2])
-			assetName, _ := url.PathUnescape(parts[3])
-			return f.openAssetByName(name, parts[0], parts[1], tag, assetName)
-		}
+	ctx := f.context(op.Open{Name: path.String()})
+	if path.Asset() != "" {
+		return f.openAssetByName(ctx, path)
 	}
 
-	ctx := f.context(op.Open{Name: name})
-	r, err := f.do(ctx, path)
+	r, err := f.do(ctx, path.APIPath())
 	if err != nil {
-		return nil, openErr(name, err)
+		return nil, openErr(path.String(), err)
 	}
 
-	return &File{r, name}, nil
+	return &File{r, path.String()}, nil
 }
 
-func (f *Fs) openAssetByName(name, owner, repo, tag, assetName string) (*File, error) {
-	ctx := f.context(op.Open{Name: name})
-
-	releaseBody, err := f.do(ctx, releasePath(owner, repo, tag))
+func (f *Fs) openAssetByName(ctx context.Context, p *Path) (*File, error) {
+	releaseBody, err := f.do(ctx, p.releasePath())
 	if err != nil {
-		return nil, openErr(name, err)
+		return nil, openErr(p.String(), err)
 	}
 	defer releaseBody.Close()
 
 	var release github.RepositoryRelease
 	if err := json.NewDecoder(releaseBody).Decode(&release); err != nil {
-		return nil, openErr(name, err)
+		return nil, openErr(p.String(), err)
 	}
 
 	for _, asset := range release.Assets {
-		if asset.GetName() == assetName {
-			assetURL := fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repo, asset.GetID())
+		if asset.GetName() == p.Asset() {
+			assetURL := p.assetPath()
 			r, err := f.do(ctx, assetURL)
 			if err != nil {
-				return nil, openErr(name, err)
+				return nil, openErr(p.String(), err)
 			}
-			return &File{r, name}, nil
+			return &File{r, p.String()}, nil
 		}
 	}
 
-	return nil, openErr(name, ihfs.ErrNotExist)
+	return nil, openErr(p.String(), ihfs.ErrNotExist)
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
