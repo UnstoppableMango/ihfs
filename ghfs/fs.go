@@ -2,7 +2,6 @@ package ghfs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -86,21 +85,15 @@ func (f *Fs) open(name string) (*File, error) {
 	return &File{r, path.String()}, nil
 }
 
-func (f *Fs) openAssetByName(ctx context.Context, p *Path) (*File, error) {
-	releaseBody, err := f.do(ctx, releasePath())
+func (f *Fs) openAssetByName(ctx context.Context, p Path) (*File, error) {
+	r, err := OpenRelease(f, p.Owner(), p.Repo(), p.Release())
 	if err != nil {
-		return nil, openErr(p.String(), err)
-	}
-	defer releaseBody.Close()
-
-	var release github.RepositoryRelease
-	if err := json.NewDecoder(releaseBody).Decode(&release); err != nil {
-		return nil, openErr(p.String(), err)
+		return nil, err
 	}
 
-	for _, asset := range release.Assets {
+	for _, asset := range r.Assets {
 		if asset.GetName() == p.Asset() {
-			return OpenAsset(f)
+			return OpenAsset(f, p.Owner(), p.Repo(), *asset.ID)
 		}
 	}
 
