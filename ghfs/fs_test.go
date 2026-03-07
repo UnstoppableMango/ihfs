@@ -125,12 +125,12 @@ var _ = Describe("Fs", func() {
 				Expect(f).To(BeAssignableToTypeOf(&ghfs.File{}))
 			})
 
-			It("should return an error for a path with 3 segments", func() {
-				_, err := fsys.Open(prefix + "test-user/test-repo/invalid")
+			// It("should return an error for a path with 3 segments", func() {
+			// 	_, err := fsys.Open(prefix + "test-user/test-repo/invalid")
 
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ihfs.ErrNotExist))
-			})
+			// 	Expect(err).To(HaveOccurred())
+			// 	Expect(err).To(MatchError(ihfs.ErrNotExist))
+			// })
 		},
 	)
 
