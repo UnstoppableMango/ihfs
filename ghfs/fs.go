@@ -73,7 +73,7 @@ func (f *Fs) open(name string) (*File, error) {
 		return nil, openErr(name, err)
 	}
 
-	ctx := f.context(op.Open{Name: path.String()})
+	ctx := f.context(op.Open{Name: path.Name()})
 	if path.Asset() != "" {
 		return f.openAssetByName(ctx, path)
 	}
@@ -87,7 +87,7 @@ func (f *Fs) open(name string) (*File, error) {
 }
 
 func (f *Fs) openAssetByName(ctx context.Context, p *Path) (*File, error) {
-	releaseBody, err := f.do(ctx, p.releasePath())
+	releaseBody, err := f.do(ctx, releasePath())
 	if err != nil {
 		return nil, openErr(p.String(), err)
 	}
@@ -100,12 +100,7 @@ func (f *Fs) openAssetByName(ctx context.Context, p *Path) (*File, error) {
 
 	for _, asset := range release.Assets {
 		if asset.GetName() == p.Asset() {
-			assetURL := p.assetPath()
-			r, err := f.do(ctx, assetURL)
-			if err != nil {
-				return nil, openErr(p.String(), err)
-			}
-			return &File{r, p.String()}, nil
+			return OpenAsset(f)
 		}
 	}
 

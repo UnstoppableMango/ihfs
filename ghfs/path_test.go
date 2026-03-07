@@ -12,7 +12,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "https://api.github.com/users/test-user", "/users/test-user"),
 		Entry(nil, "https://api.github.com/repos/owner/repo", "/repos/owner/repo"),
@@ -23,7 +23,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "https://github.com/test-user", "users/test-user"),
 		Entry(nil, "https://github.com/owner/repo", "repos/owner/repo"),
@@ -36,7 +36,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "https://raw.githubusercontent.com/test-user", "users/test-user"),
 		Entry(nil, "https://raw.githubusercontent.com/owner/repo", "repos/owner/repo"),
@@ -49,7 +49,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "github.com", "user"),
 		Entry(nil, "github.com/test-user", "users/test-user"),
@@ -61,7 +61,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "api.github.com", ""),
 		Entry(nil, "api.github.com/users/test-user", "users/test-user"),
@@ -72,7 +72,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "raw.githubusercontent.com", "user"),
 		Entry(nil, "raw.githubusercontent.com/test-user", "users/test-user"),
@@ -83,7 +83,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "users/test-user", "users/test-user"),
 		Entry(nil, "repos/owner/repo", "repos/owner/repo"),
@@ -106,7 +106,7 @@ var _ = Describe("normalize", func() {
 		func(input, expected string) {
 			result, err := Parse(input)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.apiPath).To(Equal(expected))
+			Expect(result.APIPath()).To(Equal(expected))
 		},
 		Entry(nil, "api.github.com/repos/owner/repo/contents/file.txt?ref=main", "repos/owner/repo/contents/file.txt?ref=main"),
 	)
