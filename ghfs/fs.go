@@ -93,7 +93,11 @@ func (f *Fs) openAssetByName(ctx context.Context, p Path) (*File, error) {
 
 	for _, asset := range r.Assets {
 		if asset.GetName() == p.Asset() {
-			return OpenAsset(f, p.Owner(), p.Repo(), *asset.ID)
+			rc, err := f.do(ctx, assetPath(p.Owner(), p.Repo(), asset.GetID()))
+			if err != nil {
+				return nil, err
+			}
+			return &File{rc, p.String()}, nil
 		}
 	}
 
