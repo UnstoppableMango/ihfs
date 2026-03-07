@@ -3,12 +3,9 @@ package ghfs
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
-
-	"github.com/unstoppablemango/ihfs"
 )
-
-const assetLookupPrefix = "ghfs-asset:"
 
 var hosts = []string{
 	"github.com",
@@ -17,227 +14,189 @@ var hosts = []string{
 }
 
 type Path struct {
-	name    string
-	u       *url.URL
-	host    string
-	apiPath string
-
-	owner   string
-	repo    string
-	branch  string
-	tag     string
-	asset   string
-	release string
-	content string
+	name string
+	u    *url.URL
+	host string
+	path string
 }
 
-func (p *Path) String() string  { return p.name }
-func (p *Path) Host() string    { return p.host }
-func (p *Path) APIPath() string { return p.apiPath }
-func (p *Path) Owner() string   { return p.owner }
-func (p *Path) Repo() string    { return p.repo }
-func (p *Path) Branch() string  { return p.branch }
-func (p *Path) Tag() string     { return p.tag }
-func (p *Path) Asset() string   { return p.asset }
-func (p *Path) Release() string { return p.release }
-func (p *Path) Content() string { return p.content }
+func (p *Path) Name() string   { return p.name }
+func (p *Path) String() string { return p.name }
 
-func Parse(name string) (p *Path, err error) {
-	p = &Path{name: name}
-	if p.u, err = url.Parse(name); err != nil {
+// func (p *Path) Owner() string   { return p.owner }
+// func (p *Path) Repo() string    { return p.repo }
+// func (p *Path) Branch() string  { return p.branch }
+// func (p *Path) Tag() string     { return p.tag }
+// func (p *Path) Asset() string   { return p.asset }
+// func (p *Path) Release() string { return p.release }
+// func (p *Path) Content() string { return p.content }
+
+func (p *Path) Host() string {
+	return p.host
+}
+
+func Parse(name string) (*Path, error) {
+	u, err := url.Parse(name)
+	if err != nil {
 		return nil, err
 	}
 
-	p.host, p.apiPath = p.splitHost()
-	switch p.host {
-	case "api.github.com":
-		// For API URLs, the path is already in the correct format
-	case "github.com":
-		if err = p.asWebURL(); err != nil {
-			return nil, err
-		}
-	case "raw.githubusercontent.com":
-		if err = p.asRawURL(); err != nil {
-			return nil, err
-		}
-	case "":
-		p.apiPath = p.u.RequestURI()
-	default:
-		return nil, fmt.Errorf("invalid host: %s", p.host)
+	host, path := splitHost(name, u)
+	if !slices.Contains(append(hosts, ""), host) {
+		return nil, fmt.Errorf("invalid host: %s", host)
 	}
 
-	return p, nil
+	return &Path{
+		name: name,
+		u:    u,
+		host: host,
+		path: path,
+	}, nil
 }
 
-func (p *Path) splitHost() (host, rest string) {
-	if host = p.u.Hostname(); host != "" {
-		return host, p.u.RequestURI()
+func (p *Path) parts() parts {
+	return strings.Split(strings.TrimLeft(p.path, "/"), "/")
+}
+
+func splitHost(name string, u *url.URL) (host, rest string) {
+	if host = u.Hostname(); host != "" {
+		return host, u.RequestURI()
 	}
 
 	for _, h := range hosts {
-		if after, ok := strings.CutPrefix(p.name, h); ok {
+		if after, ok := strings.CutPrefix(name, h); ok {
 			return h, strings.TrimPrefix(after, "/")
 		}
 	}
 
-	return "", p.name
+	return "", name
 }
 
-func (p *Path) asWebURL() error {
-	// TODO: Refactor to avoid mutation
-	parts := strings.Split(clean(p.name), "/")
-	for i, p := range parts {
-		if unescaped, err := url.PathUnescape(p); err == nil {
-			parts[i] = unescaped
-		}
-	}
+func (p *Path) APIPath() string {
+	return p.path
+}
 
-	switch len(parts) {
+type parts []string
+
+func (p parts) fromWeb() (path, asset string) {
+	switch len(p) {
 	case 1:
-		p.owner = parts[0]
-		return nil
+		return ownerPath(p[0]), ""
 	case 2:
-		p.owner = parts[0]
-		p.repo = parts[1]
-		return nil
+		return repoPath(p[0], p[1]), ""
 	case 4:
-		// Expected pattern: owner/repo/tree/branch
-		if parts[2] == "tree" {
-			p.owner = parts[0]
-			p.repo = parts[1]
-			p.branch = parts[3]
-			return nil
+		if p[2] == "tree" {
+			return branchPath(p[0], p[1], p[3]), ""
 		}
 	case 5:
-		// Expected patterns:
-		// - owner/repo/blob/branch/path
-		// - owner/repo/tree/branch/path
-		// - owner/repo/releases/(tag|download)/TAG
-		switch parts[2] {
+		switch p[2] {
 		case "blob", "tree":
-			p.owner = parts[0]
-			p.repo = parts[1]
-			p.branch = parts[3]
-			p.content = parts[4]
-			return nil
+			return contentPath(p[0], p[1], p[3], p[4]), ""
 		case "releases":
-			if parts[3] == "tag" || parts[3] == "download" {
-				p.owner = parts[0]
-				p.repo = parts[1]
-				p.tag = parts[4]
-				return nil
+			if p[3] == "tag" || p[3] == "download" {
+				return releasePath(p[0], p[1], p[4]), ""
+			}
+		}
+	case 6:
+		switch p[2] {
+		case "blob", "tree":
+			return contentPath(p[0], p[1], p[3], strings.Join(p[4:], "/")), ""
+		case "releases":
+			if p[3] == "tag" || p[3] == "download" {
+				return releasePath(p[0], p[1], p[4]), p[5]
 			}
 		}
 	}
 
-	if len(parts) >= 6 {
-		// Expected patterns:
-		// - owner/repo/releases/(tag|download)/TAG/asset
-		// - owner/repo/(tree|blob)/branch/path/to/item
-		if parts[2] == "releases" && (parts[3] == "tag" || parts[3] == "download") {
-			p.owner = parts[0]
-			p.repo = parts[1]
-			p.tag = parts[4]
-			p.asset = parts[5]
-			return nil
-		}
-
-		if parts[2] == "tree" || parts[2] == "blob" {
-			p.owner = parts[0]
-			p.repo = parts[1]
-			p.branch = parts[3]
-			p.content = strings.Join(parts[4:], "/")
-			return nil
-		}
-	}
-
-	return &ihfs.PathError{
-		Op:   "open",
-		Path: p.name,
-		Err:  ihfs.ErrNotExist,
-	}
+	return "", ""
 }
 
-func (p *Path) asRawURL() error {
-	// TODO: Refactor to avoid mutation
-	parts := strings.Split(clean(p.name), "/")
-	for i, p := range parts {
-		if unescaped, err := url.PathUnescape(p); err == nil {
-			parts[i] = unescaped
-		}
-	}
-
-	switch len(parts) {
-	case 1:
-		p.owner = parts[0]
-	case 2:
-		p.owner = parts[0]
-		p.repo = parts[1]
-	case 3:
-		p.owner = parts[0]
-		p.repo = parts[1]
-		p.branch = parts[2]
-	default:
-		p.owner = parts[0]
-		p.repo = parts[1]
-		p.branch = parts[2]
-		p.content = strings.Join(parts[3:], "/")
-	}
-
-	return nil
+func fromWebPath(name string) (path, asset string) {
+	return parts(strings.Split(strings.TrimLeft(name, "/"), "/")).fromWeb()
 }
 
-func clean(path string) string {
-	if u, err := url.Parse(path); err == nil {
-		path = u.EscapedPath()
-	}
-	for _, h := range hosts {
-		path = strings.TrimPrefix(path, h)
-	}
+// func (p *Path) applyWebPath(name string) {
+// 	parts := strings.Split(strings.TrimLeft(name, "/"), "/")
+// 	for i, s := range parts {
+// 		if unescaped, err := url.PathUnescape(s); err == nil {
+// 			parts[i] = unescaped
+// 		}
+// 	}
 
-	return strings.TrimLeft(path, "/")
+// 	if len(parts) > 0 {
+// 		p.owner = parts[0]
+// 	}
+// 	if len(parts) > 1 {
+// 		p.repo = parts[1]
+// 	}
+// 	if len(parts) > 3 && parts[2] == "tree" {
+// 		p.branch = parts[3]
+// 	}
+// 	if len(parts) > 4 {
+// 		switch parts[2] {
+// 		case "blob", "tree":
+// 			p.content = parts[4]
+// 		case "releases":
+// 			if parts[3] == "tag" || parts[3] == "download" {
+// 				p.tag = parts[4]
+// 			}
+// 		}
+// 	}
+
+// 	if len(parts) >= 6 {
+// 		switch parts[2] {
+// 		case "blob", "tree":
+// 			p.content = strings.Join(parts[4:], "/")
+// 		case "releases":
+// 			if parts[3] == "tag" || parts[3] == "download" {
+// 				p.asset = parts[5]
+// 			}
+// 		}
+// 	}
+// }
+
+// func (p *Path) applyRawPath(url string) {
+// 	parts := strings.Split(strings.TrimLeft(url, "/"), "/")
+// 	if len(parts) > 0 {
+// 		p.owner = parts[0]
+// 	}
+// 	if len(parts) > 1 {
+// 		p.repo = parts[1]
+// 	}
+// 	if len(parts) > 2 {
+// 		p.branch = parts[2]
+// 	}
+// 	if len(parts) > 3 {
+// 		p.content = strings.Join(parts[3:], "/")
+// 	}
+// }
+
+func ownerPath(owner string) string {
+	return fmt.Sprintf("users/%v", owner)
 }
 
-func (p *Path) ownerPath() string {
-	return fmt.Sprintf("users/%v", p.owner)
+func repoPath(owner, repo string) string {
+	return fmt.Sprintf("repos/%v/%v", owner, repo)
 }
 
-func (p *Path) repoPath() string {
-	return fmt.Sprintf("repos/%v/%v", p.owner, p.repo)
+func branchPath(owner, repo, branch string) string {
+	return fmt.Sprintf("repos/%v/%v/branches/%v", owner, repo, branch)
 }
 
-func (p *Path) branchPath() string {
-	return fmt.Sprintf("repos/%v/%v/branches/%v", p.owner, p.repo, url.PathEscape(p.branch))
-}
-
-func (p *Path) contentPath() string {
-	segments := strings.Split(p.content, "/")
-	for i, s := range segments {
-		segments[i] = url.PathEscape(s)
-	}
-
+func contentPath(owner, repo, branch, content string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/contents/%v?ref=%v",
-		p.owner,
-		p.repo,
-		strings.Join(segments, "/"),
-		url.QueryEscape(p.branch),
+		owner, repo, content, branch,
 	)
 }
 
-func (p *Path) releasePath() string {
+func releasePath(owner, repo, tag string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/releases/tags/%v",
-		p.owner, p.repo, url.PathEscape(p.tag),
+		owner, repo, url.PathEscape(tag),
 	)
 }
 
-func (p *Path) assetPath() string {
-	return fmt.Sprintf(
-		"%v/%v/%v/%v",
-		p.owner,
-		p.repo,
-		url.PathEscape(p.tag),
-		url.PathEscape(p.asset),
-	)
+func assetPath(owner, repo string, id int64) string {
+	return fmt.Sprintf("repos/%v/%v/releases/assets/%v", owner, repo, id)
 }
