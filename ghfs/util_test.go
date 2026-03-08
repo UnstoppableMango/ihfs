@@ -101,9 +101,26 @@ var _ = Describe("OpenRelease", func() {
 		DeferCleanup(s.Close)
 		fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
 
-		r, err := ghfs.OpenRelease(fsys, "test-user", "test-repo", "v1.0.0")
+		r, err := ghfs.OpenReleaseByTag(fsys, "test-user", "test-repo", "v1.0.0")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(r.GetName()).To(Equal("v1.0.0"))
+	})
+})
+
+var _ = Describe("OpenAsset", func() {
+	It("should return the asset", func() {
+		mockHttp, s := mock.NewMockedHTTPClientAndServer(
+			mock.WithRequestMatch(
+				mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
+				github.ReleaseAsset{Name: github.Ptr("asset.tar.gz")},
+			),
+		)
+		DeferCleanup(s.Close)
+		fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+		a, err := ghfs.OpenAsset(fsys, "test-user", "test-repo", 1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(a.GetName()).To(Equal("asset.tar.gz"))
 	})
 })
 

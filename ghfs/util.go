@@ -7,6 +7,8 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+// TODO: Contexts
+
 func OpenOwner(fsys ihfs.FS, owner string) (*github.User, error) {
 	return openDecode[github.User](fsys, ownerPath(owner))
 }
@@ -23,8 +25,12 @@ func OpenContent(fsys ihfs.FS, owner, repo, ref, path string) (*github.Repositor
 	return openDecode[github.RepositoryContent](fsys, contentPath(owner, repo, ref, path))
 }
 
-func OpenRelease(fsys ihfs.FS, owner, repo, tag string) (*github.RepositoryRelease, error) {
-	return openDecode[github.RepositoryRelease](fsys, releasePath(owner, repo, tag))
+func OpenRelease(fsys ihfs.FS, owner, repo string, id int64) (*github.RepositoryRelease, error) {
+	return openDecode[github.RepositoryRelease](fsys, releasePath(owner, repo, id))
+}
+
+func OpenReleaseByTag(fsys ihfs.FS, owner, repo, tag string) (*github.RepositoryRelease, error) {
+	return openDecode[github.RepositoryRelease](fsys, releasePathByTag(owner, repo, tag))
 }
 
 func OpenAsset(fsys ihfs.FS, owner, repo string, id int64) (*github.ReleaseAsset, error) {

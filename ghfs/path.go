@@ -3,6 +3,7 @@ package ghfs
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -20,10 +21,13 @@ type Path struct {
 	owner   string
 	repo    string
 	branch  string
-	tag     string
-	release string
-	asset   string
 	content []string
+
+	tag       string
+	releaseID int64
+
+	asset   string
+	assetID int64
 }
 
 func Parse(name string) (p Path, err error) {
@@ -37,10 +41,10 @@ func Parse(name string) (p Path, err error) {
 	pathOnly, _, _ := strings.Cut(path, "?")
 	parts := strings.Split(strings.TrimLeft(pathOnly, "/"), "/")
 	switch p.host {
-	case "github.com":
-		asWeb(&p, parts)
 	case "api.github.com", "":
 		asAPI(&p, parts)
+	case "github.com":
+		asWeb(&p, parts)
 	case "raw.githubusercontent.com":
 		asRaw(&p, parts)
 	default:
@@ -50,41 +54,34 @@ func Parse(name string) (p Path, err error) {
 	return p, nil
 }
 
-func (p Path) Name() string    { return p.name }
-func (p Path) String() string  { return p.name }
-func (p Path) Host() string    { return p.host }
-func (p Path) Owner() string   { return p.owner }
-func (p Path) Repo() string    { return p.repo }
-func (p Path) Branch() string  { return p.branch }
-func (p Path) Tag() string     { return p.tag }
-func (p Path) Asset() string   { return p.asset }
-func (p Path) Release() string { return p.release }
+func (p Path) Name() string   { return p.name }
+func (p Path) String() string { return p.name }
+func (p Path) Host() string   { return p.host }
+func (p Path) Owner() string  { return p.owner }
+func (p Path) Repo() string   { return p.repo }
+func (p Path) Branch() string { return p.branch }
+func (p Path) Tag() string    { return p.tag }
+func (p Path) Asset() string  { return p.asset }
+func (p Path) Release() int64 { return p.releaseID }
 
 func (p Path) APIPath() string {
-	prefix := ""
-	if p.host == "api.github.com" && p.u != nil && p.u.Scheme != "" {
-		prefix = "/"
-	}
-
 	if p.owner == "" {
-		if p.host == "github.com" || p.host == "raw.githubusercontent.com" {
-			return "user"
-		}
-		return prefix
+		return "user"
 	}
 	if p.repo == "" {
-		return prefix + ownerPath(p.owner)
+		return ownerPath(p.owner)
 	}
-	if p.release != "" {
-		return prefix + releasePath(p.owner, p.repo, p.tag)
+	if p.releaseID != 0 {
+		return releasePathByTag(p.owner, p.repo, p.tag)
 	}
 	if len(p.content) > 0 {
-		return prefix + contentPath(p.owner, p.repo, p.branch, strings.Join(p.content, "/"))
+		return contentPath(p.owner, p.repo, p.branch, strings.Join(p.content, "/"))
 	}
 	if p.branch != "" {
-		return prefix + branchPath(p.owner, p.repo, p.branch)
+		return branchPath(p.owner, p.repo, p.branch)
 	}
-	return prefix + repoPath(p.owner, p.repo)
+
+	return repoPath(p.owner, p.repo)
 }
 
 func splitHost(name string, u *url.URL) (host, rest string) {
@@ -133,10 +130,14 @@ func asWeb(p *Path, parts []string) {
 		if len(parts) > 3 && (parts[3] == "tag" || parts[3] == "download") {
 			if len(parts) > 4 {
 				p.tag = parts[4]
-				p.release = parts[4]
+				if id, err := strconv.ParseInt(parts[4], 10, 64); err == nil {
+					p.releaseID = id
+				}
 			}
 			if len(parts) > 5 {
-				p.asset = parts[5]
+				if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
+					p.assetID = id
+				}
 			}
 		}
 	}
@@ -186,7 +187,15 @@ func asAPI(p *Path, parts []string) {
 					case "tags":
 						if len(parts) > 5 {
 							p.tag = parts[5]
-							p.release = parts[5]
+							if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
+								p.releaseID = id
+							}
+						}
+					case "assets":
+						if len(parts) > 5 {
+							if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
+								p.assetID = id
+							}
 						}
 					}
 				}
@@ -221,7 +230,14 @@ func contentPath(owner, repo, branch, content string) string {
 	)
 }
 
-func releasePath(owner, repo, tag string) string {
+func releasePath(owner, repo string, id int64) string {
+	return fmt.Sprintf(
+		"repos/%v/%v/releases/%v",
+		owner, repo, id,
+	)
+}
+
+func releasePathByTag(owner, repo, tag string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/releases/tags/%v",
 		owner, repo, url.PathEscape(tag),
