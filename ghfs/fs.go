@@ -76,12 +76,7 @@ func (f *Fs) open(name string) (*File, error) {
 		return open(ctx, f.client, assetPath(path.Owner(), path.Repo(), id))
 	}
 
-	r, err := f.do(ctx, path.APIPath())
-	if err != nil {
-		return nil, openErr(path.String(), err)
-	}
-
-	return &File{r, path.String()}, nil
+	return open(ctx, f.client, path.APIPath())
 }
 
 func (f *Fs) assetId(ctx context.Context, p Path) (int64, error) {
