@@ -14,9 +14,9 @@ var _ = Describe("normalize", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.APIPath()).To(Equal(expected))
 		},
-		Entry(nil, "https://api.github.com/users/test-user", "/users/test-user"),
-		Entry(nil, "https://api.github.com/repos/owner/repo", "/repos/owner/repo"),
-		Entry(nil, "https://api.github.com/repos/owner/repo/contents/file.txt?ref=main", "/repos/owner/repo/contents/file.txt?ref=main"),
+		Entry(nil, "https://api.github.com/users/test-user", "users/test-user"),
+		Entry(nil, "https://api.github.com/repos/owner/repo", "repos/owner/repo"),
+		Entry(nil, "https://api.github.com/repos/owner/repo/contents/file.txt?ref=main", "repos/owner/repo/contents/file.txt?ref=main"),
 	)
 
 	DescribeTable("github.com scheme (web-style)",
@@ -28,6 +28,7 @@ var _ = Describe("normalize", func() {
 		Entry(nil, "https://github.com/test-user", "users/test-user"),
 		Entry(nil, "https://github.com/owner/repo", "repos/owner/repo"),
 		Entry(nil, "https://github.com/owner/repo/tree/main", "repos/owner/repo/branches/main"),
+		Entry(nil, "https://github.com/owner/repo/tree/main/README.md", "repos/owner/repo/contents/README.md?ref=main"),
 		Entry(nil, "https://github.com/owner/repo/blob/main/file.txt", "repos/owner/repo/contents/file.txt?ref=main"),
 		Entry(nil, "https://github.com/owner/repo/tree/feature%2Fmain", "repos/owner/repo/branches/feature%2Fmain"),
 	)
@@ -63,7 +64,7 @@ var _ = Describe("normalize", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.APIPath()).To(Equal(expected))
 		},
-		Entry(nil, "api.github.com", ""),
+		Entry(nil, "api.github.com", "user"),
 		Entry(nil, "api.github.com/users/test-user", "users/test-user"),
 		Entry(nil, "api.github.com/repos/owner/repo", "repos/owner/repo"),
 	)
@@ -110,6 +111,32 @@ var _ = Describe("normalize", func() {
 		},
 		Entry(nil, "api.github.com/repos/owner/repo/contents/file.txt?ref=main", "repos/owner/repo/contents/file.txt?ref=main"),
 	)
+})
+
+var _ = Describe("Path", func() {
+	Describe("Host", func() {
+		It("should return the host", func() {
+			result, err := Parse("https://github.com/owner/repo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Host()).To(Equal("github.com"))
+		})
+	})
+
+	Describe("Branch", func() {
+		It("should return the branch", func() {
+			result, err := Parse("github.com/owner/repo/tree/main")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Branch()).To(Equal("main"))
+		})
+	})
+
+	Describe("Tag", func() {
+		It("should return the tag", func() {
+			result, err := Parse("github.com/owner/repo/releases/tag/v1.0.0")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Tag()).To(Equal("v1.0.0"))
+		})
+	})
 })
 
 // var _ = Describe("fromWebURL", func() {

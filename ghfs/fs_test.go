@@ -277,6 +277,11 @@ var _ = Describe("Fs", func() {
 			Entry(nil, "./."),
 			Entry(nil, "/"),
 		)
+
+		It("should return error for unknown host", func() {
+			_, err := ghfs.New().Open("https://gitlab.com/owner/repo")
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("API errors", func() {

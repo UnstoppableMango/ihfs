@@ -62,7 +62,6 @@ func Open(fsys ihfs.FS, name string) (*File, error) {
 	if fs, ok := fsys.(*Fs); ok {
 		return fs.open(name)
 	}
-
 	return nil, openErr(name, errNotImplemented)
 }
 
@@ -73,8 +72,8 @@ func (f *Fs) open(name string) (*File, error) {
 	}
 
 	ctx := f.context(op.Open{Name: path.Name()})
-	if path.Asset() != "" {
-		return f.openAssetByName(ctx, path)
+	if id, err := f.assetId(ctx, path); err == nil && id != 0 {
+		return open(ctx, f.client, assetPath(path.Owner(), path.Repo(), id))
 	}
 
 	r, err := f.do(ctx, path.APIPath())
@@ -85,27 +84,58 @@ func (f *Fs) open(name string) (*File, error) {
 	return &File{r, path.String()}, nil
 }
 
-func (f *Fs) openAssetByName(ctx context.Context, p Path) (*File, error) {
-	r, err := OpenRelease(f, p.Owner(), p.Repo(), p.Release())
-	if err != nil {
-		return nil, err
-	}
-
-	for _, asset := range r.Assets {
-		if asset.GetName() == p.Asset() {
-			rc, err := f.do(ctx, assetPath(p.Owner(), p.Repo(), asset.GetID()))
-			if err != nil {
-				return nil, err
-			}
-			return &File{rc, p.String()}, nil
-		}
-	}
-
-	return nil, openErr(p.String(), ihfs.ErrNotExist)
+func (f *Fs) assetId(ctx context.Context, p Path) (int64, error) {
+	return assetId(ctx, f.client, p)
 }
 
 func background(*Fs, ihfs.Operation) context.Context {
 	return context.Background()
+}
+
+func release(ctx context.Context, c *github.Client, p Path) (*github.RepositoryRelease, error) {
+	if p.Release() != 0 {
+		r, _, err := c.Repositories.GetRelease(ctx,
+			p.Owner(), p.Repo(), p.Release(),
+		)
+		return r, err
+	}
+	if p.Tag() != "" {
+		r, _, err := c.Repositories.GetReleaseByTag(ctx,
+			p.Owner(), p.Repo(), p.Tag(),
+		)
+		return r, err
+	}
+
+	return nil, fmt.Errorf("release not specified")
+}
+
+func assetId(ctx context.Context, c *github.Client, p Path) (int64, error) {
+	if p.assetID != 0 {
+		return p.assetID, nil
+	}
+	if p.Asset() == "" {
+		return 0, fmt.Errorf("empty asset name")
+	}
+
+	rel, err := release(ctx, c, p)
+	if err != nil {
+		return 0, err
+	}
+	for _, asset := range rel.Assets {
+		if asset.GetName() == p.Asset() {
+			return asset.GetID(), nil
+		}
+	}
+
+	return 0, ihfs.ErrNotExist
+}
+
+func open(ctx context.Context, c *github.Client, url string) (*File, error) {
+	if r, err := do(ctx, c, url); err != nil {
+		return nil, err
+	} else {
+		return &File{r, url}, nil
+	}
 }
 
 func do(ctx context.Context, c *github.Client, url string) (io.ReadCloser, error) {
