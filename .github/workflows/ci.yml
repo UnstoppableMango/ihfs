@@ -30,6 +30,7 @@ jobs:
           --trace
           --randomize-all
           --coverprofile=cover.out
+          --skip-package=ghfs
 
       - uses: codecov/codecov-action@v5
         with:
@@ -81,3 +82,29 @@ jobs:
 
       - run: make generate
       - run: git diff --exit-code
+
+  ghfs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ghfs/go.mod
+          cache-dependency-path: ghfs/go.sum
+
+      - run: go -C ghfs build -v ./...
+
+      - run: >
+          go -C ghfs tool ginkgo -r
+          --github-output
+          --race
+          --trace
+          --randomize-all
+          --coverprofile=cover.out
+
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          files: ghfs/cover.out

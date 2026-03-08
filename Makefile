@@ -3,7 +3,7 @@ include ./go.mk
 .DEFAULT_GOAL := build
 
 build:
-	nix build .# .#mockfs --no-link
+	nix build .# .#ghfs .#mockfs --no-link
 
 clean:
 	find . \( -name '*cover*' -o -name 'result*' \) -delete
@@ -27,6 +27,8 @@ docs/gopls.instructions.md:
 .golangci-lint-version: flake.nix flake.lock
 	$(GOLANGCI) version --short > $@
 
-.PHONY: mockfs
+.PHONY: ghfs mockfs
+ghfs:
+	$(MAKE) -C ghfs
 mockfs:
-	$(MAKE) -C mockfs generate
+	$(MAKE) -C mockfs

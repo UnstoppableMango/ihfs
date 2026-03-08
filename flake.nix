@@ -29,35 +29,46 @@
 
       imports = [
         inputs.treefmt-nix.flakeModule
+
         ./mockfs
+        ./ghfs
       ];
 
       perSystem =
         {
           inputs',
-          lib,
           pkgs,
+          lib,
           ...
         }:
         let
           inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
 
           goEnv = mkGoEnv { pwd = ./.; };
-        in
-        {
-          packages.default = buildGoApplication {
+
+          ihfs = buildGoApplication {
             pname = "ihfs";
             version = "0.0.1";
 
             src = lib.cleanSourceWith {
-              src = ./.;
+              src = lib.cleanSource ./.;
               filter =
                 path: type:
-                lib.cleanSourceFilter path type
-                && !(lib.any (prefix: lib.hasPrefix prefix path) (map toString [ ./mockfs ]));
+                !(lib.any (prefix: lib.hasPrefix prefix path) (
+                  map toString [
+                    ./ghfs
+                    ./mockfs
+                  ]
+                ));
             };
 
             modules = ./gomod2nix.toml;
+          };
+        in
+        {
+          packages = {
+            inherit ihfs;
+            default = ihfs;
           };
 
           devShells.default = pkgs.mkShellNoCC {
