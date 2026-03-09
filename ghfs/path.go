@@ -161,54 +161,45 @@ func asAPI(p *Path, parts []string) {
 		return
 	}
 
-	switch parts[0] {
-	case "users":
-		if len(parts) > 1 {
-			p.owner = parts[1]
-		}
-	case "repos":
-		if len(parts) > 1 {
-			p.owner = parts[1]
-		}
-		if len(parts) > 2 {
-			p.repo = parts[2]
-		}
-		if len(parts) > 3 {
-			switch parts[3] {
-			case "branches":
-				if len(parts) > 4 {
-					p.branch = parts[4]
-				}
-			case "releases":
-				if len(parts) > 4 {
-					switch parts[4] {
-					case "tags":
-						if len(parts) > 5 {
-							p.tag = parts[5]
-							if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
-								p.releaseID = id
-							}
-						}
-					case "assets":
-						if len(parts) > 5 {
-							if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
-								p.assetID = id
-							}
-						}
-					default:
-						if id, err := strconv.ParseInt(parts[4], 10, 64); err == nil {
-							p.releaseID = id
-						}
-					}
-				}
-			case "contents":
-				if len(parts) > 4 {
-					p.content = parts[4:]
-				}
-				if p.u != nil {
-					p.branch = p.u.Query().Get("ref")
+	// users/owner
+	// repos/owner/repo
+	if len(parts) > 1 {
+		p.owner = parts[1]
+	}
+
+	// repos/owner/repo
+	if len(parts) > 2 {
+		p.repo = parts[2]
+	}
+
+	if len(parts) <= 4 {
+		return
+	}
+
+	switch parts[3] {
+	case "branches":
+		p.branch = parts[4]
+	case "releases":
+		switch parts[4] {
+		case "tags":
+			if len(parts) > 5 {
+				p.tag = parts[5]
+			}
+		case "assets":
+			if len(parts) > 5 {
+				if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
+					p.assetID = id
 				}
 			}
+		default:
+			if id, err := strconv.ParseInt(parts[4], 10, 64); err == nil {
+				p.releaseID = id
+			}
+		}
+	case "contents":
+		p.content = parts[4:]
+		if p.u != nil {
+			p.branch = p.u.Query().Get("ref")
 		}
 	}
 }

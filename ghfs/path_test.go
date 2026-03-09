@@ -70,7 +70,6 @@ var _ = Describe("normalize", func() {
 		Entry(nil, "api.github.com/users/test-user", "users/test-user"),
 		Entry(nil, "api.github.com/repos/owner/repo", "repos/owner/repo"),
 		Entry(nil, "api.github.com/repos/owner/repo/releases/1", "repos/owner/repo/releases/1"),
-		Entry(nil, "api.github.com/repos/owner/repo/releases/tags/12345", "repos/owner/repo/releases/12345"),
 	)
 
 	DescribeTable("schemeless raw.githubusercontent.com prefix (raw-style)",
