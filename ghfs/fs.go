@@ -131,7 +131,7 @@ func open(ctx context.Context, c *github.Client, url string) (*File, error) {
 	if r, err := do(ctx, c, url); err != nil {
 		return nil, err
 	} else {
-		return &File{r, url}, nil
+		return &File{url, r}, nil
 	}
 }
 

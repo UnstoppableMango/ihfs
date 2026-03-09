@@ -3,42 +3,38 @@ package ghfs
 import (
 	"encoding/json"
 	"io"
-	"io/fs"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/unstoppablemango/ihfs"
 )
 
 type File struct {
-	io.ReadCloser
 	name string
+	rc   io.ReadCloser
 }
-
-func (f *File) IsDir() bool        { return false }
-func (f *File) ModTime() time.Time { return time.Time{} }
-func (f *File) Mode() fs.FileMode  { return 0444 }
-func (f *File) Size() int64        { return -1 }
-func (f *File) Sys() any           { return f.ReadCloser }
 
 func (f *File) Close() error {
-	if f.ReadCloser != nil {
-		return f.ReadCloser.Close()
+	if f.rc == nil {
+		return nil
 	}
-	return nil
+	return f.rc.Close()
 }
 
-func (f *File) Name() string {
-	base := filepath.Base(f.name)
-	if name, _, ok := strings.Cut(base, "?"); ok {
-		return name
+func (f *File) Read(p []byte) (n int, err error) {
+	if f.rc == nil {
+		return 0, nil
 	}
-	return base
+	return f.rc.Read(p)
 }
 
 func (f *File) Stat() (ihfs.FileInfo, error) {
-	return f, nil
+	base, _, _ := strings.Cut(filepath.Base(f.name), "?")
+
+	return &FileInfo{
+		name: base,
+		rc:   f.rc,
+	}, nil
 }
 
 func (f *File) Decode(v any) error {
