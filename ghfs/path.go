@@ -56,13 +56,6 @@ func Parse(name string) (p Path, err error) {
 
 func (p Path) Name() string   { return p.name }
 func (p Path) String() string { return p.name }
-func (p Path) Host() string   { return p.host }
-func (p Path) Owner() string  { return p.owner }
-func (p Path) Repo() string   { return p.repo }
-func (p Path) Branch() string { return p.branch }
-func (p Path) Tag() string    { return p.tag }
-func (p Path) Asset() string  { return p.asset }
-func (p Path) Release() int64 { return p.releaseID }
 
 func (p Path) APIPath() string {
 	if p.owner == "" {

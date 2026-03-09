@@ -113,32 +113,6 @@ var _ = Describe("normalize", func() {
 	)
 })
 
-var _ = Describe("Path", func() {
-	Describe("Host", func() {
-		It("should return the host", func() {
-			result, err := Parse("https://github.com/owner/repo")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Host()).To(Equal("github.com"))
-		})
-	})
-
-	Describe("Branch", func() {
-		It("should return the branch", func() {
-			result, err := Parse("github.com/owner/repo/tree/main")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Branch()).To(Equal("main"))
-		})
-	})
-
-	Describe("Tag", func() {
-		It("should return the tag", func() {
-			result, err := Parse("github.com/owner/repo/releases/tag/v1.0.0")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Tag()).To(Equal("v1.0.0"))
-		})
-	})
-})
-
 // var _ = Describe("fromWebURL", func() {
 // 	It("should return user path for 1 segment", func() {
 // 		result, err := fromWebURL("test-user")

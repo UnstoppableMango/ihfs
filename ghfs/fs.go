@@ -73,8 +73,8 @@ func (f *Fs) open(name string) (*File, error) {
 
 	ctx := f.context(op.Open{Name: path.Name()})
 	if id, err := f.assetId(ctx, path); err == nil && id != 0 {
-		return open(ctx, f.client, assetPath(path.Owner(), path.Repo(), id))
-	} else if path.Asset() != "" && err != nil {
+		return open(ctx, f.client, assetPath(path.owner, path.repo, id))
+	} else if path.asset != "" && err != nil {
 		return nil, openErr(name, err)
 	}
 
@@ -90,15 +90,15 @@ func background(*Fs, ihfs.Operation) context.Context {
 }
 
 func release(ctx context.Context, c *github.Client, p Path) (*github.RepositoryRelease, error) {
-	if p.Release() != 0 {
+	if p.releaseID != 0 {
 		r, _, err := c.Repositories.GetRelease(ctx,
-			p.Owner(), p.Repo(), p.Release(),
+			p.owner, p.repo, p.releaseID,
 		)
 		return r, err
 	}
-	if p.Tag() != "" {
+	if p.tag != "" {
 		r, _, err := c.Repositories.GetReleaseByTag(ctx,
-			p.Owner(), p.Repo(), p.Tag(),
+			p.owner, p.repo, p.tag,
 		)
 		return r, err
 	}
@@ -110,7 +110,7 @@ func assetId(ctx context.Context, c *github.Client, p Path) (int64, error) {
 	if p.assetID != 0 {
 		return p.assetID, nil
 	}
-	if p.Asset() == "" {
+	if p.asset == "" {
 		return 0, fmt.Errorf("empty asset name")
 	}
 
@@ -119,7 +119,7 @@ func assetId(ctx context.Context, c *github.Client, p Path) (int64, error) {
 		return 0, err
 	}
 	for _, asset := range rel.Assets {
-		if asset.GetName() == p.Asset() {
+		if asset.GetName() == p.asset {
 			return asset.GetID(), nil
 		}
 	}
