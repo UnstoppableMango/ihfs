@@ -42,7 +42,7 @@ func (*Fs) Name() string {
 
 func (f *Fs) Open(name string) (ihfs.File, error) {
 	if name == "." {
-		return &Dir{name: "."}, nil
+		return &File{name: ".", isDir: true}, nil
 	}
 	if !strings.Contains(name, "://") && !fs.ValidPath(name) {
 		return nil, openErr(name, ihfs.ErrInvalid)
@@ -131,7 +131,7 @@ func open(ctx context.Context, c *github.Client, url string) (*File, error) {
 	if r, err := do(ctx, c, url); err != nil {
 		return nil, err
 	} else {
-		return &File{url, r}, nil
+		return &File{name: url, rc: r}, nil
 	}
 }
 

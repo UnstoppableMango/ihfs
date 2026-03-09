@@ -12,13 +12,13 @@ import (
 )
 
 var _ = Describe("Dir", func() {
-	var dir *ghfs.Dir
+	var dir *ghfs.File
 
 	BeforeEach(func() {
 		f, err := ghfs.New().Open(".")
 		Expect(err).NotTo(HaveOccurred())
 		var ok bool
-		dir, ok = f.(*ghfs.Dir)
+		dir, ok = f.(*ghfs.File)
 		Expect(ok).To(BeTrue())
 	})
 
