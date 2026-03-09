@@ -4,11 +4,10 @@ import (
 	"io"
 	"io/fs"
 	"path"
-	"time"
 )
 
 // Dir is a virtual directory in the GitHub filesystem.
-// It implements [fs.ReadDirFile] and [fs.FileInfo] with no entries.
+// It implements [fs.ReadDirFile] with no entries.
 type Dir struct {
 	name string
 }
@@ -19,7 +18,9 @@ func (d *Dir) Read([]byte) (int, error) {
 
 func (d *Dir) Close() error { return nil }
 
-func (d *Dir) Stat() (fs.FileInfo, error) { return d, nil }
+func (d *Dir) Stat() (fs.FileInfo, error) {
+	return &FileInfo{name: path.Base(d.name), isDir: true}, nil
+}
 
 func (d *Dir) ReadDir(n int) ([]fs.DirEntry, error) {
 	if n > 0 {
@@ -27,10 +28,3 @@ func (d *Dir) ReadDir(n int) ([]fs.DirEntry, error) {
 	}
 	return nil, nil
 }
-
-func (d *Dir) Name() string       { return path.Base(d.name) }
-func (d *Dir) IsDir() bool        { return true }
-func (d *Dir) Mode() fs.FileMode  { return fs.ModeDir | 0555 }
-func (d *Dir) ModTime() time.Time { return time.Time{} }
-func (d *Dir) Size() int64        { return 0 }
-func (d *Dir) Sys() any           { return nil }

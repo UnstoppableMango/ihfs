@@ -32,10 +32,10 @@ var _ = Describe("Dir", func() {
 		Expect(dir.Close()).To(Succeed())
 	})
 
-	It("should return itself from Stat", func() {
+	It("should return FileInfo from Stat", func() {
 		info, err := dir.Stat()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(info).To(BeIdenticalTo(dir))
+		Expect(info).NotTo(BeNil())
 	})
 
 	It("should return io.EOF on ReadDir with n>0", func() {
@@ -51,28 +51,36 @@ var _ = Describe("Dir", func() {
 	})
 
 	Describe("FileInfo", func() {
+		var info fs.FileInfo
+
+		BeforeEach(func() {
+			var err error
+			info, err = dir.Stat()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should return '.' for Name", func() {
-			Expect(dir.Name()).To(Equal("."))
+			Expect(info.Name()).To(Equal("."))
 		})
 
 		It("should return true for IsDir", func() {
-			Expect(dir.IsDir()).To(BeTrue())
+			Expect(info.IsDir()).To(BeTrue())
 		})
 
 		It("should return a directory mode", func() {
-			Expect(dir.Mode()).To(Equal(fs.ModeDir | 0555))
+			Expect(info.Mode()).To(Equal(fs.ModeDir | 0555))
 		})
 
 		It("should return zero time for ModTime", func() {
-			Expect(dir.ModTime()).To(Equal(time.Time{}))
+			Expect(info.ModTime()).To(Equal(time.Time{}))
 		})
 
 		It("should return 0 for Size", func() {
-			Expect(dir.Size()).To(Equal(int64(0)))
+			Expect(info.Size()).To(Equal(int64(0)))
 		})
 
 		It("should return nil for Sys", func() {
-			Expect(dir.Sys()).To(BeNil())
+			Expect(info.Sys()).To(BeNil())
 		})
 	})
 })
