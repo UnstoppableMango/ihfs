@@ -54,10 +54,6 @@ func (f *Fs) context(op ihfs.Operation) context.Context {
 	return f.ctxFn(f, op)
 }
 
-func (f *Fs) do(ctx context.Context, url string) (io.ReadCloser, error) {
-	return do(ctx, f.client, url)
-}
-
 func Open(fsys ihfs.FS, name string) (*File, error) {
 	if fs, ok := fsys.(*Fs); ok {
 		return fs.open(name)

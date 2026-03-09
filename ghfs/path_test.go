@@ -31,6 +31,8 @@ var _ = Describe("normalize", func() {
 		Entry(nil, "https://github.com/owner/repo/tree/main/README.md", "repos/owner/repo/contents/README.md?ref=main"),
 		Entry(nil, "https://github.com/owner/repo/blob/main/file.txt", "repos/owner/repo/contents/file.txt?ref=main"),
 		Entry(nil, "https://github.com/owner/repo/tree/feature%2Fmain", "repos/owner/repo/branches/feature%2Fmain"),
+		Entry(nil, "https://github.com/owner/repo/releases/tag/12345", "repos/owner/repo/releases/12345"),
+		Entry(nil, "https://github.com/owner/repo/releases/tag/v1.0.0/123", "repos/owner/repo/releases/tags/v1.0.0"),
 	)
 
 	DescribeTable("raw.githubusercontent.com scheme (raw-style)",
@@ -67,6 +69,8 @@ var _ = Describe("normalize", func() {
 		Entry(nil, "api.github.com", "user"),
 		Entry(nil, "api.github.com/users/test-user", "users/test-user"),
 		Entry(nil, "api.github.com/repos/owner/repo", "repos/owner/repo"),
+		Entry(nil, "api.github.com/repos/owner/repo/releases/1", "repos/owner/repo/releases/1"),
+		Entry(nil, "api.github.com/repos/owner/repo/releases/tags/12345", "repos/owner/repo/releases/12345"),
 	)
 
 	DescribeTable("schemeless raw.githubusercontent.com prefix (raw-style)",
@@ -111,6 +115,12 @@ var _ = Describe("normalize", func() {
 		},
 		Entry(nil, "api.github.com/repos/owner/repo/contents/file.txt?ref=main", "repos/owner/repo/contents/file.txt?ref=main"),
 	)
+
+	It("should return the original name from String", func() {
+		result, err := Parse("users/test-user")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.String()).To(Equal("users/test-user"))
+	})
 })
 
 // var _ = Describe("fromWebURL", func() {

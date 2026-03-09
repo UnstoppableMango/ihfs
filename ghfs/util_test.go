@@ -91,6 +91,23 @@ var _ = Describe("OpenContent", func() {
 })
 
 var _ = Describe("OpenRelease", func() {
+	It("should return the release by ID", func() {
+		mockHttp, s := mock.NewMockedHTTPClientAndServer(
+			mock.WithRequestMatch(
+				mock.GetReposReleasesByOwnerByRepoByReleaseId,
+				github.RepositoryRelease{Name: github.Ptr("v1.0.0")},
+			),
+		)
+		DeferCleanup(s.Close)
+		fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+		r, err := ghfs.OpenRelease(fsys, "test-user", "test-repo", 1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(r.GetName()).To(Equal("v1.0.0"))
+	})
+})
+
+var _ = Describe("OpenReleaseByTag", func() {
 	It("should return the release", func() {
 		mockHttp, s := mock.NewMockedHTTPClientAndServer(
 			mock.WithRequestMatch(

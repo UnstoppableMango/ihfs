@@ -24,6 +24,24 @@ var _ = Describe("File", func() {
 		})
 	})
 
+	Describe("Read", func() {
+		It("should return 0 when rc is nil", func() {
+			f := &ghfs.File{}
+			n, err := f.Read(make([]byte, 10))
+			Expect(n).To(Equal(0))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("ReadDir", func() {
+		It("should return error for non-dir file", func() {
+			f := &ghfs.File{}
+			entries, err := f.ReadDir(1)
+			Expect(entries).To(BeEmpty())
+			Expect(err).To(MatchError(fs.ErrInvalid))
+		})
+	})
+
 	Describe("File methods", func() {
 		var file ihfs.File
 

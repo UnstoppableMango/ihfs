@@ -367,6 +367,32 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
+	Describe("Asset lookup by numeric release ID", func() {
+		It("should resolve asset name via GetRelease", func() {
+			mockHttp, s := mock.NewMockedHTTPClientAndServer(
+				mock.WithRequestMatch(
+					mock.GetReposReleasesByOwnerByRepoByReleaseId,
+					github.RepositoryRelease{
+						Name: github.Ptr("test-release"),
+						Assets: []*github.ReleaseAsset{
+							{ID: github.Ptr(int64(1)), Name: github.Ptr("asset.tar.gz")},
+						},
+					},
+				),
+				mock.WithRequestMatch(
+					mock.GetReposReleasesAssetsByOwnerByRepoByAssetId,
+					github.ReleaseAsset{Name: github.Ptr("asset.tar.gz")},
+				),
+			)
+			DeferCleanup(s.Close)
+			fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
+
+			f, err := fsys.Open("github.com/test-user/test-repo/releases/tag/12345/asset.tar.gz")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).NotTo(BeNil())
+		})
+	})
+
 	Describe("Asset lookup errors", func() {
 		It("should return error when release lookup fails", func() {
 			mockHttp, s := mock.NewMockedHTTPClientAndServer(

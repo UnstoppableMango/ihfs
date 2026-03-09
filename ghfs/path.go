@@ -195,6 +195,10 @@ func asAPI(p *Path, parts []string) {
 								p.assetID = id
 							}
 						}
+					default:
+						if id, err := strconv.ParseInt(parts[4], 10, 64); err == nil {
+							p.releaseID = id
+						}
 					}
 				}
 			case "contents":
