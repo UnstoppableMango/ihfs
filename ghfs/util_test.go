@@ -84,7 +84,7 @@ var _ = Describe("OpenContent", func() {
 		DeferCleanup(s.Close)
 		fsys := ghfs.New(ghfs.WithHttpClient(mockHttp))
 
-		c, err := ghfs.OpenContent(fsys, "test-user", "test-repo", "main", "file.txt")
+		c, err := ghfs.OpenContent(fsys, "test-user", "test-repo", "main", []string{"file.txt"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(c.GetName()).To(Equal("file.txt"))
 	})

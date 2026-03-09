@@ -74,6 +74,8 @@ func (f *Fs) open(name string) (*File, error) {
 	ctx := f.context(op.Open{Name: path.Name()})
 	if id, err := f.assetId(ctx, path); err == nil && id != 0 {
 		return open(ctx, f.client, assetPath(path.Owner(), path.Repo(), id))
+	} else if path.Asset() != "" && err != nil {
+		return nil, openErr(name, err)
 	}
 
 	return open(ctx, f.client, path.APIPath())

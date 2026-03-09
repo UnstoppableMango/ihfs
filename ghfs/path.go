@@ -72,10 +72,13 @@ func (p Path) APIPath() string {
 		return ownerPath(p.owner)
 	}
 	if p.releaseID != 0 {
+		return releasePath(p.owner, p.repo, p.releaseID)
+	}
+	if p.tag != "" {
 		return releasePathByTag(p.owner, p.repo, p.tag)
 	}
 	if len(p.content) > 0 {
-		return contentPath(p.owner, p.repo, p.branch, strings.Join(p.content, "/"))
+		return contentPath(p.owner, p.repo, p.branch, p.content)
 	}
 	if p.branch != "" {
 		return branchPath(p.owner, p.repo, p.branch)
@@ -137,6 +140,8 @@ func asWeb(p *Path, parts []string) {
 			if len(parts) > 5 {
 				if id, err := strconv.ParseInt(parts[5], 10, 64); err == nil {
 					p.assetID = id
+				} else {
+					p.asset = parts[5]
 				}
 			}
 		}
@@ -223,10 +228,10 @@ func branchPath(owner, repo, branch string) string {
 	return fmt.Sprintf("repos/%v/%v/branches/%v", owner, repo, branch)
 }
 
-func contentPath(owner, repo, branch, content string) string {
+func contentPath(owner, repo, branch string, content []string) string {
 	return fmt.Sprintf(
 		"repos/%v/%v/contents/%v?ref=%v",
-		owner, repo, content, branch,
+		owner, repo, strings.Join(content, "/"), branch,
 	)
 }
 

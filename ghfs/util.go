@@ -21,8 +21,8 @@ func OpenBranch(fsys ihfs.FS, owner, repo, branch string) (*github.Branch, error
 	return openDecode[github.Branch](fsys, branchPath(owner, repo, branch))
 }
 
-func OpenContent(fsys ihfs.FS, owner, repo, ref, path string) (*github.RepositoryContent, error) {
-	return openDecode[github.RepositoryContent](fsys, contentPath(owner, repo, ref, path))
+func OpenContent(fsys ihfs.FS, owner, repo, ref string, content []string) (*github.RepositoryContent, error) {
+	return openDecode[github.RepositoryContent](fsys, contentPath(owner, repo, ref, content))
 }
 
 func OpenRelease(fsys ihfs.FS, owner, repo string, id int64) (*github.RepositoryRelease, error) {
