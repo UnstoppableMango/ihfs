@@ -54,8 +54,6 @@ func mockHTTPClient() (*http.Client, func()) {
 }
 
 var _ = Describe("Fs", func() {
-	// Web-style prefixes: paths use owner/repo/tree/branch conventions.
-	// github.com/ (schemeless) and https://github.com/ both route through fromWebURL.
 	DescribeTableSubtree("Open web-style",
 		Entry(nil, "https://github.com/"),
 		Entry(nil, "github.com/"),
@@ -134,8 +132,6 @@ var _ = Describe("Fs", func() {
 		},
 	)
 
-	// Raw-style prefixes: paths use owner/repo/branch/path conventions
-	// (no tree/blob/releases keywords). 3 segments = branch, not an error.
 	DescribeTableSubtree("Open raw-style",
 		Entry(nil, "https://raw.githubusercontent.com/"),
 		Entry(nil, "raw.githubusercontent.com/"),
@@ -185,9 +181,6 @@ var _ = Describe("Fs", func() {
 		},
 	)
 
-	// API pass-through prefixes: paths must be valid GitHub API paths.
-	// Query strings are preserved. No ErrNotExist for unknown paths — the
-	// GitHub client returns a 404, not a path error.
 	DescribeTableSubtree("Open API pass-through",
 		Entry(nil, "https://api.github.com/"),
 		Entry(nil, "api.github.com/"),
