@@ -155,6 +155,12 @@ fs := testfs.New(
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
 See the [mockfs README](mockfs/README.md) for details.
 
+## GitHub FS
+
+Package `ghfs` contains an implementation of `io/fs` for the GitHub API.
+
+[Documentation](./ghfs/README.md)
+
 ## Attribution
 
 Much of the implementation is adapted from [afero](https://github.com/spf13/afero), specifically the `corfs`, `cowfs`, and `union` packages.
