@@ -215,7 +215,7 @@ func ReadDirNames(fsys FS, name string) ([]string, error) {
 	return names, nil
 }
 
-// OpenFile opens the named file with specified flag (O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
+// OpenFile opens the named file with specified flag (i.e. O_RDONLY, O_WRONLY, O_RDWR) and permission (before umask).
 //
 // If the FS does not implement [OpenFileFS], OpenFile returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
