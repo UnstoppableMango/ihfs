@@ -20,8 +20,9 @@ var _ = Describe("Util", func() {
 		It("should copy files from source filesystem to directory", func() {
 			src, dest := memfs.New(), memfs.New()
 			Expect(src.Mkdir("subdir", 0755)).NotTo(HaveOccurred())
-			_, err := src.Create("subdir/test.txt")
-			Expect(err).To(Succeed())
+			f, err := src.Create("subdir/test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
 
 			err = ihfs.Copy(dest, "", src)
 
@@ -151,6 +152,21 @@ var _ = Describe("Util", func() {
 					return "target", nil
 				}),
 			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+
+		It("should return ErrNotImplemented when src doesn't implement ReadLinkFS for symlinks", func() {
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
+			src := &noReadLinkFS{
+				readDirFunc: func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				},
+			}
 
 			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
 
@@ -873,6 +889,31 @@ func (d *copyDestFS) Symlink(old, new string) error {
 		return d.symlinkFunc(old, new)
 	}
 	return nil
+}
+
+// noReadLinkFS implements a minimal FS with ReadDir but without ReadLinkFS.
+type noReadLinkFS struct {
+	readDirFunc func(string) ([]ihfs.DirEntry, error)
+}
+
+func (*noReadLinkFS) Open(string) (ihfs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (f *noReadLinkFS) Stat(name string) (ihfs.FileInfo, error) {
+	fi := testfs.NewFileInfo(name)
+	fi.IsDirFunc = func() bool { return name == "." }
+	fi.ModeFunc = func() fs.FileMode {
+		if name == "." {
+			return fs.ModeDir
+		}
+		return 0
+	}
+	return fi, nil
+}
+
+func (f *noReadLinkFS) ReadDir(name string) ([]ihfs.DirEntry, error) {
+	return f.readDirFunc(name)
 }
 
 // withRootDirStat returns a testfs.Option that configures Stat to report "." as a directory.

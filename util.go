@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -48,12 +49,12 @@ func Copy(dest FS, dir string, src FS) error {
 		return copier.Copy(dir, src)
 	}
 
-	return Walk(src, ".", func(path string, d fs.DirEntry, err error) error {
+	return Walk(src, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		destPath := filepath.Join(dir, filepath.FromSlash(path))
+		destPath := path.Join(dir, p)
 
 		if d.IsDir() {
 			info, err := d.Info()
@@ -69,7 +70,11 @@ func Copy(dest FS, dir string, src FS) error {
 
 		switch d.Type() {
 		case fs.ModeSymlink:
-			target, err := fs.ReadLink(src, path)
+			readLinker, ok := src.(ReadLinkFS)
+			if !ok {
+				return fmt.Errorf("copy: readlink: %w", ErrNotImplemented)
+			}
+			target, err := readLinker.ReadLink(p)
 			if err != nil {
 				return err
 			}
@@ -78,7 +83,7 @@ func Copy(dest FS, dir string, src FS) error {
 			}
 			return fmt.Errorf("copy: symlink: %w", ErrNotImplemented)
 		case 0: // regular file
-			r, err := src.Open(path)
+			r, err := src.Open(p)
 			if err != nil {
 				return err
 			}
@@ -106,7 +111,7 @@ func Copy(dest FS, dir string, src FS) error {
 			}
 			return w.Close()
 		default:
-			return &fs.PathError{Op: "Copy", Path: path, Err: fs.ErrInvalid}
+			return &fs.PathError{Op: "Copy", Path: p, Err: fs.ErrInvalid}
 		}
 	})
 }
