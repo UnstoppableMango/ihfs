@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -818,6 +819,347 @@ var _ = Describe("Util", func() {
 
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Chmod", func() {
+		It("should call underlying Chmod when ChmodFS is implemented", func() {
+			var capturedName string
+			var capturedMode ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithChmod(func(name string, mode ihfs.FileMode) error {
+				capturedName = name
+				capturedMode = mode
+				return nil
+			}))
+
+			err := ihfs.Chmod(fsys, "file.txt", 0o644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("file.txt"))
+			Expect(capturedMode).To(Equal(ihfs.FileMode(0o644)))
+		})
+
+		It("should return ErrNotImplemented when ChmodFS not implemented", func() {
+			err := ihfs.Chmod(testfs.BoringFs{}, "file.txt", 0o644)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Chown", func() {
+		It("should call underlying Chown when ChownFS is implemented", func() {
+			var capturedName string
+			var capturedUID, capturedGID int
+
+			fsys := testfs.New(testfs.WithChown(func(name string, uid, gid int) error {
+				capturedName = name
+				capturedUID = uid
+				capturedGID = gid
+				return nil
+			}))
+
+			err := ihfs.Chown(fsys, "file.txt", 1000, 1000)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("file.txt"))
+			Expect(capturedUID).To(Equal(1000))
+			Expect(capturedGID).To(Equal(1000))
+		})
+
+		It("should return ErrNotImplemented when ChownFS not implemented", func() {
+			err := ihfs.Chown(testfs.BoringFs{}, "file.txt", 1000, 1000)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Chtimes", func() {
+		It("should call underlying Chtimes when ChtimesFS is implemented", func() {
+			var capturedName string
+			var capturedAtime, capturedMtime time.Time
+
+			fsys := testfs.New(testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
+				capturedName = name
+				capturedAtime = atime
+				capturedMtime = mtime
+				return nil
+			}))
+
+			atime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+			mtime := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+			err := ihfs.Chtimes(fsys, "file.txt", atime, mtime)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("file.txt"))
+			Expect(capturedAtime).To(Equal(atime))
+			Expect(capturedMtime).To(Equal(mtime))
+		})
+
+		It("should return ErrNotImplemented when ChtimesFS not implemented", func() {
+			err := ihfs.Chtimes(testfs.BoringFs{}, "file.txt", time.Time{}, time.Time{})
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Create", func() {
+		It("should call underlying Create when CreateFS is implemented", func() {
+			var capturedName string
+			expectedFile := &testfs.File{}
+
+			fsys := testfs.New(testfs.WithCreate(func(name string) (ihfs.File, error) {
+				capturedName = name
+				return expectedFile, nil
+			}))
+
+			f, err := ihfs.Create(fsys, "file.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).To(Equal(expectedFile))
+			Expect(capturedName).To(Equal("file.txt"))
+		})
+
+		It("should return ErrNotImplemented when CreateFS not implemented", func() {
+			f, err := ihfs.Create(testfs.BoringFs{}, "file.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(f).To(BeNil())
+		})
+	})
+
+	Describe("CreateTemp", func() {
+		It("should call underlying CreateTemp when CreateTempFS is implemented", func() {
+			var capturedDir, capturedPattern string
+			expectedFile := &testfs.File{}
+
+			fsys := testfs.New(testfs.WithCreateTemp(func(dir, pattern string) (ihfs.File, error) {
+				capturedDir = dir
+				capturedPattern = pattern
+				return expectedFile, nil
+			}))
+
+			f, err := ihfs.CreateTemp(fsys, "/tmp", "prefix-*")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).To(Equal(expectedFile))
+			Expect(capturedDir).To(Equal("/tmp"))
+			Expect(capturedPattern).To(Equal("prefix-*"))
+		})
+
+		It("should return ErrNotImplemented when CreateTempFS not implemented", func() {
+			f, err := ihfs.CreateTemp(testfs.BoringFs{}, "/tmp", "prefix-*")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(f).To(BeNil())
+		})
+	})
+
+	Describe("MkdirTemp", func() {
+		It("should call underlying MkdirTemp when MkdirTempFS is implemented", func() {
+			var capturedDir, capturedPattern string
+
+			fsys := testfs.New(testfs.WithMkdirTemp(func(dir, pattern string) (string, error) {
+				capturedDir = dir
+				capturedPattern = pattern
+				return "/tmp/test123", nil
+			}))
+
+			name, err := ihfs.MkdirTemp(fsys, "/tmp", "test*")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).To(Equal("/tmp/test123"))
+			Expect(capturedDir).To(Equal("/tmp"))
+			Expect(capturedPattern).To(Equal("test*"))
+		})
+
+		It("should return ErrNotImplemented when MkdirTempFS not implemented", func() {
+			name, err := ihfs.MkdirTemp(testfs.BoringFs{}, "/tmp", "test*")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(name).To(BeEmpty())
+		})
+	})
+
+	Describe("ReadFile", func() {
+		It("should call underlying ReadFile when ReadFileFS is implemented", func() {
+			var capturedName string
+
+			fsys := testfs.New(testfs.WithReadFile(func(name string) ([]byte, error) {
+				capturedName = name
+				return []byte("content"), nil
+			}))
+
+			data, err := ihfs.ReadFile(fsys, "file.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(Equal([]byte("content")))
+			Expect(capturedName).To(Equal("file.txt"))
+		})
+
+		It("should return ErrNotImplemented when ReadFileFS not implemented", func() {
+			data, err := ihfs.ReadFile(testfs.BoringFs{}, "file.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(data).To(BeNil())
+		})
+	})
+
+	Describe("ReadLink", func() {
+		It("should call underlying ReadLink when ReadLinkFS is implemented", func() {
+			var capturedName string
+
+			fsys := testfs.New(testfs.WithReadLink(func(name string) (string, error) {
+				capturedName = name
+				return "target", nil
+			}))
+
+			target, err := ihfs.ReadLink(fsys, "symlink")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(target).To(Equal("target"))
+			Expect(capturedName).To(Equal("symlink"))
+		})
+
+		It("should return ErrNotImplemented when ReadLinkFS not implemented", func() {
+			target, err := ihfs.ReadLink(testfs.BoringFs{}, "symlink")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(target).To(BeEmpty())
+		})
+	})
+
+	Describe("RemoveAll", func() {
+		It("should call underlying RemoveAll when RemoveAllFS is implemented", func() {
+			var capturedName string
+
+			fsys := testfs.New(testfs.WithRemoveAll(func(name string) error {
+				capturedName = name
+				return nil
+			}))
+
+			err := ihfs.RemoveAll(fsys, "dir")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("dir"))
+		})
+
+		It("should return ErrNotImplemented when RemoveAllFS not implemented", func() {
+			err := ihfs.RemoveAll(testfs.BoringFs{}, "dir")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Rename", func() {
+		It("should call underlying Rename when RenameFS is implemented", func() {
+			var capturedOldpath, capturedNewpath string
+
+			fsys := testfs.New(testfs.WithRename(func(oldpath, newpath string) error {
+				capturedOldpath = oldpath
+				capturedNewpath = newpath
+				return nil
+			}))
+
+			err := ihfs.Rename(fsys, "old.txt", "new.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedOldpath).To(Equal("old.txt"))
+			Expect(capturedNewpath).To(Equal("new.txt"))
+		})
+
+		It("should return ErrNotImplemented when RenameFS not implemented", func() {
+			err := ihfs.Rename(testfs.BoringFs{}, "old.txt", "new.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("Sub", func() {
+		It("should call underlying Sub when SubFS is implemented", func() {
+			var capturedDir string
+			expectedFS := testfs.New()
+
+			fsys := testfs.New(testfs.WithSub(func(dir string) (ihfs.FS, error) {
+				capturedDir = dir
+				return &expectedFS, nil
+			}))
+
+			subFS, err := ihfs.Sub(fsys, "subdir")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(subFS).To(BeIdenticalTo(&expectedFS))
+			Expect(capturedDir).To(Equal("subdir"))
+		})
+
+		It("should return ErrNotImplemented when SubFS not implemented", func() {
+			subFS, err := ihfs.Sub(testfs.BoringFs{}, "subdir")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(subFS).To(BeNil())
+		})
+	})
+
+	Describe("Symlink", func() {
+		It("should call underlying Symlink when SymlinkFS is implemented", func() {
+			var capturedOldname, capturedNewname string
+
+			fsys := testfs.New(testfs.WithSymlink(func(oldname, newname string) error {
+				capturedOldname = oldname
+				capturedNewname = newname
+				return nil
+			}))
+
+			err := ihfs.Symlink(fsys, "target", "link")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedOldname).To(Equal("target"))
+			Expect(capturedNewname).To(Equal("link"))
+		})
+
+		It("should return ErrNotImplemented when SymlinkFS not implemented", func() {
+			err := ihfs.Symlink(testfs.BoringFs{}, "target", "link")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
+	Describe("TempFile", func() {
+		It("should call underlying TempFile when TempFileFS is implemented", func() {
+			var capturedDir, capturedPattern string
+
+			fsys := testfs.New(testfs.WithTempFile(func(dir, pattern string) (string, error) {
+				capturedDir = dir
+				capturedPattern = pattern
+				return "/tmp/tempfile123", nil
+			}))
+
+			name, err := ihfs.TempFile(fsys, "/tmp", "prefix-*")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).To(Equal("/tmp/tempfile123"))
+			Expect(capturedDir).To(Equal("/tmp"))
+			Expect(capturedPattern).To(Equal("prefix-*"))
+		})
+
+		It("should return ErrNotImplemented when TempFileFS not implemented", func() {
+			name, err := ihfs.TempFile(testfs.BoringFs{}, "/tmp", "prefix-*")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(name).To(BeEmpty())
 		})
 	})
 })

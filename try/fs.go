@@ -7,6 +7,7 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+
 var (
 	// ErrNotSupported is deprecated: use ErrNotImplemented instead.
 	ErrNotSupported = ihfs.ErrNotImplemented
@@ -18,30 +19,21 @@ var (
 // If the FS does not implement [ihfs.ChmodFS], Chmod returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Chmod(fsys ihfs.FS, name string, mode ihfs.FileMode) error {
-	if chmod, ok := fsys.(ihfs.ChmodFS); ok {
-		return chmod.Chmod(name, mode)
-	}
-	return fmt.Errorf("chmod: %w", ErrNotImplemented)
+	return ihfs.Chmod(fsys, name, mode)
 }
 
 // Chown attempts to call Chown on the given FS.
 // If the FS does not implement [ihfs.ChownFS], Chown returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Chown(fsys ihfs.FS, name string, uid, gid int) error {
-	if chown, ok := fsys.(ihfs.ChownFS); ok {
-		return chown.Chown(name, uid, gid)
-	}
-	return fmt.Errorf("chown: %w", ErrNotImplemented)
+	return ihfs.Chown(fsys, name, uid, gid)
 }
 
 // Chtimes attempts to call Chtimes on the given FS.
 // If the FS does not implement [ihfs.ChtimesFS], Chtimes returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Chtimes(fsys ihfs.FS, name string, atime, mtime time.Time) error {
-	if chtimes, ok := fsys.(ihfs.ChtimesFS); ok {
-		return chtimes.Chtimes(name, atime, mtime)
-	}
-	return fmt.Errorf("chtimes: %w", ErrNotImplemented)
+	return ihfs.Chtimes(fsys, name, atime, mtime)
 }
 
 // Copy attempts to call Copy on the given FS.
@@ -58,20 +50,14 @@ func Copy(fsys ihfs.FS, dir string, src ihfs.FS) error {
 // If the FS does not implement [ihfs.CreateFS], Create returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Create(fsys ihfs.FS, name string) (ihfs.File, error) {
-	if create, ok := fsys.(ihfs.CreateFS); ok {
-		return create.Create(name)
-	}
-	return nil, fmt.Errorf("create: %w", ErrNotImplemented)
+	return ihfs.Create(fsys, name)
 }
 
 // CreateTemp attempts to call CreateTemp on the given FS.
 // If the FS does not implement [ihfs.CreateTempFS], CreateTemp returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func CreateTemp(fsys ihfs.FS, dir, pattern string) (ihfs.File, error) {
-	if createTemp, ok := fsys.(ihfs.CreateTempFS); ok {
-		return createTemp.CreateTemp(dir, pattern)
-	}
-	return nil, fmt.Errorf("create temp: %w", ErrNotImplemented)
+	return ihfs.CreateTemp(fsys, dir, pattern)
 }
 
 // DirExists reports if the given path exists and is a directory.
@@ -118,10 +104,7 @@ func IsDir(fsys ihfs.FS, path string) (bool, error) {
 // If the FS does not implement [ihfs.MkdirFS], Mkdir returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Mkdir(fsys ihfs.FS, name string, mode ihfs.FileMode) error {
-	if mkdir, ok := fsys.(ihfs.MkdirFS); ok {
-		return mkdir.Mkdir(name, mode)
-	}
-	return fmt.Errorf("mkdir: %w", ErrNotImplemented)
+	return ihfs.Mkdir(fsys, name, mode)
 }
 
 // MkdirAll attempts to call MkdirAll on the given FS.
@@ -138,20 +121,14 @@ func MkdirAll(fsys ihfs.FS, name string, mode ihfs.FileMode) error {
 // If the FS does not implement [ihfs.MkdirTempFS], MkdirTemp returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func MkdirTemp(fsys ihfs.FS, dir, pattern string) (string, error) {
-	if mkdirTemp, ok := fsys.(ihfs.MkdirTempFS); ok {
-		return mkdirTemp.MkdirTemp(dir, pattern)
-	}
-	return "", fmt.Errorf("mkdir temp: %w", ErrNotImplemented)
+	return ihfs.MkdirTemp(fsys, dir, pattern)
 }
 
 // OpenFile attempts to call OpenFile on the given FS.
 // If the FS does not implement [ihfs.OpenFileFS], OpenFile returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func OpenFile(fsys ihfs.FS, name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
-	if openFile, ok := fsys.(ihfs.OpenFileFS); ok {
-		return openFile.OpenFile(name, flag, perm)
-	}
-	return nil, fmt.Errorf("open file: %w", ErrNotImplemented)
+	return ihfs.OpenFile(fsys, name, flag, perm)
 }
 
 // ReadDir reads the named directory and returns a list of directory entries.
@@ -181,50 +158,35 @@ func ReadDirNames(fsys ihfs.FS, path string) ([]string, error) {
 // If the FS does not implement [ihfs.ReadFileFS], ReadFile returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func ReadFile(fsys ihfs.FS, name string) ([]byte, error) {
-	if readFile, ok := fsys.(ihfs.ReadFileFS); ok {
-		return readFile.ReadFile(name)
-	}
-	return nil, fmt.Errorf("read file: %w", ErrNotImplemented)
+	return ihfs.ReadFile(fsys, name)
 }
 
 // ReadLink attempts to call ReadLink on the given FS.
 // If the FS does not implement [ihfs.ReadLinkFS], ReadLink returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func ReadLink(fsys ihfs.FS, name string) (string, error) {
-	if readLink, ok := fsys.(ihfs.ReadLinkFS); ok {
-		return readLink.ReadLink(name)
-	}
-	return "", fmt.Errorf("read link: %w", ErrNotImplemented)
+	return ihfs.ReadLink(fsys, name)
 }
 
 // Remove attempts to call Remove on the given FS.
 // If the FS does not implement [ihfs.RemoveFS], Remove returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Remove(fsys ihfs.FS, name string) error {
-	if remove, ok := fsys.(ihfs.RemoveFS); ok {
-		return remove.Remove(name)
-	}
-	return fmt.Errorf("remove: %w", ErrNotImplemented)
+	return ihfs.Remove(fsys, name)
 }
 
 // RemoveAll attempts to call RemoveAll on the given FS.
 // If the FS does not implement [ihfs.RemoveAllFS], RemoveAll returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func RemoveAll(fsys ihfs.FS, name string) error {
-	if removeAll, ok := fsys.(ihfs.RemoveAllFS); ok {
-		return removeAll.RemoveAll(name)
-	}
-	return fmt.Errorf("remove all: %w", ErrNotImplemented)
+	return ihfs.RemoveAll(fsys, name)
 }
 
 // Rename attempts to call Rename on the given FS.
 // If the FS does not implement [ihfs.RenameFS], Rename returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Rename(fsys ihfs.FS, oldpath, newpath string) error {
-	if rename, ok := fsys.(ihfs.RenameFS); ok {
-		return rename.Rename(oldpath, newpath)
-	}
-	return fmt.Errorf("rename: %w", ErrNotImplemented)
+	return ihfs.Rename(fsys, oldpath, newpath)
 }
 
 // Stat attempts to call Stat on the given FS.
@@ -241,38 +203,26 @@ func Stat(fsys ihfs.FS, name string) (ihfs.FileInfo, error) {
 // If the FS does not implement [ihfs.SubFS], Sub returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Sub(fsys ihfs.FS, dir string) (ihfs.FS, error) {
-	if sub, ok := fsys.(ihfs.SubFS); ok {
-		return sub.Sub(dir)
-	}
-	return nil, fmt.Errorf("sub: %w", ErrNotImplemented)
+	return ihfs.Sub(fsys, dir)
 }
 
 // Symlink attempts to call Symlink on the given FS.
 // If the FS does not implement [ihfs.SymlinkFS], Symlink returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func Symlink(fsys ihfs.FS, oldname, newname string) error {
-	if symlink, ok := fsys.(ihfs.SymlinkFS); ok {
-		return symlink.Symlink(oldname, newname)
-	}
-	return fmt.Errorf("symlink: %w", ErrNotImplemented)
+	return ihfs.Symlink(fsys, oldname, newname)
 }
 
 // TempFile attempts to call TempFile on the given FS.
 // If the FS does not implement [ihfs.TempFileFS], TempFile returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func TempFile(fsys ihfs.FS, dir, pattern string) (string, error) {
-	if tempFile, ok := fsys.(ihfs.TempFileFS); ok {
-		return tempFile.TempFile(dir, pattern)
-	}
-	return "", fmt.Errorf("temp file: %w", ErrNotImplemented)
+	return ihfs.TempFile(fsys, dir, pattern)
 }
 
 // WriteFile attempts to call WriteFile on the given FS.
 // If the FS does not implement [ihfs.WriteFileFS], WriteFile returns
 // an error that can be checked with [errors.Is] for [ErrNotImplemented].
 func WriteFile(fsys ihfs.FS, name string, data []byte, perm ihfs.FileMode) error {
-	if writeFile, ok := fsys.(ihfs.WriteFileFS); ok {
-		return writeFile.WriteFile(name, data, perm)
-	}
-	return fmt.Errorf("write file: %w", ErrNotImplemented)
+	return ihfs.WriteFile(fsys, name, data, perm)
 }

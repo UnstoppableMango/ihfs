@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 )
 
 // ErrNotImplemented is returned when a filesystem operation is not supported.
@@ -70,13 +71,9 @@ func Copy(dest FS, dir string, src FS) error {
 
 		switch d.Type() {
 		case fs.ModeSymlink:
-			readLinker, ok := src.(ReadLinkFS)
-			if !ok {
-				return fmt.Errorf("copy: readlink: %w", ErrNotImplemented)
-			}
-			target, err := readLinker.ReadLink(p)
+			target, err := ReadLink(src, p)
 			if err != nil {
-				return err
+				return fmt.Errorf("copy: %w", err)
 			}
 			if linker, ok := dest.(SymlinkFS); ok {
 				return linker.Symlink(target, destPath)
@@ -248,6 +245,162 @@ func WriteFile(fsys FS, name string, data []byte, perm FileMode) error {
 		return wf.WriteFile(name, data, perm)
 	}
 	return fmt.Errorf("write file: %w", ErrNotImplemented)
+}
+
+// Chmod changes the mode of the named file in fsys.
+//
+// If fsys implements [ChmodFS], Chmod calls fsys.Chmod.
+// Otherwise, Chmod returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Chmod(fsys FS, name string, mode FileMode) error {
+	if chmod, ok := fsys.(ChmodFS); ok {
+		return chmod.Chmod(name, mode)
+	}
+	return fmt.Errorf("chmod: %w", ErrNotImplemented)
+}
+
+// Chown changes the uid and gid of the named file in fsys.
+//
+// If fsys implements [ChownFS], Chown calls fsys.Chown.
+// Otherwise, Chown returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Chown(fsys FS, name string, uid, gid int) error {
+	if chown, ok := fsys.(ChownFS); ok {
+		return chown.Chown(name, uid, gid)
+	}
+	return fmt.Errorf("chown: %w", ErrNotImplemented)
+}
+
+// Chtimes changes the access and modification times of the named file in fsys.
+//
+// If fsys implements [ChtimesFS], Chtimes calls fsys.Chtimes.
+// Otherwise, Chtimes returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Chtimes(fsys FS, name string, atime, mtime time.Time) error {
+	if chtimes, ok := fsys.(ChtimesFS); ok {
+		return chtimes.Chtimes(name, atime, mtime)
+	}
+	return fmt.Errorf("chtimes: %w", ErrNotImplemented)
+}
+
+// Create creates the named file in fsys.
+//
+// If fsys implements [CreateFS], Create calls fsys.Create.
+// Otherwise, Create returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Create(fsys FS, name string) (File, error) {
+	if create, ok := fsys.(CreateFS); ok {
+		return create.Create(name)
+	}
+	return nil, fmt.Errorf("create: %w", ErrNotImplemented)
+}
+
+// CreateTemp creates a temporary file in fsys.
+//
+// If fsys implements [CreateTempFS], CreateTemp calls fsys.CreateTemp.
+// Otherwise, CreateTemp returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func CreateTemp(fsys FS, dir, pattern string) (File, error) {
+	if createTemp, ok := fsys.(CreateTempFS); ok {
+		return createTemp.CreateTemp(dir, pattern)
+	}
+	return nil, fmt.Errorf("create temp: %w", ErrNotImplemented)
+}
+
+// MkdirTemp creates a temporary directory in fsys.
+//
+// If fsys implements [MkdirTempFS], MkdirTemp calls fsys.MkdirTemp.
+// Otherwise, MkdirTemp returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func MkdirTemp(fsys FS, dir, pattern string) (string, error) {
+	if mkdirTemp, ok := fsys.(MkdirTempFS); ok {
+		return mkdirTemp.MkdirTemp(dir, pattern)
+	}
+	return "", fmt.Errorf("mkdir temp: %w", ErrNotImplemented)
+}
+
+// ReadFile reads the named file in fsys.
+//
+// If fsys implements [ReadFileFS], ReadFile calls fsys.ReadFile.
+// Otherwise, ReadFile returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func ReadFile(fsys FS, name string) ([]byte, error) {
+	if readFile, ok := fsys.(ReadFileFS); ok {
+		return readFile.ReadFile(name)
+	}
+	return nil, fmt.Errorf("read file: %w", ErrNotImplemented)
+}
+
+// ReadLink reads the target of the symbolic link named by name in fsys.
+//
+// If fsys implements [ReadLinkFS], ReadLink calls fsys.ReadLink.
+// Otherwise, ReadLink returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func ReadLink(fsys FS, name string) (string, error) {
+	if readLink, ok := fsys.(ReadLinkFS); ok {
+		return readLink.ReadLink(name)
+	}
+	return "", fmt.Errorf("read link: %w", ErrNotImplemented)
+}
+
+// RemoveAll removes the named path and all its children from fsys.
+//
+// If fsys implements [RemoveAllFS], RemoveAll calls fsys.RemoveAll.
+// Otherwise, RemoveAll returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func RemoveAll(fsys FS, name string) error {
+	if removeAll, ok := fsys.(RemoveAllFS); ok {
+		return removeAll.RemoveAll(name)
+	}
+	return fmt.Errorf("remove all: %w", ErrNotImplemented)
+}
+
+// Rename renames (moves) oldpath to newpath in fsys.
+//
+// If fsys implements [RenameFS], Rename calls fsys.Rename.
+// Otherwise, Rename returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Rename(fsys FS, oldpath, newpath string) error {
+	if rename, ok := fsys.(RenameFS); ok {
+		return rename.Rename(oldpath, newpath)
+	}
+	return fmt.Errorf("rename: %w", ErrNotImplemented)
+}
+
+// Sub returns an FS rooted at fsys's dir subtree.
+//
+// If fsys implements [SubFS], Sub calls fsys.Sub.
+// Otherwise, Sub returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Sub(fsys FS, dir string) (FS, error) {
+	if sub, ok := fsys.(SubFS); ok {
+		return sub.Sub(dir)
+	}
+	return nil, fmt.Errorf("sub: %w", ErrNotImplemented)
+}
+
+// Symlink creates a symbolic link named newname pointing to oldname in fsys.
+//
+// If fsys implements [SymlinkFS], Symlink calls fsys.Symlink.
+// Otherwise, Symlink returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func Symlink(fsys FS, oldname, newname string) error {
+	if symlink, ok := fsys.(SymlinkFS); ok {
+		return symlink.Symlink(oldname, newname)
+	}
+	return fmt.Errorf("symlink: %w", ErrNotImplemented)
+}
+
+// TempFile returns the path of a new temporary file in fsys.
+//
+// If fsys implements [TempFileFS], TempFile calls fsys.TempFile.
+// Otherwise, TempFile returns an error that can be checked
+// with [errors.Is] for [ErrNotImplemented].
+func TempFile(fsys FS, dir, pattern string) (string, error) {
+	if tempFile, ok := fsys.(TempFileFS); ok {
+		return tempFile.TempFile(dir, pattern)
+	}
+	return "", fmt.Errorf("temp file: %w", ErrNotImplemented)
 }
 
 // WriteReader reads all data from r and writes it to name in fsys using [WriteFile].
