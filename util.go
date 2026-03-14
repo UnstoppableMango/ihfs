@@ -94,7 +94,12 @@ func Copy(dest FS, dir string, src FS) error {
 				return err
 			}
 
-			w, err := OpenFile(dest, destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+			perm := info.Mode().Perm()
+			if perm == 0 {
+				perm = 0644
+			}
+
+			w, err := OpenFile(dest, destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, perm)
 			if err != nil {
 				return err
 			}
