@@ -3,17 +3,352 @@ package ihfs_test
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/fs"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Util", func() {
+	Describe("Copy", func() {
+		It("should copy files from source filesystem to directory", func() {
+			src, dest := memfs.New(), memfs.New()
+			Expect(src.Mkdir("subdir", 0755)).NotTo(HaveOccurred())
+			f, err := src.Create("subdir/test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			err = ihfs.Copy(dest, "", src)
+
+			Expect(err).NotTo(HaveOccurred())
+			dir, err := dest.Stat("subdir")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dir.IsDir()).To(BeTrue())
+			file, err := dest.Stat("subdir/test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file.IsDir()).To(BeFalse())
+		})
+
+		It("should delegate to CopyFS when dest implements CopyFS", func() {
+			var capturedDir string
+
+			src := testfs.New()
+			dest := testfs.New(testfs.WithCopy(func(dir string, s ihfs.FS) error {
+				capturedDir = dir
+				return nil
+			}))
+
+			err := ihfs.Copy(dest, "mydir", src)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedDir).To(Equal("mydir"))
+		})
+
+		It("should propagate errors from Walk", func() {
+			walkErr := errors.New("walk error")
+			src := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
+				return nil, walkErr
+			}))
+
+			err := ihfs.Copy(testfs.BoringFs{}, "dir", src)
+
+			Expect(err).To(MatchError(walkErr))
+		})
+
+		It("should propagate MkdirAll error for directory entries", func() {
+			mkdirErr := errors.New("mkdir error")
+			src := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo(name)
+				fi.IsDirFunc = func() bool { return true }
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeDir }
+				return fi, nil
+			}))
+			dest := noSymlinkFS{mkdirAllFunc: func(string, ihfs.FileMode) error {
+				return mkdirErr
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).To(MatchError(mkdirErr))
+		})
+
+		It("should propagate Info error for directory entries", func() {
+			infoErr := errors.New("info error")
+			entry := testfs.NewDirEntry("subdir", true)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeDir }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) { return nil, infoErr }
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(MatchError(infoErr))
+		})
+		It("should create symlink when dest implements SymlinkFS", func() {
+			var capturedOld, capturedNew string
+
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithReadLink(func(string) (string, error) {
+					return "target", nil
+				}),
+			)
+			dest := &copyDestFS{symlinkFunc: func(old, new string) error {
+				capturedOld = old
+				capturedNew = new
+				return nil
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedOld).To(Equal("target"))
+			Expect(capturedNew).To(Equal("dir/link.txt"))
+		})
+
+		It("should propagate ReadLink error for symlinks", func() {
+			readLinkErr := errors.New("readlink error")
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithReadLink(func(string) (string, error) {
+					return "", readLinkErr
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(MatchError(readLinkErr))
+		})
+
+		It("should return ErrNotImplemented when dest has no SymlinkFS for symlinks", func() {
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithReadLink(func(string) (string, error) {
+					return "target", nil
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+
+		It("should return ErrNotImplemented when src doesn't implement ReadLinkFS for symlinks", func() {
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
+			src := &noReadLinkFS{
+				readDirFunc: func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				},
+			}
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+
+		It("should propagate Open error for regular files", func() {
+			openErr := errors.New("open error")
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return nil, openErr
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(MatchError(openErr))
+		})
+
+		It("should propagate Stat error for regular files", func() {
+			statErr := errors.New("stat error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return nil, statErr },
+				CloseFunc: func() error { return nil },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return srcFile, nil
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(MatchError(statErr))
+		})
+
+		It("should propagate OpenFile error for regular files", func() {
+			openFileErr := errors.New("openfile error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return srcFile, nil
+				}),
+			)
+			dest := &copyDestFS{openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) {
+				return nil, openFileErr
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).To(MatchError(openFileErr))
+		})
+
+		It("should return ErrNotImplemented when dest file is not io.Writer", func() {
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+			}
+			destFile := testfs.BoringFile{CloseFunc: func() error { return nil }}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return srcFile, nil
+				}),
+			)
+			dest := &copyDestFS{openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) {
+				return destFile, nil
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+
+		It("should return PathError when io.Copy fails", func() {
+			copyErr := errors.New("copy error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, copyErr },
+			}
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return nil },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return srcFile, nil
+				}),
+			)
+			dest := &copyDestFS{openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) {
+				return destFile, nil
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			var pathErr *fs.PathError
+			Expect(errors.As(err, &pathErr)).To(BeTrue())
+			Expect(pathErr.Op).To(Equal("Copy"))
+			Expect(errors.Is(err, copyErr)).To(BeTrue())
+		})
+
+		It("should return error when dest file close fails", func() {
+			closeErr := errors.New("close error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
+			}
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return closeErr },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return srcFile, nil
+				}),
+			)
+			dest := &copyDestFS{openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) {
+				return destFile, nil
+			}}
+
+			err := ihfs.Copy(dest, "dir", src)
+
+			Expect(err).To(MatchError(closeErr))
+		})
+
+		It("should return PathError for unrecognized file types", func() {
+			entry := testfs.NewDirEntry("device", false)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeDevice }
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+
+			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
+
+			Expect(err).To(HaveOccurred())
+			var pathErr *fs.PathError
+			Expect(errors.As(err, &pathErr)).To(BeTrue())
+			Expect(pathErr.Op).To(Equal("Copy"))
+			Expect(errors.Is(err, fs.ErrInvalid)).To(BeTrue())
+		})
+	})
+
 	Describe("DirExists", func() {
 		It("should return true when path is a directory", func() {
 			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
@@ -401,6 +736,60 @@ var _ = Describe("Util", func() {
 		})
 	})
 
+	Describe("OpenFile", func() {
+		It("should call underlying OpenFile when OpenFileFS is implemented", func() {
+			var capturedName string
+			var capturedFlag int
+			var capturedPerm ihfs.FileMode
+
+			fsys := testfs.New(testfs.WithOpenFile(func(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+				capturedName = name
+				capturedFlag = flag
+				capturedPerm = perm
+				return &testfs.File{CloseFunc: func() error { return nil }}, nil
+			}))
+
+			f, err := ihfs.OpenFile(fsys, "test.txt", 0, 0o644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f).NotTo(BeNil())
+			Expect(capturedName).To(Equal("test.txt"))
+			Expect(capturedFlag).To(Equal(0))
+			Expect(capturedPerm).To(Equal(ihfs.FileMode(0o644)))
+		})
+
+		It("should return ErrNotImplemented when OpenFileFS not implemented", func() {
+			f, err := ihfs.OpenFile(testfs.BoringFs{}, "test.txt", 0, 0o644)
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(f).To(BeNil())
+		})
+	})
+
+	Describe("Remove", func() {
+		It("should call underlying Remove when RemoveFS is implemented", func() {
+			var capturedName string
+
+			fsys := testfs.New(testfs.WithRemove(func(name string) error {
+				capturedName = name
+				return nil
+			}))
+
+			err := ihfs.Remove(fsys, "test.txt")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedName).To(Equal("test.txt"))
+		})
+
+		It("should return ErrNotImplemented when RemoveFS not implemented", func() {
+			err := ihfs.Remove(testfs.BoringFs{}, "test.txt")
+
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+		})
+	})
+
 	Describe("WriteFile", func() {
 		It("should call underlying WriteFile when implemented", func() {
 			var capturedName string
@@ -451,4 +840,93 @@ func (m *mkdirOnlyFS) Open(_ string) (ihfs.File, error) {
 
 func (m *mkdirOnlyFS) Mkdir(name string, mode ihfs.FileMode) error {
 	return m.mkdirFunc(name, mode)
+}
+
+// noSymlinkFS implements MkdirAllFS but not SymlinkFS or CopyFS.
+type noSymlinkFS struct {
+	mkdirAllFunc func(string, ihfs.FileMode) error
+}
+
+func (noSymlinkFS) Open(string) (ihfs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (f noSymlinkFS) MkdirAll(name string, perm ihfs.FileMode) error {
+	if f.mkdirAllFunc != nil {
+		return f.mkdirAllFunc(name, perm)
+	}
+	return nil
+}
+
+// copyDestFS is a configurable test filesystem for the Copy fallback path.
+// It intentionally does NOT implement CopyFS.
+type copyDestFS struct {
+	mkdirAllFunc func(string, ihfs.FileMode) error
+	openFileFunc func(string, int, ihfs.FileMode) (ihfs.File, error)
+	symlinkFunc  func(string, string) error
+}
+
+func (*copyDestFS) Open(string) (ihfs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (d *copyDestFS) MkdirAll(name string, perm ihfs.FileMode) error {
+	if d.mkdirAllFunc != nil {
+		return d.mkdirAllFunc(name, perm)
+	}
+	return nil
+}
+
+func (d *copyDestFS) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+	if d.openFileFunc != nil {
+		return d.openFileFunc(name, flag, perm)
+	}
+	return nil, errors.New("openfile: not implemented")
+}
+
+func (d *copyDestFS) Symlink(old, new string) error {
+	if d.symlinkFunc != nil {
+		return d.symlinkFunc(old, new)
+	}
+	return nil
+}
+
+// noReadLinkFS implements a minimal FS with ReadDir but without ReadLinkFS.
+type noReadLinkFS struct {
+	readDirFunc func(string) ([]ihfs.DirEntry, error)
+}
+
+func (*noReadLinkFS) Open(string) (ihfs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (f *noReadLinkFS) Stat(name string) (ihfs.FileInfo, error) {
+	fi := testfs.NewFileInfo(name)
+	fi.IsDirFunc = func() bool { return name == "." }
+	fi.ModeFunc = func() fs.FileMode {
+		if name == "." {
+			return fs.ModeDir
+		}
+		return 0
+	}
+	return fi, nil
+}
+
+func (f *noReadLinkFS) ReadDir(name string) ([]ihfs.DirEntry, error) {
+	return f.readDirFunc(name)
+}
+
+// withRootDirStat returns a testfs.Option that configures Stat to report "." as a directory.
+func withRootDirStat() testfs.Option {
+	return testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+		fi := testfs.NewFileInfo(name)
+		fi.IsDirFunc = func() bool { return name == "." }
+		fi.ModeFunc = func() fs.FileMode {
+			if name == "." {
+				return fs.ModeDir
+			}
+			return 0
+		}
+		return fi, nil
+	})
 }
