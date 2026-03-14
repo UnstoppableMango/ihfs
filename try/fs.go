@@ -7,7 +7,6 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-
 var (
 	// ErrNotSupported is deprecated: use ErrNotImplemented instead.
 	ErrNotSupported = ihfs.ErrNotImplemented
