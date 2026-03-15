@@ -10,13 +10,12 @@
       inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication;
     in
     {
-      packages.mockfs = buildGoApplication {
-        pname = "mockfs";
+      packages.ctrfs = buildGoApplication {
+        pname = "ctrfs";
         version = "0.0.1";
         src = lib.cleanSource ./.;
-        modules = ./gomod2nix.toml;
         go = pkgs.go_1_26;
-        doCheck = false;
+        modules = ./gomod2nix.toml;
       };
     };
 }

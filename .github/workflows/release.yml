@@ -3,8 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
-      - 'mockfs/v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -26,7 +25,7 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v7
         with:
-          version: '~> v2'
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,7 +46,7 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v7
         with:
-          version: '~> v2'
+          version: "~> v2"
           workdir: mockfs
           args: release --clean --skip=validate
         env:

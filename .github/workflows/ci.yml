@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
           --trace
           --randomize-all
           --coverprofile=cover.out
-          --skip-package=ghfs
+          --skip-package=ctrfs,ghfs,mockfs
 
       - uses: codecov/codecov-action@v5
         with:
@@ -62,26 +62,46 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: nix flake check
-      - run: nix build .# .#mockfs
+      - run: nix build .# .#ctrfs .#ghfs .#mockfs
 
   clean:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
 
-      - uses: actions/setup-go@v6.3.0
+      - uses: cachix/install-nix-action@v31.10.1
         with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go tool gomod2nix generate
-      - run: git diff --exit-code gomod2nix.toml
-
-      - run: go -C mockfs tool gomod2nix generate
-      - run: git diff --exit-code mockfs/gomod2nix.toml
-
-      - run: make generate
+      - run: nix develop -c make gomod2nix
+      - run: nix develop -c make generate
       - run: git diff --exit-code
+
+  ctrfs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ctrfs/go.mod
+          cache-dependency-path: ctrfs/go.sum
+
+      - run: go -C ctrfs build -v ./...
+
+      - run: >
+          go -C ctrfs tool ginkgo -r
+          --github-output
+          --race
+          --trace
+          --randomize-all
+          --coverprofile=cover.out
+
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          files: ctrfs/cover.out
 
   ghfs:
     runs-on: ubuntu-latest
@@ -108,3 +128,15 @@ jobs:
           use_oidc: true
           fail_ci_if_error: true
           files: ghfs/cover.out
+
+  mockfs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: mockfs/go.mod
+          cache-dependency-path: mockfs/go.sum
+
+      - run: go -C mockfs build -v ./...

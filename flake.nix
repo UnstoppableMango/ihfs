@@ -30,8 +30,9 @@
       imports = [
         inputs.treefmt-nix.flakeModule
 
-        ./mockfs
+        ./ctrfs
         ./ghfs
+        ./mockfs
       ];
 
       perSystem =
@@ -44,6 +45,7 @@
         let
           inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication gomod2nix mkGoEnv;
 
+          go = pkgs.go_1_26;
           goEnv = mkGoEnv { pwd = ./.; };
 
           ihfs = buildGoApplication {
@@ -56,12 +58,14 @@
                 path: type:
                 !(lib.any (prefix: lib.hasPrefix prefix path) (
                   map toString [
+                    ./ctrfs
                     ./ghfs
                     ./mockfs
                   ]
                 ));
             };
 
+            go = go;
             modules = ./gomod2nix.toml;
           };
         in
@@ -88,7 +92,7 @@
             ];
 
             GINKGO = "${pkgs.ginkgo}/bin/ginkgo";
-            GO = "${pkgs.go}/bin/go";
+            GO = "${go}/bin/go";
             GOMOD2NIX = "${gomod2nix}/bin/gomod2nix";
             GOPLS = "${pkgs.gopls}/bin/gopls";
             GORELEASER = "${pkgs.goreleaser}/bin/goreleaser";
