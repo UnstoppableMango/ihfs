@@ -526,6 +526,36 @@ var _ = Describe("Fs", func() {
 			Expect(entries).To(HaveLen(1))
 			Expect(entries[0].Name()).To(Equal("file.txt"))
 		})
+
+		It("should return error when tar is corrupted after cached directory", func() {
+			// Archive: mydir/ → other.txt → mydir/corrupt.txt (incomplete).
+			// Opening other.txt caches mydir/ as a side-effect; draining for mydir then
+			// hits the corrupt entry.
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			otherContent := []byte("other")
+			Expect(tw.WriteHeader(&tar.Header{Name: "other.txt", Mode: 0644, Size: int64(len(otherContent))})).To(Succeed())
+			_, err := tw.Write(otherContent)
+			Expect(err).NotTo(HaveOccurred())
+			// Claim 1000 bytes for the child but write none — truncated archive.
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/corrupt.txt", Mode: 0644, Size: 1000})).To(Succeed())
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/corrupt-cached-dir.tar"
+			Expect(os.WriteFile(testPath, buf.Bytes(), 0644)).To(Succeed())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			other, err := tfs.Open("other.txt")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(other.Close)
+
+			file, err := tfs.Open("mydir")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(file).To(BeNil())
+		})
 	})
 
 	Describe("synthetic directory handling", func() {

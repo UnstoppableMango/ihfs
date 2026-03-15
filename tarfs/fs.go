@@ -114,16 +114,23 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 		return nil, t.invalid(name)
 	}
 
-	if file := t.cache.get(name); file != nil {
+	// Non-directory files in the cache need no further work.
+	if file := t.cache.get(name); file != nil && file.hdr.Typeflag != tar.TypeDir {
 		return file.file(t.cache), nil
 	}
 
-	// Not in cache, read from tar (only one goroutine at a time)
+	// Directory opens (cache hit or miss) always take the lock so drainIntoCache
+	// can be called safely if the archive has not yet been fully read.
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	// Check cache again in case another goroutine loaded it
+	// Re-check cache under lock (handles both cache misses and directory hits).
 	if file := t.cache.get(name); file != nil {
+		if file.hdr.Typeflag == tar.TypeDir && !t.closed {
+			if err := t.drainIntoCache(); err != nil {
+				return nil, t.notExist(name, err)
+			}
+		}
 		return file.file(t.cache), nil
 	}
 
