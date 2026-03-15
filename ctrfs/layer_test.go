@@ -75,7 +75,9 @@ var _ = Describe("ToLayer", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer rc.Close()
 
-		Expect(tarNames(rc)).To(ContainElements("subdir/", "subdir/hello.txt"))
+		names, err := tarNames(rc)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(names).To(ContainElements("subdir/", "subdir/hello.txt"))
 	})
 
 	It("should create a layer rooted at a subdirectory", func() {
@@ -92,7 +94,63 @@ var _ = Describe("ToLayer", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer rc.Close()
 
-		Expect(tarNames(rc)).To(ContainElement("main.go"))
+		names, err := tarNames(rc)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(names).To(ContainElement("main.go"))
+	})
+
+	It("should include symlinks in the layer", func() {
+		entry := testfs.NewDirEntry("link.txt", false)
+		entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+		entry.InfoFunc = func() (ihfs.FileInfo, error) {
+			fi := testfs.NewFileInfo("link.txt")
+			fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
+			return fi, nil
+		}
+		fsys := testfs.New(
+			testfs.WithStat(rootDirStat),
+			testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+				return []ihfs.DirEntry{entry}, nil
+			}),
+			testfs.WithReadLink(func(string) (string, error) {
+				return "target.txt", nil
+			}),
+		)
+
+		layer, err := ctrfs.ToLayer(fsys, ".")
+		Expect(err).NotTo(HaveOccurred())
+
+		rc, err := layer.Uncompressed()
+		Expect(err).NotTo(HaveOccurred())
+		defer rc.Close()
+
+		names, err := tarNames(rc)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(names).To(ContainElement("link.txt"))
+	})
+
+	It("should propagate ReadLink errors for symlinks", func() {
+		readLinkErr := errors.New("readlink error")
+		entry := testfs.NewDirEntry("link.txt", false)
+		entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+		entry.InfoFunc = func() (ihfs.FileInfo, error) {
+			fi := testfs.NewFileInfo("link.txt")
+			fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
+			return fi, nil
+		}
+		fsys := testfs.New(
+			testfs.WithStat(rootDirStat),
+			testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+				return []ihfs.DirEntry{entry}, nil
+			}),
+			testfs.WithReadLink(func(string) (string, error) {
+				return "", readLinkErr
+			}),
+		)
+
+		_, err := ctrfs.ToLayer(fsys, ".")
+
+		Expect(err).To(MatchError(readLinkErr))
 	})
 
 	It("should propagate walk errors", func() {
@@ -194,7 +252,9 @@ var _ = Describe("ToImage", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer rc.Close()
 
-		Expect(tarNames(rc)).To(ContainElement("app.bin"))
+		names, err := tarNames(rc)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(names).To(ContainElement("app.bin"))
 	})
 
 	It("should propagate ToLayer errors", func() {

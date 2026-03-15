@@ -83,6 +83,32 @@ jobs:
       - run: make generate
       - run: git diff --exit-code
 
+  ctrfs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ctrfs/go.mod
+          cache-dependency-path: ctrfs/go.sum
+
+      - run: go -C ctrfs build -v ./...
+
+      - run: >
+          go -C ctrfs tool ginkgo -r
+          --github-output
+          --race
+          --trace
+          --randomize-all
+          --coverprofile=cover.out
+
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          files: ctrfs/cover.out
+
   ghfs:
     runs-on: ubuntu-latest
     steps:

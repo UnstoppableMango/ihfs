@@ -30,8 +30,9 @@
       imports = [
         inputs.treefmt-nix.flakeModule
 
-        ./mockfs
+        ./ctrfs
         ./ghfs
+        ./mockfs
       ];
 
       perSystem =
@@ -56,6 +57,7 @@
                 path: type:
                 !(lib.any (prefix: lib.hasPrefix prefix path) (
                   map toString [
+                    ./ctrfs
                     ./ghfs
                     ./mockfs
                   ]

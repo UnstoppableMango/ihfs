@@ -35,7 +35,17 @@ func FromLayer(layer v1.Layer) (*LayerFS, error) {
 // The resulting layer contains all files as a gzip-compressed tar archive.
 func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
 	var compressed bytes.Buffer
-	gw := gzip.NewWriter(&compressed)
+	if err := writeLayer(fsys, dir, &compressed); err != nil {
+		return nil, err
+	}
+	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(compressed.Bytes())), nil
+	})
+}
+
+// writeLayer writes a gzip-compressed tar archive of fsys rooted at dir to w.
+func writeLayer(fsys ihfs.FS, dir string, w io.Writer) error {
+	gw := gzip.NewWriter(w)
 	tw := tar.NewWriter(gw)
 
 	err := fs.WalkDir(fsys, dir, func(p string, d fs.DirEntry, err error) error {
@@ -50,7 +60,14 @@ func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
 			return err
 		}
 
-		hdr, err := tar.FileInfoHeader(info, "")
+		var link string
+		if d.Type()&fs.ModeSymlink != 0 {
+			if link, err = fs.ReadLink(fsys, p); err != nil {
+				return err
+			}
+		}
+
+		hdr, err := tar.FileInfoHeader(info, link)
 		if err != nil {
 			return err
 		}
@@ -58,11 +75,11 @@ func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
 		if d.IsDir() && name != "." {
 			hdr.Name += "/"
 		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
 
-		// WriteHeader never fails when writing to bytes.Buffer via gzip.
-		_ = tw.WriteHeader(hdr)
-
-		if !d.IsDir() {
+		if d.Type().IsRegular() {
 			f, err := fsys.Open(p)
 			if err != nil {
 				return err
@@ -76,16 +93,12 @@ func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	// Close never fails when writing to bytes.Buffer via gzip.
-	_ = tw.Close()
-	_ = gw.Close()
-
-	snapshot := compressed.Bytes()
-	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(snapshot)), nil
-	})
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return gw.Close()
 }
 
 // ToImage appends a new layer built from fsys onto base and returns the resulting image.

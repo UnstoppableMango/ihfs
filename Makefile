@@ -3,7 +3,7 @@ include ./go.mk
 .DEFAULT_GOAL := build
 
 build:
-	nix build .# .#ghfs .#mockfs --no-link
+	nix build .# .#ctrfs .#ghfs .#mockfs --no-link
 
 clean:
 	find . \( -name '*cover*' -o -name 'result*' \) -delete

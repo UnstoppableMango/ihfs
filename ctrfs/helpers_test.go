@@ -47,20 +47,23 @@ func makeLayer(entries []tarEntry) (v1.Layer, error) {
 	})
 }
 
-// tarNames reads all entry names from a tar stream (stopping at EOF or error).
-func tarNames(r io.Reader) []string {
+// tarNames reads all entry names from a tar stream, returning an error if the stream is malformed.
+func tarNames(r io.Reader) ([]string, error) {
 	tr := tar.NewReader(r)
 	var names []string
 	for {
 		hdr, err := tr.Next()
-		if err != nil {
+		if err == io.EOF {
 			break
+		}
+		if err != nil {
+			return nil, err
 		}
 		if hdr.Name != "." {
 			names = append(names, hdr.Name)
 		}
 	}
-	return names
+	return names, nil
 }
 
 func rootDirStat(name string) (ihfs.FileInfo, error) {

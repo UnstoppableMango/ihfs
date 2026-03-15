@@ -9,8 +9,8 @@
       inherit (inputs'.gomod2nix.legacyPackages) buildGoApplication;
     in
     {
-      packages.ghfs = buildGoApplication {
-        pname = "ghfs";
+      packages.ctrfs = buildGoApplication {
+        pname = "ctrfs";
         version = "0.0.1";
         src = lib.cleanSource ./.;
         modules = ./gomod2nix.toml;
