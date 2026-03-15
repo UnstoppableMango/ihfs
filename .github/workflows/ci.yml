@@ -29,6 +29,7 @@ jobs:
           use_oidc: true
           fail_ci_if_error: true
           files: coverprofile.out
+          flags: core
 
   lint:
     runs-on: ubuntu-latest
