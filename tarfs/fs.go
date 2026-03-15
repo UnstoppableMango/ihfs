@@ -15,11 +15,18 @@ import (
 
 // TarFile represents a read-only file system backed by a tar archive.
 // It will lazily buffer the contents of the tar archive as files are accessed.
+// Opening a directory entry causes all remaining archive entries to be read
+// eagerly so that ReadDir returns a complete listing.
+//
+// Memory: All file content read from the archive is held in memory to support
+// random access on a sequential stream. For large archives this can be
+// significant. Closing TarFile does not release cached content because open
+// File handles may still hold references to the cache.
 //
 // Entries are accessed in order and cached as they are read, so random access may be inefficient.
 type TarFile struct {
 	name   string
-	cache  *cache // TODO: corfs with infinite timeout?
+	cache  *cache
 	mux    sync.Mutex
 	tar    io.ReadCloser
 	tr     *tar.Reader
@@ -83,30 +90,9 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 		// Return root directory - need to load all entries first
 		t.mux.Lock()
 		if !t.closed {
-			for {
-				fd, err := next(t.tr)
-				if err == io.EOF {
-					// Close the tar reader since we've fully read it
-					if closeErr := t.close(); closeErr != nil {
-						t.mux.Unlock()
-						return nil, t.error(".", ihfs.ErrInvalid, closeErr)
-					}
-					break
-				}
-				if err != nil {
-					t.mux.Unlock()
-					return nil, t.error(".", ihfs.ErrInvalid, err)
-				}
-				name := fd.hdr.Name
-				t.cache.set(name, fd)
-				// Normalize directory names so callers using fs.ValidPath
-				// can open "dir" and still get the real directory header
-				if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(name, "/") {
-					trimmed := strings.TrimSuffix(name, "/")
-					if trimmed != "" {
-						t.cache.set(trimmed, fd)
-					}
-				}
+			if err := t.drainIntoCache(); err != nil {
+				t.mux.Unlock()
+				return nil, t.error(".", ihfs.ErrInvalid, err)
 			}
 		}
 		t.mux.Unlock()
@@ -192,17 +178,20 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			return nil, t.notExist(name, err)
 		}
 
-		entryName := fd.hdr.Name
-		t.cache.set(entryName, fd)
-		// Normalize directory names so callers using fs.ValidPath
-		// can open "dir" and still get the real directory header
-		if fd.hdr.Typeflag == tar.TypeDir && strings.HasSuffix(entryName, "/") {
-			trimmed := strings.TrimSuffix(entryName, "/")
-			if trimmed != "" {
-				t.cache.set(trimmed, fd)
-			}
+		cacheKey := fd.hdr.Name
+		if fd.hdr.Typeflag == tar.TypeDir {
+			cacheKey = strings.TrimSuffix(cacheKey, "/")
 		}
-		if fd.hdr.Name == name || (fd.hdr.Typeflag == tar.TypeDir && strings.TrimSuffix(fd.hdr.Name, "/") == name) {
+		if cacheKey != "" {
+			t.cache.set(cacheKey, fd)
+		}
+		if cacheKey == name {
+			if fd.hdr.Typeflag == tar.TypeDir {
+				// Drain remaining entries so ReadDir returns a complete listing.
+				if err := t.drainIntoCache(); err != nil {
+					return nil, t.notExist(name, err)
+				}
+			}
 			return fd.file(t.cache), nil
 		}
 	}
@@ -211,6 +200,28 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 func (t *TarFile) close() error {
 	t.closed = true
 	return t.tar.Close()
+}
+
+// drainIntoCache reads all remaining entries from the tar stream into the cache.
+// The caller must hold t.mux and t.closed must be false.
+// drainIntoCache calls t.close() after reaching EOF.
+func (t *TarFile) drainIntoCache() error {
+	for {
+		fd, err := next(t.tr)
+		if err == io.EOF {
+			return t.close()
+		}
+		if err != nil {
+			return err
+		}
+		cacheKey := fd.hdr.Name
+		if fd.hdr.Typeflag == tar.TypeDir {
+			cacheKey = strings.TrimSuffix(cacheKey, "/")
+		}
+		if cacheKey != "" {
+			t.cache.set(cacheKey, fd)
+		}
+	}
 }
 
 func (t *TarFile) notExist(name string, cause error) error {

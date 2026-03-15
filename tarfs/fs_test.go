@@ -420,6 +420,44 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(fs.ErrInvalid))
 		})
+
+		It("should return error when tar is corrupted after directory entry", func() {
+			// Build a truncated archive: valid "mydir/" header, then a child header
+			// claiming 1000 bytes but with no content written.
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/", Typeflag: tar.TypeDir, Mode: 0755})).To(Succeed())
+			Expect(tw.WriteHeader(&tar.Header{Name: "mydir/corrupt.txt", Mode: 0644, Size: 1000})).To(Succeed())
+			// Do not write the 1000 bytes; save the truncated buffer to a file without tw.Close().
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/corrupt-after-dir.tar"
+			Expect(os.WriteFile(testPath, buf.Bytes(), 0644)).To(Succeed())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			file, err := tfs.Open("mydir")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(file).To(BeNil())
+		})
+
+		It("should list all children of a directory without prior Open(.)", func() {
+			// mydir/ appears before mydir/file.txt in the archive.
+			// Open("mydir") must read the full archive before returning so that
+			// ReadDir can find mydir/file.txt even though it was never opened directly.
+			file, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(file.Close)
+
+			rdFile, ok := file.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			entries, err := rdFile.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("file.txt"))
+		})
 	})
 
 	Describe("synthetic directory handling", func() {
