@@ -92,7 +92,7 @@
 ### Test Framework
 
 - **Ginkgo v2 + Gomega** for all tests
-- Run: `make test` or `go tool ginkgo -r`
+- Run: `make test` or `ginkgo -r`
 
 ### Test Files by Package
 

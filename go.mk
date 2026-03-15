@@ -1,7 +1,7 @@
 GO         ?= go
-GOMOD2NIX  ?= go tool gomod2nix
+GOMOD2NIX  ?= gomod2nix
 GOPLS      ?= gopls
-GINKGO     ?= go tool ginkgo
+GINKGO     ?= ginkgo
 GOLANGCI   ?= golangci-lint
 GORELEASER ?= goreleaser
 

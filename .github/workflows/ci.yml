@@ -16,15 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - uses: cachix/install-nix-action@v31.10.1
         with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go build -v ./...
+      - run: nix develop -c go build -v ./...
 
       - run: >
-          go tool ginkgo -r
+          nix develop -c ginkgo -r
           --github-output
           --race
           --trace
@@ -82,20 +81,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - uses: cachix/install-nix-action@v31.10.1
         with:
-          go-version-file: ctrfs/go.mod
-          cache-dependency-path: ctrfs/go.sum
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go -C ctrfs build -v ./...
+      - run: nix develop -c go -C ctrfs build -v ./...
 
       - run: >
-          go -C ctrfs tool ginkgo -r
+          nix develop -c bash -c 'cd ctrfs && ginkgo -r
           --github-output
           --race
           --trace
           --randomize-all
-          --coverprofile=cover.out
+          --coverprofile=cover.out'
 
       - uses: codecov/codecov-action@v5
         with:
@@ -108,20 +106,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - uses: cachix/install-nix-action@v31.10.1
         with:
-          go-version-file: ghfs/go.mod
-          cache-dependency-path: ghfs/go.sum
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go -C ghfs build -v ./...
+      - run: nix develop -c go -C ghfs build -v ./...
 
       - run: >
-          go -C ghfs tool ginkgo -r
+          nix develop -c bash -c 'cd ghfs && ginkgo -r
           --github-output
           --race
           --trace
           --randomize-all
-          --coverprofile=cover.out
+          --coverprofile=cover.out'
 
       - uses: codecov/codecov-action@v5
         with:
