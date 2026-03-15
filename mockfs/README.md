@@ -1,5 +1,8 @@
 # mockfs
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/mockfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/mockfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=mockfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/mockfs/go.mod)
+
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
 Provides call tracking, argument matchers, and controller-based verification.
 
