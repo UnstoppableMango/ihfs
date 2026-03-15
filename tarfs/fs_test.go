@@ -458,6 +458,74 @@ var _ = Describe("Fs", func() {
 			Expect(entries).To(HaveLen(1))
 			Expect(entries[0].Name()).To(Equal("file.txt"))
 		})
+
+		It("should list all children when directory is cached via sibling open", func() {
+			// Build an archive where:
+			//   1. mydir/ (directory entry)
+			//   2. other.txt
+			//   3. mydir/file.txt
+			//
+			// Opening other.txt first causes mydir/ to be cached as a side-effect.
+			// A subsequent Open("mydir") must still ensure that ReadDir sees
+			// mydir/file.txt even though it was not opened directly.
+
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+
+			// Directory entry: mydir/
+			Expect(tw.WriteHeader(&tar.Header{
+				Name:     "mydir/",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			})).To(Succeed())
+
+			// Sibling file: other.txt
+			otherContent := []byte("other content")
+			Expect(tw.WriteHeader(&tar.Header{
+				Name: "other.txt",
+				Mode: 0644,
+				Size: int64(len(otherContent)),
+			})).To(Succeed())
+			_, err := tw.Write(otherContent)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Child file: mydir/file.txt
+			childContent := []byte("child content")
+			Expect(tw.WriteHeader(&tar.Header{
+				Name: "mydir/file.txt",
+				Mode: 0644,
+				Size: int64(len(childContent)),
+			})).To(Succeed())
+			_, err = tw.Write(childContent)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(tw.Close()).To(Succeed())
+
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/cache-side-effect.tar"
+			Expect(os.WriteFile(testPath, buf.Bytes(), 0644)).To(Succeed())
+
+			tfs, err := tarfs.Open(testPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Open a sibling file first to populate any directory cache.
+			other, err := tfs.Open("other.txt")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(other.Close)
+
+			// Now open the directory and ensure ReadDir sees the child.
+			dir, err := tfs.Open("mydir")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(dir.Close)
+
+			rdDir, ok := dir.(fs.ReadDirFile)
+			Expect(ok).To(BeTrue())
+
+			entries, err := rdDir.ReadDir(-1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(1))
+			Expect(entries[0].Name()).To(Equal("file.txt"))
+		})
 	})
 
 	Describe("synthetic directory handling", func() {
