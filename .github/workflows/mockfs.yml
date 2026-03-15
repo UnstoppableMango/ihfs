@@ -6,7 +6,9 @@ on:
     paths: [mockfs/**]
   pull_request:
     branches: [main]
-    paths: [mockfs/**]
+    paths:
+      - mockfs/**
+      - .github/workflows/mockfs.yml
 
 permissions:
   contents: read

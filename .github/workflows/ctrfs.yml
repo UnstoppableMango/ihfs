@@ -6,7 +6,9 @@ on:
     paths: [ctrfs/**]
   pull_request:
     branches: [main]
-    paths: [ctrfs/**]
+    paths:
+      - ctrfs/**
+      - .github/workflows/ctrfs.yml
 
 permissions:
   contents: read

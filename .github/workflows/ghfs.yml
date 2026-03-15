@@ -6,7 +6,9 @@ on:
     paths: [ghfs/**]
   pull_request:
     branches: [main]
-    paths: [ghfs/**]
+    paths:
+      - ghfs/**
+      - .github/workflows/ghfs.yml
 
 permissions:
   contents: read
