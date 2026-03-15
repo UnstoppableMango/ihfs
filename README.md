@@ -165,6 +165,12 @@ fs := testfs.New(
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
 See the [mockfs README](mockfs/README.md) for details.
 
+### ctrfs
+
+A read/write filesystem adapter for OCI container images and layers.
+
+[Documentation](./ctrfs/README.md)
+
 ## GitHub FS
 
 Package `ghfs` contains an implementation of `io/fs` for the GitHub API.
