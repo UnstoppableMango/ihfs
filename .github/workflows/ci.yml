@@ -69,24 +69,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
-      - uses: actions/setup-go@v6.3.0
+      - uses: cachix/install-nix-action@v31.10.1
         with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go tool gomod2nix generate
-      - run: git diff --exit-code gomod2nix.toml
-
-      - run: go -C ctrfs tool gomod2nix generate
-      - run: git diff --exit-code ctrfs/gomod2nix.toml
-
-      - run: go -C ghfs tool gomod2nix generate
-      - run: git diff --exit-code ghfs/gomod2nix.toml
-
-      - run: go -C mockfs tool gomod2nix generate
-      - run: git diff --exit-code mockfs/gomod2nix.toml
-
-      - run: make generate
+      - run: nix develop -c make gomod2nix
+      - run: nix develop -c make generate
       - run: git diff --exit-code
 
   ctrfs:
