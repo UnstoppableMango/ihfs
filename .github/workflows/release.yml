@@ -14,41 +14,18 @@ jobs:
     if: startsWith(github.ref_name, 'v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6.3.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - uses: goreleaser/goreleaser-action@v7
+      - uses: goreleaser/goreleaser-action@v7.0.0
         with:
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  mockfs:
-    name: Release mockfs
-    if: startsWith(github.ref_name, 'mockfs/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: mockfs/go.mod
-          cache-dependency-path: mockfs/go.sum
-
-      - uses: goreleaser/goreleaser-action@v7
-        with:
-          version: "~> v2"
-          workdir: mockfs
-          args: release --clean --skip=validate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}

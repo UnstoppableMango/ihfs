@@ -8,3 +8,21 @@ coverage:
       default:
         target: 90%
         threshold: 1%
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+flags:
+  core:
+    paths:
+      - "*.go"
+      - "!ctrfs/"
+      - "!ghfs/"
+      - "!mockfs/"
+  ctrfs:
+    paths:
+      - ctrfs/
+  ghfs:
+    paths:
+      - ghfs/

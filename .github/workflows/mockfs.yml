@@ -1,0 +1,29 @@
+name: mockfs
+
+on:
+  push:
+    branches: [main]
+    paths: [mockfs/**]
+  pull_request:
+    branches: [main]
+    paths:
+      - mockfs/**
+      - .github/workflows/mockfs.yml
+      - flake.nix
+      - flake.lock
+      - go.mk
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: cachix/install-nix-action@v31.10.1
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: nix develop -c go -C mockfs build -v ./...

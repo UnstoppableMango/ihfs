@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - uses: cachix/install-nix-action@v31.10.1
         with:
@@ -24,11 +24,12 @@ jobs:
         env:
           TEST_ARGS: --skip-package=ctrfs,ghfs,mockfs
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v5.5.2
         with:
           use_oidc: true
           fail_ci_if_error: true
           files: coverprofile.out
+          flags: core
 
   lint:
     runs-on: ubuntu-latest
@@ -67,48 +68,3 @@ jobs:
       - run: nix develop -c make gomod2nix
       - run: nix develop -c make generate
       - run: git diff --exit-code
-
-  ctrfs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: cachix/install-nix-action@v31.10.1
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: nix develop -c make -C ctrfs coverprofile.out
-
-      - uses: codecov/codecov-action@v5
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          files: ctrfs/coverprofile.out
-
-  ghfs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: cachix/install-nix-action@v31.10.1
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: nix develop -c make -C ghfs coverprofile.out
-
-      - uses: codecov/codecov-action@v5
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          files: ghfs/coverprofile.out
-
-  mockfs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: cachix/install-nix-action@v31.10.1
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: nix develop -c go -C mockfs build -v ./...
