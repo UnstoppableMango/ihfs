@@ -3,6 +3,7 @@
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/UnstoppableMango/ihfs/ci.yml)](https://github.com/UnstoppableMango/ihfs/actions/workflows/ci.yml)
 [![GitHub branch check runs](https://img.shields.io/github/check-runs/UnstoppableMango/ihfs/main)](https://github.com/UnstoppableMango/ihfs/actions?query=branch%3Amain)
 [![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs)](https://codecov.io/gh/UnstoppableMango/ihfs)
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/unstoppablemango/ihfs)](https://goreportcard.com/report/github.com/unstoppablemango/ihfs)
 [![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs)](https://github.com/UnstoppableMango/ihfs/blob/main/go.mod)
 
@@ -162,17 +163,28 @@ fs := testfs.New(
 
 ### mockfs
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/mockfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/mockfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=mockfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/mockfs/go.mod)
+
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
 
 [Documentation](./mockfs/README.md)
 
 ### ctrfs
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/ctrfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/ctrfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=ctrfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/ctrfs/go.mod)
+[![Codecov (ctrfs)](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs?flag=ctrfs&label=coverage)](https://codecov.io/gh/UnstoppableMango/ihfs?flags[0]=ctrfs)
+
 A read/write filesystem adapter for OCI container images and layers.
 
 [Documentation](./ctrfs/README.md)
 
-## GitHub FS
+### ghfs
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/ghfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/ghfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=ghfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/ghfs/go.mod)
+[![Codecov (ghfs)](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs?flag=ghfs&label=coverage)](https://codecov.io/gh/UnstoppableMango/ihfs?flags[0]=ghfs)
 
 Package `ghfs` contains an implementation of `io/fs` for the GitHub API.
 

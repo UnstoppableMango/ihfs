@@ -1,5 +1,9 @@
 # ghfs
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/ghfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/ghfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=ghfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/ghfs/go.mod)
+[![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs?flag=ghfs&label=coverage)](https://codecov.io/gh/UnstoppableMango/ihfs?flags[0]=ghfs)
+
 An `io/fs` implementation for the GitHub API.
 
 ## Usage

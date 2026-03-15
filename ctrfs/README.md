@@ -1,5 +1,9 @@
 # ctrfs
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs/ctrfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs/ctrfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs?filename=ctrfs/go.mod)](https://github.com/UnstoppableMango/ihfs/blob/main/ctrfs/go.mod)
+[![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs?flag=ctrfs&label=coverage)](https://codecov.io/gh/UnstoppableMango/ihfs?flags[0]=ctrfs)
+
 An `io/fs` adapter for OCI container images and layers, backed by [google/go-containerregistry](https://github.com/google/go-containerregistry).
 
 ## Usage
