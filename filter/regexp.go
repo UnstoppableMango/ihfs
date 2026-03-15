@@ -38,14 +38,15 @@ func NameRegex(re *regexp.Regexp) ihfs.FilterFunc {
 			return nil // op.Glob and unknown ops pass through
 		}
 
+		if re.MatchString(name) {
+			return nil
+		}
+
 		// Directories always pass through (afero parity)
 		if info, err := fs.Stat(f.Base(), name); err == nil && info.IsDir() {
 			return nil
 		}
 
-		if re.MatchString(name) {
-			return nil
-		}
 		return ihfs.ErrPermission
 	}
 }
