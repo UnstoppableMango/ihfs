@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,6 +48,24 @@ var _ = Describe("LayerFS", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(info.Name()).To(Equal("info.txt"))
 			Expect(info.IsDir()).To(BeFalse())
+		})
+
+		Describe("fstest", func() {
+			It("should pass fstest.TestFS", func() {
+				layer, err := makeLayer([]tarEntry{
+					{hdr: &tar.Header{Name: "dir/", Typeflag: tar.TypeDir, Mode: 0755}},
+					{hdr: &tar.Header{Name: "dir/hello.txt", Typeflag: tar.TypeReg, Size: 5, Mode: 0644}, data: "hello"},
+					{hdr: &tar.Header{Name: "readme.md", Typeflag: tar.TypeReg, Size: 6, Mode: 0644}, data: "readme"},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				fsys, err := ctrfs.FromLayer(layer)
+				Expect(err).NotTo(HaveOccurred())
+				defer fsys.Close()
+
+				err = fstest.TestFS(fsys, "dir/hello.txt", "readme.md")
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 
 		It("should return error when Uncompressed fails", func() {
