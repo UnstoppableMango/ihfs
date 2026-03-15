@@ -1,10 +1,10 @@
 # I ❤️ File Systems
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/UnstoppableMango/ihfs/ci.yml)
-![GitHub branch check runs](https://img.shields.io/github/check-runs/UnstoppableMango/ihfs/main)
-![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/UnstoppableMango/ihfs/ci.yml)](https://github.com/UnstoppableMango/ihfs/actions/workflows/ci.yml)
+[![GitHub branch check runs](https://img.shields.io/github/check-runs/UnstoppableMango/ihfs/main)](https://github.com/UnstoppableMango/ihfs/actions?query=branch%3Amain)
+[![Codecov](https://img.shields.io/codecov/c/github/UnstoppableMango/ihfs)](https://codecov.io/gh/UnstoppableMango/ihfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/unstoppablemango/ihfs)](https://goreportcard.com/report/github.com/unstoppablemango/ihfs)
-![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs)
+[![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs)](https://github.com/UnstoppableMango/ihfs/blob/main/go.mod)
 
 Similar to [afero](https://github.com/spf13/afero), but built around the extension interface pattern described in the [io/fs draft design](https://github.com/golang/proposal/blob/master/design/draft-iofs.md).
 
@@ -163,7 +163,8 @@ fs := testfs.New(
 ### mockfs
 
 Generated [gomock](https://github.com/uber-go/mock) mocks for all ihfs interfaces.
-See the [mockfs README](mockfs/README.md) for details.
+
+[Documentation](./mockfs/README.md)
 
 ### ctrfs
 
