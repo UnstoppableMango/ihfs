@@ -18,6 +18,7 @@ This was not intentional.
 import (
     "os"
     "io/fs"
+    "strings"
 
     "github.com/unstoppablemango/ihfs"
     "github.com/unstoppablemango/ihfs/osfs"
@@ -49,7 +50,7 @@ filtered := ihfs.Where(fs, func(o ihfs.Operation) bool {
     return strings.Contains(o.Subject(), "bar.txt")
 })
 
-for path, err := range ihfs.IterPaths(filtered) {
+for path, err := range ihfs.IterPaths(filtered, ".") {
     // ./foo/bar.txt
 }
 ```
