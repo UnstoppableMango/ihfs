@@ -9,6 +9,9 @@ on:
     paths:
       - ghfs/**
       - .github/workflows/ghfs.yml
+      - flake.nix
+      - flake.lock
+      - go.mk
 
 permissions:
   contents: read

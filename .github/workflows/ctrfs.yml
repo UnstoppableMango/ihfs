@@ -9,6 +9,9 @@ on:
     paths:
       - ctrfs/**
       - .github/workflows/ctrfs.yml
+      - flake.nix
+      - flake.lock
+      - go.mk
 
 permissions:
   contents: read

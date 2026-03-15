@@ -9,6 +9,9 @@ on:
     paths:
       - mockfs/**
       - .github/workflows/mockfs.yml
+      - flake.nix
+      - flake.lock
+      - go.mk
 
 permissions:
   contents: read
