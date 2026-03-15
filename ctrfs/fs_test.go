@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"io"
 	"io/fs"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -70,6 +71,26 @@ var _ = Describe("ImageFS", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(entries).To(HaveLen(1))
 			Expect(entries[0].Name()).To(Equal("file.txt"))
+		})
+
+		Describe("fstest", func() {
+			It("should pass fstest.TestFS", func() {
+				layer, err := makeLayer([]tarEntry{
+					{hdr: &tar.Header{Name: "dir/", Typeflag: tar.TypeDir, Mode: 0755}},
+					{hdr: &tar.Header{Name: "dir/hello.txt", Typeflag: tar.TypeReg, Size: 5, Mode: 0644}, data: "hello"},
+					{hdr: &tar.Header{Name: "readme.md", Typeflag: tar.TypeReg, Size: 6, Mode: 0644}, data: "readme"},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				img, err := mutate.AppendLayers(empty.Image, layer)
+				Expect(err).NotTo(HaveOccurred())
+
+				fsys := ctrfs.FromImage(img)
+				defer fsys.Close()
+
+				err = fstest.TestFS(fsys, "dir/hello.txt", "readme.md")
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 
 		It("should merge multiple layers", func() {
