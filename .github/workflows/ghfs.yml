@@ -1,0 +1,31 @@
+name: ghfs
+
+on:
+  push:
+    branches: [main]
+    paths: [ghfs/**]
+  pull_request:
+    branches: [main]
+    paths: [ghfs/**]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: cachix/install-nix-action@v31.10.1
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: nix develop -c make -C ghfs coverprofile.out
+
+      - uses: codecov/codecov-action@v5.5.2
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          files: ghfs/coverprofile.out
