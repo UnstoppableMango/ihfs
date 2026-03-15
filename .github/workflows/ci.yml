@@ -20,16 +20,10 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: nix develop -c go build -v ./...
-
       - run: >
-          nix develop -c ginkgo -r
-          --github-output
-          --race
-          --trace
-          --randomize-all
-          --coverprofile=cover.out
-          --skip-package=ctrfs,ghfs,mockfs
+          nix develop -c make coverprofile.out
+        env:
+          TEST_ARGS: --skip-package=ctrfs,ghfs,mockfs
 
       - uses: codecov/codecov-action@v5
         with:
@@ -61,7 +55,6 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: nix flake check
-      - run: nix build .# .#ctrfs .#ghfs .#mockfs
 
   clean:
     runs-on: ubuntu-latest
@@ -85,8 +78,6 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: nix develop -c go -C ctrfs build -v ./...
-
       - run: >
           nix develop -c bash -c 'cd ctrfs && ginkgo -r
           --github-output
@@ -109,8 +100,6 @@ jobs:
       - uses: cachix/install-nix-action@v31.10.1
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: nix develop -c go -C ghfs build -v ./...
 
       - run: >
           nix develop -c bash -c 'cd ghfs && ginkgo -r
@@ -136,4 +125,4 @@ jobs:
           go-version-file: mockfs/go.mod
           cache-dependency-path: mockfs/go.sum
 
-      - run: go -C mockfs build -v ./...
+      - run: nix develop -c go -C mockfs build -v ./...
