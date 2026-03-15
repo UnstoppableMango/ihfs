@@ -77,6 +77,12 @@ jobs:
       - run: go tool gomod2nix generate
       - run: git diff --exit-code gomod2nix.toml
 
+      - run: go -C ctrfs tool gomod2nix generate
+      - run: git diff --exit-code ctrfs/gomod2nix.toml
+
+      - run: go -C ghfs tool gomod2nix generate
+      - run: git diff --exit-code ghfs/gomod2nix.toml
+
       - run: go -C mockfs tool gomod2nix generate
       - run: git diff --exit-code mockfs/gomod2nix.toml
 
