@@ -1,17 +1,23 @@
 GO         ?= go
-GOMOD2NIX  ?= go tool gomod2nix
+GOMOD2NIX  ?= gomod2nix
 GOPLS      ?= gopls
-GINKGO     ?= go tool ginkgo
+GINKGO     ?= ginkgo
 GOLANGCI   ?= golangci-lint
 GORELEASER ?= goreleaser
 
+TEST_ARGS += -r
+
+ifeq (${CI},true)
+	TEST_ARGS += --github-output --race --trace --randomize-all
+endif
+
 test:
-	$(GINKGO) -r
+	$(GINKGO) ${TEST_ARGS}
 
 cover: coverprofile.out
 	$(GO) tool cover -func=coverprofile.out
 coverprofile.out: $(shell find . -name '*.go')
-	$(GINKGO) -r --cover
+	$(GINKGO) ${TEST_ARGS} --cover
 
 gomod2nix.toml: export GOWORK := off
 gomod2nix.toml: go.mod go.sum

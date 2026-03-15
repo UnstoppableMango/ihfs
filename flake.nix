@@ -85,6 +85,7 @@
               golangci-lint
               gomod2nix
               gopls
+              mockgen
               goreleaser
               nixfmt
               ripgrep
