@@ -11,7 +11,7 @@ require (
 	github.com/google/go-containerregistry v0.21.2
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/unstoppablemango/ihfs v0.0.1
+	github.com/unstoppablemango/ihfs v0.0.2
 )
 
 require (
