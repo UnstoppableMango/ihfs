@@ -9,7 +9,7 @@ tool (
 
 require (
 	github.com/unmango/go v0.15.1
-	github.com/unstoppablemango/ihfs v0.0.1
+	github.com/unstoppablemango/ihfs v0.0.2
 	go.uber.org/mock v0.6.0
 )
 
