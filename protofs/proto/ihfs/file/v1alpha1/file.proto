@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package unstoppablemango.ihfs.file.v1alpha1;
+
+import "ihfs/v1alpha1/types.proto";
+
+option go_package = "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/file/v1alpha1;filev1alpha1";
+
+// FileService exposes file handle operations over gRPC.
+service FileService {
+  // Read reads bytes from the file starting at the given offset.
+  rpc Read(ReadRequest) returns (ReadResponse);
+  // Stat returns FileInfo for the open file.
+  rpc Stat(StatRequest) returns (StatResponse);
+  // Close closes the file (no-op server-side for stateless implementation).
+  rpc Close(CloseRequest) returns (CloseResponse);
+  // ReadDir reads directory entries from the open directory file.
+  rpc ReadDir(ReadDirRequest) returns (ReadDirResponse);
+  // Write writes data to the file.
+  rpc Write(WriteRequest) returns (WriteResponse);
+  // WriteAt writes data to the file at the given offset.
+  rpc WriteAt(WriteAtRequest) returns (WriteAtResponse);
+  // Sync commits any pending writes to stable storage.
+  rpc Sync(SyncRequest) returns (SyncResponse);
+  // Truncate changes the file size.
+  rpc Truncate(TruncateRequest) returns (TruncateResponse);
+}
+
+message ReadRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+}
+
+message ReadResponse {
+  bytes data = 1;
+}
+
+message StatRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+}
+
+message StatResponse {
+  unstoppablemango.ihfs.v1alpha1.FileInfo file_info = 1;
+}
+
+message CloseRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+}
+
+message CloseResponse {}
+
+message ReadDirRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+  int32 n = 2;
+}
+
+message ReadDirResponse {
+  repeated unstoppablemango.ihfs.v1alpha1.DirEntry entries = 1;
+}
+
+message WriteRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+  bytes data = 2;
+}
+
+message WriteResponse {
+  int32 n = 1;
+}
+
+message WriteAtRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+  bytes data = 2;
+  int64 offset = 3;
+}
+
+message WriteAtResponse {
+  int32 n = 1;
+}
+
+message SyncRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+}
+
+message SyncResponse {}
+
+message TruncateRequest {
+  unstoppablemango.ihfs.v1alpha1.File file = 1;
+  int64 size = 2;
+}
+
+message TruncateResponse {}

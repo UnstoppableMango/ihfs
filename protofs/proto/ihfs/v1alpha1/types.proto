@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package unstoppablemango.ihfs.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1;ihfsv1alpha1";
+
+// FileInfo represents filesystem metadata for a file or directory.
+message FileInfo {
+  string name = 1;
+  int64 size = 2;
+  uint32 mode = 3;
+  google.protobuf.Timestamp mod_time = 4;
+  bool is_dir = 5;
+}
+
+// DirEntry represents a single entry in a directory listing.
+message DirEntry {
+  string name = 1;
+  bool is_dir = 2;
+  uint32 type = 3;
+  optional FileInfo info = 4;
+}
+
+// File represents a reference to an open file.
+message File {
+  string name = 1;
+}
