@@ -76,6 +76,8 @@ github.com/unstoppablemango/go-github-mock v1.5.1 h1:7ieiK13SANkdEyv84zYWAeg9i2e
 github.com/unstoppablemango/go-github-mock v1.5.1/go.mod h1:w3DV12StDPMh89g+HgZal8QuUvYai47Zs8y++Sy09pQ=
 github.com/unstoppablemango/ihfs v0.0.1 h1:FmwsvRGSTAZ8mtp2dQmWMgqvzWs7xXqtU70a275nWnM=
 github.com/unstoppablemango/ihfs v0.0.1/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
+github.com/unstoppablemango/ihfs v0.0.2 h1:65Us4W/jAVZpffxCYf3xHZCVN3LuhYihlonDp6xUFzg=
+github.com/unstoppablemango/ihfs v0.0.2/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
 go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
 golang.org/x/mod v0.33.0 h1:tHFzIWbBifEmbwtGz65eaWyGiGZatSrT9prnU8DbVL8=
