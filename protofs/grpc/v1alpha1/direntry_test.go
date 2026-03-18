@@ -3,54 +3,56 @@ package protofsv1alpha1_test
 import (
 	"errors"
 	"io/fs"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	ihfsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1"
+	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1"
 	protofsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/grpc/v1alpha1"
 	"github.com/unstoppablemango/ihfs/testfs"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ = Describe("DirEntry", func() {
-	Describe("ToProtoDirEntry", func() {
-		It("should convert a DirEntry to proto with info", func() {
+	Describe("DirEntryToFileInfo", func() {
+		It("should convert a directory DirEntry to FileInfo", func() {
 			entry := testfs.NewDirEntry("subdir", true)
 
-			proto := protofsv1alpha1.ToProtoDirEntry(entry)
+			fi := protofsv1alpha1.DirEntryToFileInfo(entry)
 
-			Expect(proto.Name).To(Equal("subdir"))
-			Expect(proto.IsDir).To(BeTrue())
-			Expect(proto.Info).NotTo(BeNil())
+			Expect(fi.Name).To(Equal("subdir"))
+			Expect(fi.IsDir).To(BeTrue())
 		})
 
-		It("should convert a file DirEntry to proto", func() {
+		It("should convert a file DirEntry to FileInfo", func() {
 			entry := testfs.NewDirEntry("file.txt", false)
 
-			proto := protofsv1alpha1.ToProtoDirEntry(entry)
+			fi := protofsv1alpha1.DirEntryToFileInfo(entry)
 
-			Expect(proto.Name).To(Equal("file.txt"))
-			Expect(proto.IsDir).To(BeFalse())
+			Expect(fi.Name).To(Equal("file.txt"))
+			Expect(fi.IsDir).To(BeFalse())
 		})
 
 		It("should handle DirEntry with failing Info()", func() {
 			entry := &errInfoDirEntry{name: "broken"}
 
-			proto := protofsv1alpha1.ToProtoDirEntry(entry)
+			fi := protofsv1alpha1.DirEntryToFileInfo(entry)
 
-			Expect(proto.Name).To(Equal("broken"))
-			Expect(proto.Info).To(BeNil())
+			Expect(fi.Name).To(Equal("broken"))
+			Expect(fi.IsDir).To(BeFalse())
 		})
 	})
 
-	Describe("FromProtoDirEntries", func() {
-		It("should convert proto DirEntries to DirEntries", func() {
-			protos := []*ihfsv1alpha1.DirEntry{
-				{Name: "dir1", IsDir: true, Type: uint32(fs.ModeDir)},
-				{Name: "file.txt", IsDir: false},
+	Describe("FileInfosToDirEntries", func() {
+		It("should convert proto FileInfos to DirEntries", func() {
+			now := time.Now().UTC().Truncate(time.Second)
+			infos := []*filev1alpha1.FileInfo{
+				{Name: "dir1", IsDir: true, Mode: filev1alpha1.FileMode_FILE_MODE_DIR},
+				{Name: "file.txt", IsDir: false, ModTime: timestamppb.New(now)},
 			}
 
-			entries := protofsv1alpha1.FromProtoDirEntries(protos)
+			entries := protofsv1alpha1.FileInfosToDirEntries(infos)
 
 			Expect(entries).To(HaveLen(2))
 			Expect(entries[0].Name()).To(Equal("dir1"))
@@ -60,16 +62,12 @@ var _ = Describe("DirEntry", func() {
 			Expect(entries[1].IsDir()).To(BeFalse())
 		})
 
-		It("should return Info from proto DirEntry with info", func() {
-			protos := []*ihfsv1alpha1.DirEntry{
-				{
-					Name:  "test.txt",
-					IsDir: false,
-					Info:  &ihfsv1alpha1.FileInfo{Name: "test.txt", Size: 10},
-				},
+		It("should return Info from proto FileInfo", func() {
+			infos := []*filev1alpha1.FileInfo{
+				{Name: "test.txt", IsDir: false, Size: 10},
 			}
 
-			entries := protofsv1alpha1.FromProtoDirEntries(protos)
+			entries := protofsv1alpha1.FileInfosToDirEntries(infos)
 
 			info, err := entries[0].Info()
 			Expect(err).NotTo(HaveOccurred())
@@ -78,20 +76,8 @@ var _ = Describe("DirEntry", func() {
 			Expect(info.Size()).To(Equal(int64(10)))
 		})
 
-		It("should return nil Info for proto DirEntry without info", func() {
-			protos := []*ihfsv1alpha1.DirEntry{
-				{Name: "test.txt", IsDir: false},
-			}
-
-			entries := protofsv1alpha1.FromProtoDirEntries(protos)
-
-			info, err := entries[0].Info()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info).To(BeNil())
-		})
-
 		It("should return empty slice for empty input", func() {
-			entries := protofsv1alpha1.FromProtoDirEntries(nil)
+			entries := protofsv1alpha1.FileInfosToDirEntries(nil)
 			Expect(entries).To(BeEmpty())
 		})
 	})

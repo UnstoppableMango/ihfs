@@ -3,13 +3,14 @@ package protofsv1alpha1
 
 import (
 	"context"
+	"errors"
+	"io"
 	"io/fs"
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
-	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/file/v1alpha1"
-	fsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/fs/v1alpha1"
-	ihfsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1"
+	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1"
+	fsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/fs/v1alpha1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -62,32 +63,38 @@ func (f *Fs) Stat(name string) (ihfs.FileInfo, error) {
 
 // ReadDir implements ihfs.ReadDirFS.
 func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
-	res, err := f.fs.ReadDir(f.ctx(), &fsv1alpha1.ReadDirRequest{Name: name})
+	file := &filev1alpha1.File{Name: name}
+	res, err := f.file.Readdir(f.ctx(), &filev1alpha1.ReaddirRequest{
+		File:  file,
+		Count: -1,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return fromProtoDirEntries(res.Entries), nil
+	return fileInfosToDirEntries(res.FileInfos), nil
 }
 
 // ReadFile implements ihfs.ReadFileFS.
 func (f *Fs) ReadFile(name string) ([]byte, error) {
-	res, err := f.fs.ReadFile(f.ctx(), &fsv1alpha1.ReadFileRequest{Name: name})
+	stream, err := f.fs.Read(f.ctx(), &fsv1alpha1.ReadRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
 
-	return res.Data, nil
-}
-
-// Glob implements ihfs.GlobFS.
-func (f *Fs) Glob(pattern string) ([]string, error) {
-	res, err := f.fs.Glob(f.ctx(), &fsv1alpha1.GlobRequest{Pattern: pattern})
-	if err != nil {
-		return nil, err
+	var data []byte
+	for {
+		resp, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, resp.Data...)
 	}
 
-	return res.Matches, nil
+	return data, nil
 }
 
 // Create implements ihfs.CreateFS.
@@ -101,13 +108,17 @@ func (f *Fs) Create(name string) (ihfs.File, error) {
 }
 
 // WriteFile implements ihfs.WriteFileFS.
-func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
-	_, err := f.fs.WriteFile(f.ctx(), &fsv1alpha1.WriteFileRequest{
-		Name: name,
-		Data: data,
-		Perm: uint32(perm),
-	})
+func (f *Fs) WriteFile(name string, data []byte, _ ihfs.FileMode) error {
+	stream, err := f.fs.Write(f.ctx())
+	if err != nil {
+		return err
+	}
 
+	if err := stream.Send(&fsv1alpha1.WriteRequest{Name: name, Data: data}); err != nil {
+		return err
+	}
+
+	_, err = stream.CloseAndRecv()
 	return err
 }
 
@@ -115,7 +126,7 @@ func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
 func (f *Fs) Mkdir(name string, mode ihfs.FileMode) error {
 	_, err := f.fs.Mkdir(f.ctx(), &fsv1alpha1.MkdirRequest{
 		Name: name,
-		Mode: uint32(mode),
+		Perm: filev1alpha1.FileMode(mode),
 	})
 
 	return err
@@ -124,8 +135,8 @@ func (f *Fs) Mkdir(name string, mode ihfs.FileMode) error {
 // MkdirAll implements ihfs.MkdirAllFS.
 func (f *Fs) MkdirAll(name string, mode ihfs.FileMode) error {
 	_, err := f.fs.MkdirAll(f.ctx(), &fsv1alpha1.MkdirAllRequest{
-		Name: name,
-		Mode: uint32(mode),
+		Path: name,
+		Perm: filev1alpha1.FileMode(mode),
 	})
 
 	return err
@@ -140,7 +151,7 @@ func (f *Fs) Remove(name string) error {
 
 // RemoveAll implements ihfs.RemoveAllFS.
 func (f *Fs) RemoveAll(name string) error {
-	_, err := f.fs.RemoveAll(f.ctx(), &fsv1alpha1.RemoveAllRequest{Name: name})
+	_, err := f.fs.RemoveAll(f.ctx(), &fsv1alpha1.RemoveAllRequest{Path: name})
 
 	return err
 }
@@ -148,8 +159,8 @@ func (f *Fs) RemoveAll(name string) error {
 // Rename implements ihfs.RenameFS.
 func (f *Fs) Rename(oldpath, newpath string) error {
 	_, err := f.fs.Rename(f.ctx(), &fsv1alpha1.RenameRequest{
-		Oldpath: oldpath,
-		Newpath: newpath,
+		Oldname: oldpath,
+		Newname: newpath,
 	})
 
 	return err
@@ -159,7 +170,7 @@ func (f *Fs) Rename(oldpath, newpath string) error {
 func (f *Fs) Chmod(name string, mode ihfs.FileMode) error {
 	_, err := f.fs.Chmod(f.ctx(), &fsv1alpha1.ChmodRequest{
 		Name: name,
-		Mode: uint32(mode),
+		Mode: filev1alpha1.FileMode(mode),
 	})
 
 	return err
@@ -187,55 +198,37 @@ func (f *Fs) Chtimes(name string, atime, mtime time.Time) error {
 	return err
 }
 
-// Symlink implements ihfs.SymlinkFS.
-func (f *Fs) Symlink(oldname, newname string) error {
-	_, err := f.fs.Symlink(f.ctx(), &fsv1alpha1.SymlinkRequest{
-		Oldname: oldname,
-		Newname: newname,
+// OpenFile implements ihfs.OpenFileFS.
+func (f *Fs) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.File, error) {
+	res, err := f.fs.OpenFile(f.ctx(), &fsv1alpha1.OpenFileRequest{
+		Name: name,
+		Flag: int64(flag),
+		Perm: filev1alpha1.FileMode(perm),
 	})
-
-	return err
-}
-
-// ReadLink implements ihfs.ReadLinkFS.
-func (f *Fs) ReadLink(name string) (string, error) {
-	res, err := f.fs.ReadLink(f.ctx(), &fsv1alpha1.ReadLinkRequest{Name: name})
-	if err != nil {
-		return "", err
-	}
-
-	return res.Target, nil
-}
-
-// Lstat implements ihfs.ReadLinkFS.
-func (f *Fs) Lstat(name string) (ihfs.FileInfo, error) {
-	res, err := f.fs.Lstat(f.ctx(), &fsv1alpha1.LstatRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
 
-	return fromProtoFileInfo(res.FileInfo), nil
+	return &File{client: f.file, file: res.File, ctx: f.ctx}, nil
 }
 
 // Verify interface compliance.
 var (
-	_ ihfs.FS        = (*Fs)(nil)
-	_ ihfs.StatFS    = (*Fs)(nil)
-	_ ihfs.ReadDirFS = (*Fs)(nil)
-	_ ihfs.ReadFileFS = (*Fs)(nil)
-	_ ihfs.GlobFS    = (*Fs)(nil)
-	_ ihfs.CreateFS  = (*Fs)(nil)
+	_ ihfs.FS          = (*Fs)(nil)
+	_ ihfs.StatFS      = (*Fs)(nil)
+	_ ihfs.ReadDirFS   = (*Fs)(nil)
+	_ ihfs.ReadFileFS  = (*Fs)(nil)
+	_ ihfs.CreateFS    = (*Fs)(nil)
 	_ ihfs.WriteFileFS = (*Fs)(nil)
-	_ ihfs.MkdirFS   = (*Fs)(nil)
-	_ ihfs.MkdirAllFS = (*Fs)(nil)
-	_ ihfs.RemoveFS  = (*Fs)(nil)
+	_ ihfs.MkdirFS     = (*Fs)(nil)
+	_ ihfs.MkdirAllFS  = (*Fs)(nil)
+	_ ihfs.RemoveFS    = (*Fs)(nil)
 	_ ihfs.RemoveAllFS = (*Fs)(nil)
-	_ ihfs.RenameFS  = (*Fs)(nil)
-	_ ihfs.ChmodFS   = (*Fs)(nil)
-	_ ihfs.ChownFS   = (*Fs)(nil)
-	_ ihfs.ChtimesFS = (*Fs)(nil)
-	_ ihfs.SymlinkFS = (*Fs)(nil)
-	_ ihfs.ReadLinkFS = (*Fs)(nil)
+	_ ihfs.RenameFS    = (*Fs)(nil)
+	_ ihfs.ChmodFS     = (*Fs)(nil)
+	_ ihfs.ChownFS     = (*Fs)(nil)
+	_ ihfs.ChtimesFS   = (*Fs)(nil)
+	_ ihfs.OpenFileFS  = (*Fs)(nil)
 )
 
 // FsServer wraps an ihfs.FS and implements the gRPC FsService.
@@ -263,7 +256,24 @@ func (s *FsServer) Open(_ context.Context, req *fsv1alpha1.OpenRequest) (*fsv1al
 	_ = file.Close()
 
 	return &fsv1alpha1.OpenResponse{
-		File: &ihfsv1alpha1.File{Name: req.Name},
+		File: &filev1alpha1.File{Name: req.Name},
+	}, nil
+}
+
+func (s *FsServer) OpenFile(_ context.Context, req *fsv1alpha1.OpenFileRequest) (*fsv1alpha1.OpenFileResponse, error) {
+	fsys, ok := s.fs.(ihfs.OpenFileFS)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "OpenFile not supported")
+	}
+
+	file, err := fsys.OpenFile(req.Name, int(req.Flag), fs.FileMode(req.Perm))
+	if err != nil {
+		return nil, err
+	}
+	_ = file.Close()
+
+	return &fsv1alpha1.OpenFileResponse{
+		File: &filev1alpha1.File{Name: req.Name},
 	}, nil
 }
 
@@ -281,51 +291,59 @@ func (s *FsServer) Stat(_ context.Context, req *fsv1alpha1.StatRequest) (*fsv1al
 	return &fsv1alpha1.StatResponse{FileInfo: toProtoFileInfo(info)}, nil
 }
 
-func (s *FsServer) ReadDir(_ context.Context, req *fsv1alpha1.ReadDirRequest) (*fsv1alpha1.ReadDirResponse, error) {
-	fsys, ok := s.fs.(ihfs.ReadDirFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "ReadDir not supported")
+func (s *FsServer) Read(req *fsv1alpha1.ReadRequest, stream grpc.ServerStreamingServer[fsv1alpha1.ReadResponse]) error {
+	var data []byte
+
+	if rffs, ok := s.fs.(ihfs.ReadFileFS); ok {
+		d, err := rffs.ReadFile(req.Name)
+		if err != nil {
+			return err
+		}
+		data = d
+	} else {
+		f, err := s.fs.Open(req.Name)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = f.Close() }()
+
+		d, err := io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		data = d
 	}
 
-	entries, err := fsys.ReadDir(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	proto := make([]*ihfsv1alpha1.DirEntry, len(entries))
-	for i, e := range entries {
-		proto[i] = toProtoDirEntry(e)
-	}
-
-	return &fsv1alpha1.ReadDirResponse{Entries: proto}, nil
+	return stream.Send(&fsv1alpha1.ReadResponse{Data: data})
 }
 
-func (s *FsServer) ReadFile(_ context.Context, req *fsv1alpha1.ReadFileRequest) (*fsv1alpha1.ReadFileResponse, error) {
-	fsys, ok := s.fs.(ihfs.ReadFileFS)
+func (s *FsServer) Write(stream grpc.ClientStreamingServer[fsv1alpha1.WriteRequest, fsv1alpha1.WriteResponse]) error {
+	fsys, ok := s.fs.(ihfs.WriteFileFS)
 	if !ok {
-		return nil, status.Error(codes.Unimplemented, "ReadFile not supported")
+		return status.Error(codes.Unimplemented, "Write not supported")
 	}
 
-	data, err := fsys.ReadFile(req.Name)
-	if err != nil {
-		return nil, err
+	var name string
+	var data []byte
+	for {
+		req, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if name == "" {
+			name = req.Name
+		}
+		data = append(data, req.Data...)
 	}
 
-	return &fsv1alpha1.ReadFileResponse{Data: data}, nil
-}
-
-func (s *FsServer) Glob(_ context.Context, req *fsv1alpha1.GlobRequest) (*fsv1alpha1.GlobResponse, error) {
-	fsys, ok := s.fs.(ihfs.GlobFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "Glob not supported")
+	if err := fsys.WriteFile(name, data, 0); err != nil {
+		return err
 	}
 
-	matches, err := fsys.Glob(req.Pattern)
-	if err != nil {
-		return nil, err
-	}
-
-	return &fsv1alpha1.GlobResponse{Matches: matches}, nil
+	return stream.SendAndClose(&fsv1alpha1.WriteResponse{})
 }
 
 func (s *FsServer) Create(_ context.Context, req *fsv1alpha1.CreateRequest) (*fsv1alpha1.CreateResponse, error) {
@@ -341,21 +359,8 @@ func (s *FsServer) Create(_ context.Context, req *fsv1alpha1.CreateRequest) (*fs
 	_ = file.Close()
 
 	return &fsv1alpha1.CreateResponse{
-		File: &ihfsv1alpha1.File{Name: req.Name},
+		File: &filev1alpha1.File{Name: req.Name},
 	}, nil
-}
-
-func (s *FsServer) WriteFile(_ context.Context, req *fsv1alpha1.WriteFileRequest) (*fsv1alpha1.WriteFileResponse, error) {
-	fsys, ok := s.fs.(ihfs.WriteFileFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "WriteFile not supported")
-	}
-
-	if err := fsys.WriteFile(req.Name, req.Data, fs.FileMode(req.Perm)); err != nil {
-		return nil, err
-	}
-
-	return &fsv1alpha1.WriteFileResponse{}, nil
 }
 
 func (s *FsServer) Mkdir(_ context.Context, req *fsv1alpha1.MkdirRequest) (*fsv1alpha1.MkdirResponse, error) {
@@ -364,7 +369,7 @@ func (s *FsServer) Mkdir(_ context.Context, req *fsv1alpha1.MkdirRequest) (*fsv1
 		return nil, status.Error(codes.Unimplemented, "Mkdir not supported")
 	}
 
-	if err := fsys.Mkdir(req.Name, fs.FileMode(req.Mode)); err != nil {
+	if err := fsys.Mkdir(req.Name, fs.FileMode(req.Perm)); err != nil {
 		return nil, err
 	}
 
@@ -377,7 +382,7 @@ func (s *FsServer) MkdirAll(_ context.Context, req *fsv1alpha1.MkdirAllRequest) 
 		return nil, status.Error(codes.Unimplemented, "MkdirAll not supported")
 	}
 
-	if err := fsys.MkdirAll(req.Name, fs.FileMode(req.Mode)); err != nil {
+	if err := fsys.MkdirAll(req.Path, fs.FileMode(req.Perm)); err != nil {
 		return nil, err
 	}
 
@@ -403,7 +408,7 @@ func (s *FsServer) RemoveAll(_ context.Context, req *fsv1alpha1.RemoveAllRequest
 		return nil, status.Error(codes.Unimplemented, "RemoveAll not supported")
 	}
 
-	if err := fsys.RemoveAll(req.Name); err != nil {
+	if err := fsys.RemoveAll(req.Path); err != nil {
 		return nil, err
 	}
 
@@ -416,7 +421,7 @@ func (s *FsServer) Rename(_ context.Context, req *fsv1alpha1.RenameRequest) (*fs
 		return nil, status.Error(codes.Unimplemented, "Rename not supported")
 	}
 
-	if err := fsys.Rename(req.Oldpath, req.Newpath); err != nil {
+	if err := fsys.Rename(req.Oldname, req.Newname); err != nil {
 		return nil, err
 	}
 
@@ -460,45 +465,4 @@ func (s *FsServer) Chtimes(_ context.Context, req *fsv1alpha1.ChtimesRequest) (*
 	}
 
 	return &fsv1alpha1.ChtimesResponse{}, nil
-}
-
-func (s *FsServer) Symlink(_ context.Context, req *fsv1alpha1.SymlinkRequest) (*fsv1alpha1.SymlinkResponse, error) {
-	fsys, ok := s.fs.(ihfs.SymlinkFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "Symlink not supported")
-	}
-
-	if err := fsys.Symlink(req.Oldname, req.Newname); err != nil {
-		return nil, err
-	}
-
-	return &fsv1alpha1.SymlinkResponse{}, nil
-}
-
-func (s *FsServer) ReadLink(_ context.Context, req *fsv1alpha1.ReadLinkRequest) (*fsv1alpha1.ReadLinkResponse, error) {
-	fsys, ok := s.fs.(ihfs.ReadLinkFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "ReadLink not supported")
-	}
-
-	target, err := fsys.ReadLink(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &fsv1alpha1.ReadLinkResponse{Target: target}, nil
-}
-
-func (s *FsServer) Lstat(_ context.Context, req *fsv1alpha1.LstatRequest) (*fsv1alpha1.LstatResponse, error) {
-	fsys, ok := s.fs.(ihfs.ReadLinkFS)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "Lstat not supported")
-	}
-
-	info, err := fsys.Lstat(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &fsv1alpha1.LstatResponse{FileInfo: toProtoFileInfo(info)}, nil
 }

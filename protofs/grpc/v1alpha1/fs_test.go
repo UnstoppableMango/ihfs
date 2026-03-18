@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	fsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/fs/v1alpha1"
+	fsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/fs/v1alpha1"
 	protofsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/grpc/v1alpha1"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"google.golang.org/grpc/codes"
@@ -42,28 +42,13 @@ var _ = Describe("FsServer", func() {
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
-	It("should return Unimplemented for ReadDir", func() {
-		_, err := server.ReadDir(context.Background(), &fsv1alpha1.ReadDirRequest{Name: "."})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
-
-	It("should return Unimplemented for ReadFile", func() {
-		_, err := server.ReadFile(context.Background(), &fsv1alpha1.ReadFileRequest{Name: "f"})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
-
-	It("should return Unimplemented for Glob", func() {
-		_, err := server.Glob(context.Background(), &fsv1alpha1.GlobRequest{Pattern: "*.txt"})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
-
 	It("should return Unimplemented for Create", func() {
 		_, err := server.Create(context.Background(), &fsv1alpha1.CreateRequest{Name: "f"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
-	It("should return Unimplemented for WriteFile", func() {
-		_, err := server.WriteFile(context.Background(), &fsv1alpha1.WriteFileRequest{Name: "f"})
+	It("should return Unimplemented for OpenFile", func() {
+		_, err := server.OpenFile(context.Background(), &fsv1alpha1.OpenFileRequest{Name: "f"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
@@ -73,7 +58,7 @@ var _ = Describe("FsServer", func() {
 	})
 
 	It("should return Unimplemented for MkdirAll", func() {
-		_, err := server.MkdirAll(context.Background(), &fsv1alpha1.MkdirAllRequest{Name: "a/b"})
+		_, err := server.MkdirAll(context.Background(), &fsv1alpha1.MkdirAllRequest{Path: "a/b"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
@@ -83,12 +68,12 @@ var _ = Describe("FsServer", func() {
 	})
 
 	It("should return Unimplemented for RemoveAll", func() {
-		_, err := server.RemoveAll(context.Background(), &fsv1alpha1.RemoveAllRequest{Name: "d"})
+		_, err := server.RemoveAll(context.Background(), &fsv1alpha1.RemoveAllRequest{Path: "d"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
 	It("should return Unimplemented for Rename", func() {
-		_, err := server.Rename(context.Background(), &fsv1alpha1.RenameRequest{Oldpath: "a", Newpath: "b"})
+		_, err := server.Rename(context.Background(), &fsv1alpha1.RenameRequest{Oldname: "a", Newname: "b"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
 
@@ -106,21 +91,6 @@ var _ = Describe("FsServer", func() {
 		_, err := server.Chtimes(context.Background(), &fsv1alpha1.ChtimesRequest{Name: "f"})
 		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 	})
-
-	It("should return Unimplemented for Symlink", func() {
-		_, err := server.Symlink(context.Background(), &fsv1alpha1.SymlinkRequest{Oldname: "a", Newname: "b"})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
-
-	It("should return Unimplemented for ReadLink", func() {
-		_, err := server.ReadLink(context.Background(), &fsv1alpha1.ReadLinkRequest{Name: "l"})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
-
-	It("should return Unimplemented for Lstat", func() {
-		_, err := server.Lstat(context.Background(), &fsv1alpha1.LstatRequest{Name: "l"})
-		Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-	})
 })
 
 var _ = Describe("FsServer operation errors", func() {
@@ -135,28 +105,8 @@ var _ = Describe("FsServer operation errors", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should propagate ReadDir errors", func() {
-		_, err := server.ReadDir(context.Background(), &fsv1alpha1.ReadDirRequest{Name: "."})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate ReadFile errors", func() {
-		_, err := server.ReadFile(context.Background(), &fsv1alpha1.ReadFileRequest{Name: "f"})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate Glob errors", func() {
-		_, err := server.Glob(context.Background(), &fsv1alpha1.GlobRequest{Pattern: "*.txt"})
-		Expect(err).To(HaveOccurred())
-	})
-
 	It("should propagate Create errors", func() {
 		_, err := server.Create(context.Background(), &fsv1alpha1.CreateRequest{Name: "f"})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate WriteFile errors", func() {
-		_, err := server.WriteFile(context.Background(), &fsv1alpha1.WriteFileRequest{Name: "f"})
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -166,7 +116,7 @@ var _ = Describe("FsServer operation errors", func() {
 	})
 
 	It("should propagate MkdirAll errors", func() {
-		_, err := server.MkdirAll(context.Background(), &fsv1alpha1.MkdirAllRequest{Name: "a/b"})
+		_, err := server.MkdirAll(context.Background(), &fsv1alpha1.MkdirAllRequest{Path: "a/b"})
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -176,12 +126,12 @@ var _ = Describe("FsServer operation errors", func() {
 	})
 
 	It("should propagate RemoveAll errors", func() {
-		_, err := server.RemoveAll(context.Background(), &fsv1alpha1.RemoveAllRequest{Name: "d"})
+		_, err := server.RemoveAll(context.Background(), &fsv1alpha1.RemoveAllRequest{Path: "d"})
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should propagate Rename errors", func() {
-		_, err := server.Rename(context.Background(), &fsv1alpha1.RenameRequest{Oldpath: "a", Newpath: "b"})
+		_, err := server.Rename(context.Background(), &fsv1alpha1.RenameRequest{Oldname: "a", Newname: "b"})
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -197,21 +147,6 @@ var _ = Describe("FsServer operation errors", func() {
 
 	It("should propagate Chtimes errors", func() {
 		_, err := server.Chtimes(context.Background(), &fsv1alpha1.ChtimesRequest{Name: "f"})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate Symlink errors", func() {
-		_, err := server.Symlink(context.Background(), &fsv1alpha1.SymlinkRequest{Oldname: "a", Newname: "b"})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate ReadLink errors", func() {
-		_, err := server.ReadLink(context.Background(), &fsv1alpha1.ReadLinkRequest{Name: "l"})
-		Expect(err).To(HaveOccurred())
-	})
-
-	It("should propagate Lstat errors", func() {
-		_, err := server.Lstat(context.Background(), &fsv1alpha1.LstatRequest{Name: "l"})
 		Expect(err).To(HaveOccurred())
 	})
 })

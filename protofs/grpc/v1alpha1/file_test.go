@@ -10,15 +10,14 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/file/v1alpha1"
-	ihfsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1"
+	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1"
 	protofsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/grpc/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // fileRef is a convenience helper.
-var fileRef = &ihfsv1alpha1.File{Name: "test.txt"}
+var fileRef = &filev1alpha1.File{Name: "test.txt"}
 
 // createOnlyFS implements CreateFS but Create returns a minimalFile.
 type createOnlyFS struct {
@@ -54,16 +53,11 @@ var _ = Describe("FileServer", func() {
 			Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 		})
 
-		It("should return Unimplemented for ReadDir (file has no ReadDir)", func() {
-			_, err := server.ReadDir(context.Background(), &filev1alpha1.ReadDirRequest{
-				File: fileRef,
-				N:    -1,
+		It("should return Unimplemented for Readdir (file has no ReadDir)", func() {
+			_, err := server.Readdir(context.Background(), &filev1alpha1.ReaddirRequest{
+				File:  fileRef,
+				Count: -1,
 			})
-			Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-		})
-
-		It("should return Unimplemented for Sync (file has no Sync)", func() {
-			_, err := server.Sync(context.Background(), &filev1alpha1.SyncRequest{File: fileRef})
 			Expect(status.Code(err)).To(Equal(codes.Unimplemented))
 		})
 
@@ -73,11 +67,6 @@ var _ = Describe("FileServer", func() {
 				Size: 0,
 			})
 			Expect(status.Code(err)).To(Equal(codes.Unimplemented))
-		})
-
-		It("should succeed for Close", func() {
-			_, err := server.Close(context.Background(), &filev1alpha1.CloseRequest{File: fileRef})
-			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
@@ -193,10 +182,10 @@ func (statErrorFS) Open(string) (ihfs.File, error) { return statErrorFile{}, nil
 // readDirErrorFile implements fs.ReadDirFile but ReadDir returns an error.
 type readDirErrorFile struct{}
 
-func (readDirErrorFile) Read([]byte) (int, error)              { return 0, io.EOF }
-func (readDirErrorFile) Close() error                          { return nil }
-func (readDirErrorFile) Stat() (fs.FileInfo, error)            { return nil, nil }
-func (readDirErrorFile) ReadDir(int) ([]fs.DirEntry, error)    { return nil, errors.New("readdir error") }
+func (readDirErrorFile) Read([]byte) (int, error)           { return 0, io.EOF }
+func (readDirErrorFile) Close() error                       { return nil }
+func (readDirErrorFile) Stat() (fs.FileInfo, error)         { return nil, nil }
+func (readDirErrorFile) ReadDir(int) ([]fs.DirEntry, error) { return nil, errors.New("readdir error") }
 
 type readDirErrorFS struct{}
 
@@ -230,18 +219,6 @@ func (writeAtErrorFile) WriteAt([]byte, int64) (int, error) { return 0, errors.N
 type writeAtErrorCreateFS struct{ minimalFS }
 
 func (writeAtErrorCreateFS) Create(string) (ihfs.File, error) { return writeAtErrorFile{}, nil }
-
-// syncErrorFile implements ihfs.Syncer but Sync returns an error.
-type syncErrorFile struct{}
-
-func (syncErrorFile) Read([]byte) (int, error)   { return 0, io.EOF }
-func (syncErrorFile) Close() error               { return nil }
-func (syncErrorFile) Stat() (fs.FileInfo, error) { return nil, nil }
-func (syncErrorFile) Sync() error                { return errors.New("sync error") }
-
-type syncErrorFS struct{}
-
-func (syncErrorFS) Open(string) (ihfs.File, error) { return syncErrorFile{}, nil }
 
 // truncateErrorFile implements ihfs.Truncater but Truncate returns an error.
 type truncateErrorFile struct{}
@@ -284,16 +261,16 @@ var _ = Describe("FileServer error paths", func() {
 		})
 	})
 
-	Describe("ReadDir", func() {
+	Describe("Readdir", func() {
 		It("should return error when Open fails", func() {
 			server := protofsv1alpha1.NewFileServer(errorOpenFS{})
-			_, err := server.ReadDir(context.Background(), &filev1alpha1.ReadDirRequest{File: fileRef, N: -1})
+			_, err := server.Readdir(context.Background(), &filev1alpha1.ReaddirRequest{File: fileRef, Count: -1})
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should return error when ReadDir fails", func() {
+		It("should return error when Readdir fails", func() {
 			server := protofsv1alpha1.NewFileServer(readDirErrorFS{})
-			_, err := server.ReadDir(context.Background(), &filev1alpha1.ReadDirRequest{File: fileRef, N: -1})
+			_, err := server.Readdir(context.Background(), &filev1alpha1.ReaddirRequest{File: fileRef, Count: -1})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -322,20 +299,6 @@ var _ = Describe("FileServer error paths", func() {
 		It("should return error when WriteAt fails", func() {
 			server := protofsv1alpha1.NewFileServer(writeAtErrorCreateFS{})
 			_, err := server.WriteAt(context.Background(), &filev1alpha1.WriteAtRequest{File: fileRef, Data: []byte("x")})
-			Expect(err).To(HaveOccurred())
-		})
-	})
-
-	Describe("Sync", func() {
-		It("should return error when Open fails", func() {
-			server := protofsv1alpha1.NewFileServer(errorOpenFS{})
-			_, err := server.Sync(context.Background(), &filev1alpha1.SyncRequest{File: fileRef})
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error when Sync fails", func() {
-			server := protofsv1alpha1.NewFileServer(syncErrorFS{})
-			_, err := server.Sync(context.Background(), &filev1alpha1.SyncRequest{File: fileRef})
 			Expect(err).To(HaveOccurred())
 		})
 	})

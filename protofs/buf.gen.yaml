@@ -1,11 +1,17 @@
 version: v2
+inputs:
+  - module: buf.build/unmango/protofs
 plugins:
   - remote: buf.build/protocolbuffers/go
     out: gen
     opt:
       - paths=source_relative
+      - Mdev/unmango/file/v1alpha1/file.proto=github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1;filev1alpha1
+      - Mdev/unmango/fs/v1alpha1/fs.proto=github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/fs/v1alpha1;fsv1alpha1
   - remote: buf.build/grpc/go
     out: gen
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
+      - Mdev/unmango/file/v1alpha1/file.proto=github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1;filev1alpha1
+      - Mdev/unmango/fs/v1alpha1/fs.proto=github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/fs/v1alpha1;fsv1alpha1

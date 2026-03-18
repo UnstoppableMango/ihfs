@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/fs"
 	"net"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -301,29 +300,6 @@ var _ = Describe("E2e", func() {
 		})
 	})
 
-	Describe("Glob", func() {
-		It("should return matching paths", func() {
-			fsys := testfs.New(testfs.WithGlob(func(string) ([]string, error) {
-				return []string{"a.txt", "b.txt"}, nil
-			}))
-
-			client, cleanup := newClient(fsys)
-			DeferCleanup(cleanup)
-
-			matches, err := client.Glob("*.txt")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(matches).To(ConsistOf("a.txt", "b.txt"))
-		})
-
-		It("should propagate errors", func() {
-			client, cleanup := newClient(testfs.New())
-			DeferCleanup(cleanup)
-
-			_, err := client.Glob("*.txt")
-			Expect(err).To(HaveOccurred())
-		})
-	})
-
 	Describe("Create", func() {
 		It("should create a file and return a handle", func() {
 			fsys := testfs.New(testfs.WithCreate(func(string) (ihfs.File, error) {
@@ -373,32 +349,6 @@ var _ = Describe("E2e", func() {
 			n, err := wa.WriteAt([]byte("data"), 10)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(Equal(4))
-		})
-	})
-
-	Describe("File.Sync", func() {
-		It("should sync the file", func() {
-			synced := false
-			fsys := testfs.New(
-				testfs.WithOpen(func(string) (ihfs.File, error) {
-					return &testfs.File{
-						ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
-						SyncFunc:  func() error { synced = true; return nil },
-						StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("f"), nil },
-					}, nil
-				}),
-			)
-
-			client, cleanup := newClient(fsys)
-			DeferCleanup(cleanup)
-
-			file, err := client.Open("f")
-			Expect(err).NotTo(HaveOccurred())
-
-			type syncer interface{ Sync() error }
-			s := file.(syncer)
-			Expect(s.Sync()).To(Succeed())
-			Expect(synced).To(BeTrue())
 		})
 	})
 
@@ -574,72 +524,6 @@ var _ = Describe("E2e", func() {
 			Expect(client.Chtimes("test.txt", now, now)).To(Succeed())
 			Expect(gotAtime).To(BeTemporally("~", now, time.Second))
 			Expect(gotMtime).To(BeTemporally("~", now, time.Second))
-		})
-	})
-
-	Describe("Symlink", func() {
-		It("should create a symlink", func() {
-			var gotOld, gotNew string
-			fsys := testfs.New(testfs.WithSymlink(func(old, new string) error {
-				gotOld, gotNew = old, new
-				return nil
-			}))
-
-			client, cleanup := newClient(fsys)
-			DeferCleanup(cleanup)
-
-			Expect(client.Symlink("target", "link")).To(Succeed())
-			Expect(gotOld).To(Equal("target"))
-			Expect(gotNew).To(Equal("link"))
-		})
-	})
-
-	Describe("ReadLink", func() {
-		It("should return the link target", func() {
-			fsys := testfs.New(testfs.WithReadLink(func(string) (string, error) {
-				return "target", nil
-			}))
-
-			client, cleanup := newClient(fsys)
-			DeferCleanup(cleanup)
-
-			target, err := client.ReadLink("link")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(target).To(Equal("target"))
-		})
-
-		It("should propagate errors", func() {
-			client, cleanup := newClient(testfs.New())
-			DeferCleanup(cleanup)
-
-			_, err := client.ReadLink("link")
-			Expect(err).To(HaveOccurred())
-		})
-	})
-
-	Describe("Lstat", func() {
-		It("should return FileInfo without following symlinks", func() {
-			fi := testfs.NewFileInfo("link")
-			fi.ModeFunc = func() fs.FileMode { return os.ModeSymlink | 0o777 }
-			fsys := testfs.New(testfs.WithLstat(func(string) (ihfs.FileInfo, error) {
-				return fi, nil
-			}))
-
-			client, cleanup := newClient(fsys)
-			DeferCleanup(cleanup)
-
-			info, err := client.Lstat("link")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.Name()).To(Equal("link"))
-			Expect(info.Mode() & os.ModeSymlink).NotTo(BeZero())
-		})
-
-		It("should propagate errors", func() {
-			client, cleanup := newClient(testfs.New())
-			DeferCleanup(cleanup)
-
-			_, err := client.Lstat("link")
-			Expect(err).To(HaveOccurred())
 		})
 	})
 

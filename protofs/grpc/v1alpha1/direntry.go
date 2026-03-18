@@ -3,12 +3,13 @@ package protofsv1alpha1
 import (
 	"io/fs"
 
-	ihfsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1"
+	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// dirEntry wraps a proto DirEntry message and implements fs.DirEntry.
+// dirEntry wraps a proto FileInfo message and implements fs.DirEntry.
 type dirEntry struct {
-	proto *ihfsv1alpha1.DirEntry
+	proto *filev1alpha1.FileInfo
 }
 
 // IsDir implements fs.DirEntry.
@@ -23,46 +24,45 @@ func (d dirEntry) Name() string {
 
 // Type implements fs.DirEntry.
 func (d dirEntry) Type() fs.FileMode {
-	return fs.FileMode(d.proto.Type)
+	return fs.FileMode(d.proto.Mode) & fs.ModeType
 }
 
 // Info implements fs.DirEntry.
 func (d dirEntry) Info() (fs.FileInfo, error) {
-	if d.proto.Info == nil {
-		return nil, nil
-	}
-
-	return fromProtoFileInfo(d.proto.Info), nil
+	return fromProtoFileInfo(d.proto), nil
 }
 
-// ToProtoDirEntry converts an fs.DirEntry to its proto representation.
-func ToProtoDirEntry(entry fs.DirEntry) *ihfsv1alpha1.DirEntry {
-	return toProtoDirEntry(entry)
+// DirEntryToFileInfo converts an fs.DirEntry to a proto FileInfo.
+func DirEntryToFileInfo(entry fs.DirEntry) *filev1alpha1.FileInfo {
+	return dirEntryToFileInfo(entry)
 }
 
-// FromProtoDirEntries converts a slice of proto DirEntry messages to []fs.DirEntry.
-func FromProtoDirEntries(entries []*ihfsv1alpha1.DirEntry) []fs.DirEntry {
-	return fromProtoDirEntries(entries)
+// FileInfosToDirEntries converts a slice of proto FileInfo messages to []fs.DirEntry.
+func FileInfosToDirEntries(infos []*filev1alpha1.FileInfo) []fs.DirEntry {
+	return fileInfosToDirEntries(infos)
 }
 
-func toProtoDirEntry(entry fs.DirEntry) *ihfsv1alpha1.DirEntry {
-	proto := &ihfsv1alpha1.DirEntry{
+func dirEntryToFileInfo(entry fs.DirEntry) *filev1alpha1.FileInfo {
+	fi := &filev1alpha1.FileInfo{
 		Name:  entry.Name(),
 		IsDir: entry.IsDir(),
-		Type:  uint32(entry.Type()),
+		Mode:  filev1alpha1.FileMode(entry.Type()),
 	}
 
 	if info, err := entry.Info(); err == nil && info != nil {
-		proto.Info = toProtoFileInfo(info)
+		fi.Size = info.Size()
+		fi.Mode = filev1alpha1.FileMode(info.Mode())
+		fi.ModTime = timestamppb.New(info.ModTime())
+		fi.IsDir = info.IsDir()
 	}
 
-	return proto
+	return fi
 }
 
-func fromProtoDirEntries(entries []*ihfsv1alpha1.DirEntry) []fs.DirEntry {
-	result := make([]fs.DirEntry, len(entries))
-	for i, e := range entries {
-		result[i] = dirEntry{proto: e}
+func fileInfosToDirEntries(infos []*filev1alpha1.FileInfo) []fs.DirEntry {
+	result := make([]fs.DirEntry, len(infos))
+	for i, info := range infos {
+		result[i] = dirEntry{proto: info}
 	}
 
 	return result

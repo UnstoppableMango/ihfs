@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	ihfsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/ihfs/v1alpha1"
+	filev1alpha1 "github.com/unstoppablemango/ihfs/protofs/gen/dev/unmango/file/v1alpha1"
 	protofsv1alpha1 "github.com/unstoppablemango/ihfs/protofs/grpc/v1alpha1"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -27,7 +27,7 @@ var _ = Describe("FileInfo", func() {
 
 			Expect(proto.Name).To(Equal("test.txt"))
 			Expect(proto.Size).To(Equal(int64(42)))
-			Expect(proto.Mode).To(Equal(uint32(0o644)))
+			Expect(proto.Mode).To(Equal(filev1alpha1.FileMode(0o644)))
 			Expect(proto.ModTime.AsTime()).To(BeTemporally("~", now, time.Second))
 			Expect(proto.IsDir).To(BeFalse())
 		})
@@ -46,10 +46,10 @@ var _ = Describe("FileInfo", func() {
 	Describe("FromProtoFileInfo", func() {
 		It("should convert a proto FileInfo to FileInfo", func() {
 			now := time.Now().UTC().Truncate(time.Second)
-			proto := &ihfsv1alpha1.FileInfo{
+			proto := &filev1alpha1.FileInfo{
 				Name:    "test.txt",
 				Size:    42,
-				Mode:    uint32(0o644),
+				Mode:    filev1alpha1.FileMode(0o644),
 				ModTime: timestamppb.New(now),
 				IsDir:   false,
 			}
@@ -65,7 +65,7 @@ var _ = Describe("FileInfo", func() {
 		})
 
 		It("should convert a directory proto FileInfo", func() {
-			proto := &ihfsv1alpha1.FileInfo{
+			proto := &filev1alpha1.FileInfo{
 				Name:  "subdir",
 				IsDir: true,
 			}
