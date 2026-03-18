@@ -33,6 +33,7 @@
         ./ctrfs
         ./ghfs
         ./mockfs
+        ./protofs
       ];
 
       perSystem =
@@ -61,6 +62,7 @@
                     ./ctrfs
                     ./ghfs
                     ./mockfs
+                    ./protofs
                   ]
                 ));
             };
