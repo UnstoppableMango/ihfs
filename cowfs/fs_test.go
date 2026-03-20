@@ -349,6 +349,29 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
+	Describe("WriteFile", func() {
+		It("should delegate to the layer", func() {
+			var written string
+			layer := testfs.New(
+				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
+					written = name
+					return nil
+				}),
+			)
+
+			cfs := cowfs.New(testfs.New(), layer)
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(written).To(Equal("test.txt"))
+		})
+
+		It("should return error when layer does not support WriteFile", func() {
+			cfs := cowfs.New(testfs.New(), &testfs.BoringFs{})
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("fstest", func() {
 		It("should pass fstest.TestFS", func() {
 			base := memfs.New()

@@ -1378,6 +1378,50 @@ var _ = Describe("Fs", func() {
 		Expect(err).To(HaveOccurred()) // Should fail but not panic
 	})
 
+	Describe("WriteFile", func() {
+		It("should write data to a new file", func() {
+			mfs := memfs.New()
+			err := mfs.WriteFile("test.txt", []byte("hello world"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			file, err := mfs.Open("test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("hello world"))
+		})
+
+		It("should overwrite an existing file", func() {
+			mfs := memfs.New()
+			err := mfs.WriteFile("test.txt", []byte("original"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.WriteFile("test.txt", []byte("new"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			file, err := mfs.Open("test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			content, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("new"))
+		})
+
+		It("should return error when parent directory does not exist", func() {
+			mfs := memfs.New()
+			err := mfs.WriteFile("nonexistent/test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when writing to a directory", func() {
+			mfs := memfs.New()
+			err := mfs.Mkdir("testdir", 0755)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mfs.WriteFile("testdir", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("fstest", func() {
 		It("should pass fstest.TestFS", func() {
 			mfs := memfs.New()

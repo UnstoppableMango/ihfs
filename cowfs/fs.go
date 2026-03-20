@@ -81,6 +81,11 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	}
 }
 
+// WriteFile implements ihfs.WriteFileFS.
+func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
+	return ihfs.WriteFile(f.layer, name, data, perm)
+}
+
 func (f *Fs) isInBase(path string) (bool, error) {
 	if exists, err := try.Exists(f.layer, path); err != nil {
 		return false, fmt.Errorf("layer: %w", err)
