@@ -1,4 +1,4 @@
-package layer
+package v1
 
 import (
 	"archive/tar"
@@ -15,15 +15,8 @@ import (
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
-// FS wraps a [v1.Layer] as a read-only file system.
-//
-// Call [FS.Close] when the FS is no longer needed to release the underlying stream.
-type FS struct {
-	*tarfs.TarFile
-}
-
-// From creates a read-only [io/fs.FS] from a [v1.Layer].
-func From(l v1.Layer) (*FS, error) {
+// FromLayer creates a read-only [io/fs.FS] from a [v1.Layer].
+func FromLayer(l v1.Layer) (*FS, error) {
 	rc, err := l.Uncompressed()
 	if err != nil {
 		return nil, err
@@ -31,9 +24,9 @@ func From(l v1.Layer) (*FS, error) {
 	return &FS{tarfs.FromReader("", rc)}, nil
 }
 
-// Create creates a [v1.Layer] from the files in fsys rooted at dir.
+// ToLayer creates a [v1.Layer] from the files in fsys rooted at dir.
 // The resulting layer contains all files as a gzip-compressed tar archive.
-func Create(fsys ihfs.FS, dir string) (v1.Layer, error) {
+func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
 	var compressed bytes.Buffer
 	if err := writeLayer(fsys, dir, &compressed); err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package image_test
+package v1_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestImage(t *testing.T) {
+func TestV1(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Image Suite")
+	RunSpecs(t, "V1 Suite")
 }

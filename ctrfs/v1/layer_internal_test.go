@@ -1,4 +1,4 @@
-package layer
+package v1
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package layer_test
+package v1_test
 
 import (
 	"archive/tar"
@@ -11,20 +11,20 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
-	"github.com/unstoppablemango/ihfs/ctrfs/v1/layer"
+	ctrfsv1 "github.com/unstoppablemango/ihfs/ctrfs/v1"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("FS", func() {
-	Describe("From", func() {
+	Describe("FromLayer", func() {
 		It("should open a file from a layer", func() {
 			l, err := makeLayer([]tarEntry{
 				{hdr: &tar.Header{Name: "hello.txt", Typeflag: tar.TypeReg, Size: 11, Mode: 0644}, data: "hello world"},
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys, err := layer.From(l)
+			fsys, err := ctrfsv1.FromLayer(l)
 			Expect(err).NotTo(HaveOccurred())
 			defer fsys.Close()
 
@@ -39,7 +39,7 @@ var _ = Describe("FS", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys, err := layer.From(l)
+			fsys, err := ctrfsv1.FromLayer(l)
 			Expect(err).NotTo(HaveOccurred())
 			defer fsys.Close()
 
@@ -58,7 +58,7 @@ var _ = Describe("FS", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				fsys, err := layer.From(l)
+				fsys, err := ctrfsv1.FromLayer(l)
 				Expect(err).NotTo(HaveOccurred())
 				defer fsys.Close()
 
@@ -68,7 +68,7 @@ var _ = Describe("FS", func() {
 		})
 
 		It("should return error when Uncompressed fails", func() {
-			fsys, err := layer.From(&errLayer{err: errors.New("uncompressed error")})
+			fsys, err := ctrfsv1.FromLayer(&errLayer{err: errors.New("uncompressed error")})
 
 			Expect(err).To(MatchError("uncompressed error"))
 			Expect(fsys).To(BeNil())
@@ -76,7 +76,7 @@ var _ = Describe("FS", func() {
 	})
 })
 
-var _ = Describe("Create", func() {
+var _ = Describe("ToLayer", func() {
 	It("should create a layer from an fs.FS", func() {
 		m := memfs.New()
 		Expect(m.Mkdir("subdir", 0755)).To(Succeed())
@@ -86,7 +86,7 @@ var _ = Describe("Create", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(f.Close()).To(Succeed())
 
-		l, err := layer.Create(m, ".")
+		l, err := ctrfsv1.ToLayer(m, ".")
 		Expect(err).NotTo(HaveOccurred())
 
 		rc, err := l.Uncompressed()
@@ -105,7 +105,7 @@ var _ = Describe("Create", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(f.Close()).To(Succeed())
 
-		l, err := layer.Create(m, "src")
+		l, err := ctrfsv1.ToLayer(m, "src")
 		Expect(err).NotTo(HaveOccurred())
 
 		rc, err := l.Uncompressed()
@@ -135,7 +135,7 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		l, err := layer.Create(fsys, ".")
+		l, err := ctrfsv1.ToLayer(fsys, ".")
 		Expect(err).NotTo(HaveOccurred())
 
 		rc, err := l.Uncompressed()
@@ -166,13 +166,13 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		_, err := layer.Create(fsys, ".")
+		_, err := ctrfsv1.ToLayer(fsys, ".")
 
 		Expect(err).To(MatchError(readLinkErr))
 	})
 
 	It("should propagate walk errors", func() {
-		_, err := layer.Create(testfs.BoringFs{}, "nonexistent")
+		_, err := ctrfsv1.ToLayer(testfs.BoringFs{}, "nonexistent")
 
 		Expect(err).To(HaveOccurred())
 	})
@@ -189,7 +189,7 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		_, err := layer.Create(fsys, ".")
+		_, err := ctrfsv1.ToLayer(fsys, ".")
 
 		Expect(err).To(HaveOccurred())
 	})
@@ -205,7 +205,7 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		_, err := layer.Create(fsys, ".")
+		_, err := ctrfsv1.ToLayer(fsys, ".")
 
 		Expect(err).To(MatchError(infoErr))
 	})
@@ -223,7 +223,7 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		_, err := layer.Create(fsys, ".")
+		_, err := ctrfsv1.ToLayer(fsys, ".")
 
 		Expect(err).To(MatchError(openErr))
 	})
@@ -246,7 +246,7 @@ var _ = Describe("Create", func() {
 			}),
 		)
 
-		_, err := layer.Create(fsys, ".")
+		_, err := ctrfsv1.ToLayer(fsys, ".")
 
 		Expect(err).To(MatchError(copyErr))
 	})
