@@ -19,8 +19,13 @@ type Writer struct {
 }
 
 // NewWriter creates a Writer that writes a tar archive to w.
+// If w is already a [tar.Writer], it is used directly.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{tw: tar.NewWriter(w)}
+	tw, ok := w.(*tar.Writer)
+	if !ok {
+		tw = tar.NewWriter(w)
+	}
+	return &Writer{tw: tw}
 }
 
 // Close finalizes the tar archive.
@@ -98,6 +103,10 @@ type writerFile struct {
 	closed bool
 }
 
+func (f *writerFile) Name() string {
+	return f.name
+}
+
 // Close flushes the buffered content as a tar entry.
 // Subsequent calls are no-ops and return nil.
 func (f *writerFile) Close() error {
@@ -121,10 +130,6 @@ func (f *writerFile) Stat() (fs.FileInfo, error) {
 // Write implements [io.Writer].
 func (f *writerFile) Write(p []byte) (int, error) {
 	return f.buf.Write(p)
-}
-
-func (f *writerFile) Name() string {
-	return f.name
 }
 
 func (f *writerFile) perror(op string, err error) error {

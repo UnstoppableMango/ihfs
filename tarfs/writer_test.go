@@ -1,6 +1,7 @@
 package tarfs_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"errors"
 	"io"
@@ -32,6 +33,14 @@ var _ = Describe("Writer", func() {
 	Describe("NewWriter", func() {
 		It("should create a writer", func() {
 			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			Expect(w).NotTo(BeNil())
+		})
+
+		It("should use an existing tar.Writer directly", func() {
+			tw := tar.NewWriter(&bytes.Buffer{})
+
+			w := tarfs.NewWriter(tw)
 
 			Expect(w).NotTo(BeNil())
 		})
@@ -136,6 +145,16 @@ var _ = Describe("Writer", func() {
 
 				Expect(n).To(Equal(0))
 				Expect(err).To(MatchError(ihfs.ErrPermission))
+			})
+		})
+
+		Describe("Name", func() {
+			It("should return the file name", func() {
+				file, err := w.Create("test.txt")
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(file.Close)
+
+				Expect(file).To(HaveField("Name()", "test.txt"))
 			})
 		})
 
