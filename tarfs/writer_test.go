@@ -328,7 +328,7 @@ var _ = Describe("Writer", func() {
 
 		It("should copy symlinks", func() {
 			entry := testfs.NewDirEntry("link.txt", false)
-			entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
 			entry.InfoFunc = func() (ihfs.FileInfo, error) {
 				fi := testfs.NewFileInfo("link.txt")
 				fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
@@ -393,7 +393,7 @@ var _ = Describe("Writer", func() {
 		It("should propagate ReadLink errors", func() {
 			readLinkErr := errors.New("readlink error")
 			entry := testfs.NewDirEntry("link.txt", false)
-			entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeSymlink }
 			entry.InfoFunc = func() (ihfs.FileInfo, error) {
 				fi := testfs.NewFileInfo("link.txt")
 				fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
@@ -416,7 +416,7 @@ var _ = Describe("Writer", func() {
 
 		It("should propagate FileInfoHeader errors for unsupported file types", func() {
 			fi := testfs.NewFileInfo("socket.sock")
-			fi.ModeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSocket) }
+			fi.ModeFunc = func() ihfs.FileMode { return fs.ModeSocket }
 			entry := testfs.NewDirEntry("socket.sock", false)
 			entry.InfoFunc = func() (ihfs.FileInfo, error) { return fi, nil }
 			fsys := testfs.New(
@@ -491,7 +491,7 @@ var _ = Describe("Writer", func() {
 				info, err := f.Stat()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(info.IsDir()).To(BeTrue(), "expected %s to be a directory", dir)
-				f.Close()
+				Expect(f.Close()).To(Succeed())
 			}
 		})
 
