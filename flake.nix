@@ -94,6 +94,7 @@
 
             GINKGO = "${pkgs.ginkgo}/bin/ginkgo";
             GO = "${go}/bin/go";
+            GOLANGCI = "${pkgs.golangci-lint}/bin/golangci-lint";
             GOMOD2NIX = "${gomod2nix}/bin/gomod2nix";
             GOPLS = "${pkgs.gopls}/bin/gopls";
             GORELEASER = "${pkgs.goreleaser}/bin/goreleaser";
