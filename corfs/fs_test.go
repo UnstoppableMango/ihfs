@@ -1496,19 +1496,32 @@ var _ = Describe("Fs", func() {
 	})
 
 	Describe("WriteFile", func() {
-		It("should delegate to the layer", func() {
-			var written string
+		It("should write through to base and layer", func() {
+			var baseWritten, layerWritten string
+			base := testfs.New(
+				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
+					baseWritten = name
+					return nil
+				}),
+			)
 			layer := testfs.New(
 				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
-					written = name
+					layerWritten = name
 					return nil
 				}),
 			)
 
-			cfs := corfs.New(testfs.New(), layer)
+			cfs := corfs.New(base, layer)
 			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(written).To(Equal("test.txt"))
+			Expect(baseWritten).To(Equal("test.txt"))
+			Expect(layerWritten).To(Equal("test.txt"))
+		})
+
+		It("should return error when base does not support WriteFile", func() {
+			cfs := corfs.New(&testfs.BoringFs{}, testfs.New())
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return error when layer does not support WriteFile", func() {
