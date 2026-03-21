@@ -1,6 +1,6 @@
 module github.com/unstoppablemango/ihfs/ctrfs
 
-go 1.25.6
+go 1.25.7
 
 tool (
 	github.com/nix-community/gomod2nix
@@ -8,7 +8,7 @@ tool (
 )
 
 require (
-	github.com/google/go-containerregistry v0.21.2
+	github.com/google/go-containerregistry v0.21.3
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/unstoppablemango/ihfs v0.0.3
@@ -34,11 +34,11 @@ require (
 	github.com/unmango/go v0.15.1 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
 )
