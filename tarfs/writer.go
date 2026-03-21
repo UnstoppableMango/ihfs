@@ -59,7 +59,7 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 	if err := w.tw.WriteHeader(&tar.Header{
 		Name:     name + "/",
 		Typeflag: tar.TypeDir,
-		Mode:     int64(perm),
+		Mode:     int64(perm.Perm()),
 		ModTime:  time.Now(),
 	}); err != nil {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: err}
@@ -72,7 +72,10 @@ func (w *Writer) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "writefile", Path: name, Err: ihfs.ErrInvalid}
 	}
-	return w.writeEntry(name, data, perm)
+	if err := w.writeEntry(name, data, perm); err != nil {
+		return &fs.PathError{Op: "writefile", Path: name, Err: err}
+	}
+	return nil
 }
 
 func (w *Writer) writeEntry(name string, data []byte, perm fs.FileMode) error {
@@ -81,26 +84,27 @@ func (w *Writer) writeEntry(name string, data []byte, perm fs.FileMode) error {
 
 	if err := w.tw.WriteHeader(&tar.Header{
 		Name:    name,
-		Mode:    int64(perm),
+		Mode:    int64(perm.Perm()),
 		Size:    int64(len(data)),
 		ModTime: time.Now(),
 	}); err != nil {
-		return &fs.PathError{Op: "write", Path: name, Err: err}
+		return err
 	}
 
 	if _, err := w.tw.Write(data); err != nil {
-		return &fs.PathError{Op: "write", Path: name, Err: err}
+		return err
 	}
 	return nil
 }
 
 // writerFile is a buffered file handle that flushes content to the tar archive on Close.
 type writerFile struct {
-	name   string
-	perm   fs.FileMode
-	buf    bytes.Buffer
-	w      *Writer
-	closed bool
+	name     string
+	perm     fs.FileMode
+	buf      bytes.Buffer
+	w        *Writer
+	closed   bool
+	closeErr error
 }
 
 func (f *writerFile) Name() string {
@@ -108,13 +112,16 @@ func (f *writerFile) Name() string {
 }
 
 // Close flushes the buffered content as a tar entry.
-// Subsequent calls are no-ops and return nil.
+// If the first Close fails, subsequent calls return the same error.
 func (f *writerFile) Close() error {
 	if f.closed {
-		return nil
+		return f.closeErr
 	}
 	f.closed = true
-	return f.w.writeEntry(f.name, f.buf.Bytes(), f.perm)
+	if err := f.w.writeEntry(f.name, f.buf.Bytes(), f.perm); err != nil {
+		f.closeErr = f.perror("close", err)
+	}
+	return f.closeErr
 }
 
 // Read implements [fs.File]. writerFile is write-only; Read always returns [ihfs.ErrPermission].
@@ -129,6 +136,9 @@ func (f *writerFile) Stat() (fs.FileInfo, error) {
 
 // Write implements [io.Writer].
 func (f *writerFile) Write(p []byte) (int, error) {
+	if f.closed {
+		return 0, f.perror("write", ihfs.ErrClosed)
+	}
 	return f.buf.Write(p)
 }
 

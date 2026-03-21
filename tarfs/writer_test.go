@@ -14,7 +14,7 @@ import (
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
-// failAfterWriter allows n Write calls to succeed, then returns err on all subsequent calls.
+// failAfterWriter allows n bytes to be written successfully, then returns err on all subsequent calls.
 type failAfterWriter struct {
 	w   io.Writer
 	n   int
@@ -22,11 +22,12 @@ type failAfterWriter struct {
 }
 
 func (f *failAfterWriter) Write(p []byte) (int, error) {
-	if f.n == 0 {
+	if f.n <= 0 {
 		return 0, f.err
 	}
-	f.n--
-	return f.w.Write(p)
+	n, err := f.w.Write(p)
+	f.n -= n
+	return n, err
 }
 
 var _ = Describe("Writer", func() {
@@ -171,6 +172,19 @@ var _ = Describe("Writer", func() {
 			})
 		})
 
+		Describe("Write", func() {
+			It("should return ErrClosed after Close", func() {
+				file, err := w.Create("test.txt")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(file.Close()).To(Succeed())
+
+				n, err := file.(io.Writer).Write([]byte("data"))
+
+				Expect(n).To(Equal(0))
+				Expect(err).To(MatchError(ihfs.ErrClosed))
+			})
+		})
+
 		Describe("Close", func() {
 			It("should return error when writeEntry fails", func() {
 				file, err := w.Create("test.txt")
@@ -184,6 +198,18 @@ var _ = Describe("Writer", func() {
 
 				err = file.Close()
 				Expect(err).To(HaveOccurred())
+			})
+
+			It("should return the same error on subsequent calls after a failed close", func() {
+				file, err := w.Create("test.txt")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Close the Writer first so the subsequent writeEntry in file.Close fails
+				Expect(w.Close()).To(Succeed())
+
+				firstErr := file.Close()
+				Expect(firstErr).To(HaveOccurred())
+				Expect(file.Close()).To(MatchError(firstErr))
 			})
 
 			It("should be idempotent", func() {
@@ -274,8 +300,8 @@ var _ = Describe("Writer", func() {
 
 		It("should return error when Write fails", func() {
 			writeErr := errors.New("write failed")
-			// Allow 3 writes (tar.WriteHeader makes 3 internal calls), then fail on the data write.
-			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 3, err: writeErr}
+			// Allow 512 bytes (one tar block written by WriteHeader), then fail on the data write.
+			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 512, err: writeErr}
 			w := tarfs.NewWriter(fw)
 
 			err := w.WriteFile("test.txt", []byte("data"), 0644)
