@@ -12,8 +12,22 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
+	"github.com/unstoppablemango/ihfs/testfs"
 )
+
+func rootDirStat(name string) (ihfs.FileInfo, error) {
+	fi := testfs.NewFileInfo(name)
+	fi.IsDirFunc = func() bool { return name == "." }
+	fi.ModeFunc = func() fs.FileMode {
+		if name == "." {
+			return fs.ModeDir
+		}
+		return 0
+	}
+	return fi, nil
+}
 
 // failAfterWriter allows n bytes to be written successfully, then returns err on all subsequent calls.
 type failAfterWriter struct {
@@ -260,6 +274,186 @@ var _ = Describe("Writer", func() {
 			Expect(w.Close()).To(Succeed())
 
 			err := w.Mkdir("mydir", 0755)
+
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Copy", func() {
+		It("should copy files with full metadata", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			m := memfs.New()
+			Expect(m.Mkdir("subdir", 0755)).To(Succeed())
+			f, err := m.Create("subdir/hello.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(io.Writer).Write([]byte("hello"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			Expect(w.Copy(".", m)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			data, err := fs.ReadFile(tfs, "subdir/hello.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("hello"))
+		})
+
+		It("should apply the dir prefix to all entries", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			m := memfs.New()
+			Expect(m.WriteFile("app.bin", []byte("bin"), 0755)).To(Succeed())
+
+			Expect(w.Copy("usr/local", m)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			var names []string
+			for {
+				hdr, err := tr.Next()
+				if err == io.EOF {
+					break
+				}
+				Expect(err).NotTo(HaveOccurred())
+				if hdr.Name != "." {
+					names = append(names, hdr.Name)
+				}
+			}
+			Expect(names).To(ContainElement("usr/local/app.bin"))
+		})
+
+		It("should copy symlinks", func() {
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo("link.txt")
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
+				return fi, nil
+			}
+			fsys := testfs.New(
+				testfs.WithStat(rootDirStat),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithReadLink(func(string) (string, error) {
+					return "target.txt", nil
+				}),
+			)
+
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+			Expect(w.Copy(".", fsys)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			var found bool
+			for {
+				hdr, err := tr.Next()
+				if err == io.EOF {
+					break
+				}
+				Expect(err).NotTo(HaveOccurred())
+				if hdr.Name == "link.txt" {
+					found = true
+					Expect(hdr.Typeflag).To(Equal(uint8(tar.TypeSymlink)))
+					Expect(hdr.Linkname).To(Equal("target.txt"))
+				}
+			}
+			Expect(found).To(BeTrue())
+		})
+
+		It("should propagate walk errors", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			err := w.Copy(".", testfs.BoringFs{})
+
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should propagate Info errors", func() {
+			infoErr := errors.New("info error")
+			entry := testfs.NewDirEntry("file.txt", false)
+			entry.InfoFunc = func() (ihfs.FileInfo, error) { return nil, infoErr }
+			fsys := testfs.New(
+				testfs.WithStat(rootDirStat),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+
+			err := tarfs.NewWriter(&bytes.Buffer{}).Copy(".", fsys)
+
+			Expect(err).To(MatchError(infoErr))
+		})
+
+		It("should propagate ReadLink errors", func() {
+			readLinkErr := errors.New("readlink error")
+			entry := testfs.NewDirEntry("link.txt", false)
+			entry.TypeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSymlink) }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo("link.txt")
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeSymlink }
+				return fi, nil
+			}
+			fsys := testfs.New(
+				testfs.WithStat(rootDirStat),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithReadLink(func(string) (string, error) {
+					return "", readLinkErr
+				}),
+			)
+
+			err := tarfs.NewWriter(&bytes.Buffer{}).Copy(".", fsys)
+
+			Expect(err).To(MatchError(readLinkErr))
+		})
+
+		It("should propagate FileInfoHeader errors for unsupported file types", func() {
+			fi := testfs.NewFileInfo("socket.sock")
+			fi.ModeFunc = func() ihfs.FileMode { return ihfs.FileMode(fs.ModeSocket) }
+			entry := testfs.NewDirEntry("socket.sock", false)
+			entry.InfoFunc = func() (ihfs.FileInfo, error) { return fi, nil }
+			fsys := testfs.New(
+				testfs.WithStat(rootDirStat),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+
+			err := tarfs.NewWriter(&bytes.Buffer{}).Copy(".", fsys)
+
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should propagate Open errors for regular files", func() {
+			openErr := errors.New("open error")
+			entry := testfs.NewDirEntry("file.txt", false)
+			fsys := testfs.New(
+				testfs.WithStat(rootDirStat),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return nil, openErr
+				}),
+			)
+
+			err := tarfs.NewWriter(&bytes.Buffer{}).Copy(".", fsys)
+
+			Expect(err).To(MatchError(openErr))
+		})
+
+		It("should propagate WriteEntry errors", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+			Expect(w.Close()).To(Succeed())
+
+			err := w.Copy(".", memfs.New())
 
 			Expect(err).To(HaveOccurred())
 		})

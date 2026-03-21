@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -108,6 +109,52 @@ func (w *Writer) OpenFile(name string, flag int, perm fs.FileMode) (ihfs.File, e
 		return nil, &fs.PathError{Op: "openfile", Path: name, Err: ihfs.ErrPermission}
 	}
 	return &writerFile{name: name, perm: perm, w: w}, nil
+}
+
+// Copy implements [ihfs.CopyFS].
+// It walks fsys from the root and writes each entry into the archive under dir,
+// preserving full metadata via [tar.FileInfoHeader].
+func (w *Writer) Copy(dir string, fsys ihfs.FS) error {
+	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		name := path.Join(dir, p)
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		var link string
+		if d.Type()&fs.ModeSymlink != 0 {
+			if link, err = fs.ReadLink(fsys, p); err != nil {
+				return err
+			}
+		}
+
+		hdr, err := tar.FileInfoHeader(info, link)
+		if err != nil {
+			return err
+		}
+		hdr.Name = name
+		if d.IsDir() && name != "." {
+			hdr.Name += "/"
+		}
+
+		var r io.Reader
+		if d.Type().IsRegular() {
+			f, err := fsys.Open(p)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = f.Close() }()
+			r = f
+		}
+
+		return w.WriteEntry(hdr, r)
+	})
 }
 
 // WriteEntry writes hdr and the optional content from r to the archive.
