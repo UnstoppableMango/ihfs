@@ -1,4 +1,4 @@
-package ctrfs_test
+package image_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCtrfs(t *testing.T) {
+func TestImage(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Ctrfs Suite")
+	RunSpecs(t, "Image Suite")
 }

@@ -1,4 +1,4 @@
-package ctrfs_test
+package layer_test
 
 import (
 	"archive/tar"

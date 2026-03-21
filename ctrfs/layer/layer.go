@@ -1,39 +1,39 @@
-package ctrfs
+package layer
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"io/fs"
 	"strings"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
-// LayerFS wraps a [v1.Layer] as a read-only file system.
+// FS wraps a [v1.Layer] as a read-only file system.
 //
-// Call [LayerFS.Close] when the FS is no longer needed to release the underlying stream.
-type LayerFS struct {
+// Call [FS.Close] when the FS is no longer needed to release the underlying stream.
+type FS struct {
 	*tarfs.TarFile
 }
 
-// FromLayer creates a read-only [io/fs.FS] from a [v1.Layer].
-func FromLayer(layer v1.Layer) (*LayerFS, error) {
-	rc, err := layer.Uncompressed()
+// From creates a read-only [io/fs.FS] from a [v1.Layer].
+func From(l v1.Layer) (*FS, error) {
+	rc, err := l.Uncompressed()
 	if err != nil {
 		return nil, err
 	}
-	return &LayerFS{tarfs.FromReader("", rc)}, nil
+	return &FS{tarfs.FromReader("", rc)}, nil
 }
 
-// ToLayer creates a [v1.Layer] from the files in fsys rooted at dir.
+// Create creates a [v1.Layer] from the files in fsys rooted at dir.
 // The resulting layer contains all files as a gzip-compressed tar archive.
-func ToLayer(fsys ihfs.FS, dir string) (v1.Layer, error) {
+func Create(fsys ihfs.FS, dir string) (v1.Layer, error) {
 	var compressed bytes.Buffer
 	if err := writeLayer(fsys, dir, &compressed); err != nil {
 		return nil, err
@@ -95,19 +95,7 @@ func writeLayer(fsys ihfs.FS, dir string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	return gw.Close()
-}
-
-// ToImage appends a new layer built from fsys onto base and returns the resulting image.
-func ToImage(base v1.Image, fsys ihfs.FS, dir string) (v1.Image, error) {
-	layer, err := ToLayer(fsys, dir)
-	if err != nil {
-		return nil, err
-	}
-	return mutate.AppendLayers(base, layer)
+	return errors.Join(tw.Close(), gw.Close())
 }
 
 // entryName computes the tar entry name for a path p relative to dir.
