@@ -11,13 +11,16 @@ clean:
 lint:
 	$(GOLANGCI) run ./...
 
+check: lint validate
+	nix flake check
+
 format fmt:
 	nix fmt
 
 validate:
-	curl --data-binary @codecov.yml https://codecov.io/validate
+	curl -s --data-binary @codecov.yml https://codecov.io/validate | head -n 1
 
-generate gen:
+generate gen: docs/gopls.instructions.md
 	$(MAKE) -C mockfs generate
 
 gomod2nix: gomod2nix.toml
@@ -25,11 +28,13 @@ gomod2nix: gomod2nix.toml
 	$(MAKE) -C ghfs gomod2nix.toml
 	$(MAKE) -C mockfs gomod2nix.toml
 
-.PHONY: docs/gopls.instructions.md
-docs/gopls.instructions.md:
+update:
+	nix flake update
+
+docs/gopls.instructions.md: flake.nix flake.lock
 	$(GOPLS) mcp -instructions > $@
 
-.golangci-lint-version: flake.nix flake.lock
+.golangci-lint-version: flake.lock
 	$(GOLANGCI) version --short > $@
 
 .PHONY: ghfs mockfs
