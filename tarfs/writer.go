@@ -54,17 +54,46 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: ihfs.ErrInvalid}
 	}
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if err := w.tw.WriteHeader(&tar.Header{
+	err := w.WriteEntry(&tar.Header{
 		Name:     name + "/",
 		Typeflag: tar.TypeDir,
 		Mode:     int64(perm.Perm()),
 		ModTime:  time.Now(),
-	}); err != nil {
+	}, nil)
+	if err != nil {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: err}
 	}
 	return nil
+}
+
+// WriteEntry writes hdr and the optional content from r to the archive.
+// r may be nil for entries with no body (directories, symlinks).
+// Use [tar.FileInfoHeader] to build hdr from an [fs.FileInfo] to preserve metadata.
+func (w *Writer) WriteEntry(hdr *tar.Header, r io.Reader) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if r != nil {
+		if _, err := io.Copy(w.tw, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Symlink writes a symlink tar entry with the given name pointing to target.
+func (w *Writer) Symlink(name, target string) error {
+	if !fs.ValidPath(name) {
+		return &fs.PathError{Op: "symlink", Path: name, Err: ihfs.ErrInvalid}
+	}
+	return w.WriteEntry(&tar.Header{
+		Typeflag: tar.TypeSymlink,
+		Name:     name,
+		Linkname: target,
+		ModTime:  time.Now(),
+	}, nil)
 }
 
 // WriteFile implements [ihfs.WriteFileFS].
@@ -72,27 +101,14 @@ func (w *Writer) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "writefile", Path: name, Err: ihfs.ErrInvalid}
 	}
-	if err := w.writeEntry(name, data, perm); err != nil {
-		return &fs.PathError{Op: "writefile", Path: name, Err: err}
-	}
-	return nil
-}
-
-func (w *Writer) writeEntry(name string, data []byte, perm fs.FileMode) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	if err := w.tw.WriteHeader(&tar.Header{
+	err := w.WriteEntry(&tar.Header{
 		Name:    name,
 		Mode:    int64(perm.Perm()),
 		Size:    int64(len(data)),
 		ModTime: time.Now(),
-	}); err != nil {
-		return err
-	}
-
-	if _, err := w.tw.Write(data); err != nil {
-		return err
+	}, bytes.NewReader(data))
+	if err != nil {
+		return &fs.PathError{Op: "writefile", Path: name, Err: err}
 	}
 	return nil
 }
@@ -118,7 +134,13 @@ func (f *writerFile) Close() error {
 		return f.closeErr
 	}
 	f.closed = true
-	if err := f.w.writeEntry(f.name, f.buf.Bytes(), f.perm); err != nil {
+	err := f.w.WriteEntry(&tar.Header{
+		Name:    f.name,
+		Mode:    int64(f.perm.Perm()),
+		Size:    int64(f.buf.Len()),
+		ModTime: time.Now(),
+	}, &f.buf)
+	if err != nil {
 		f.closeErr = f.perror("close", err)
 	}
 	return f.closeErr
