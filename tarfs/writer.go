@@ -83,15 +83,15 @@ func (w *Writer) WriteEntry(hdr *tar.Header, r io.Reader) error {
 	return nil
 }
 
-// Symlink writes a symlink tar entry with the given name pointing to target.
-func (w *Writer) Symlink(name, target string) error {
-	if !fs.ValidPath(name) {
-		return &fs.PathError{Op: "symlink", Path: name, Err: ihfs.ErrInvalid}
+// Symlink writes a symlink tar entry named newname pointing to oldname.
+func (w *Writer) Symlink(oldname, newname string) error {
+	if !fs.ValidPath(newname) {
+		return &fs.PathError{Op: "symlink", Path: newname, Err: ihfs.ErrInvalid}
 	}
 	return w.WriteEntry(&tar.Header{
 		Typeflag: tar.TypeSymlink,
-		Name:     name,
-		Linkname: target,
+		Name:     newname,
+		Linkname: oldname,
 		ModTime:  time.Now(),
 	}, nil)
 }

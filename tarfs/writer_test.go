@@ -333,7 +333,7 @@ var _ = Describe("Writer", func() {
 			var buf bytes.Buffer
 			w := tarfs.NewWriter(&buf)
 
-			Expect(w.Symlink("link.txt", "target.txt")).To(Succeed())
+			Expect(w.Symlink("target.txt", "link.txt")).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
 			tr := tar.NewReader(&buf)
@@ -347,7 +347,7 @@ var _ = Describe("Writer", func() {
 		It("should return ErrInvalid for an invalid path", func() {
 			w := tarfs.NewWriter(&bytes.Buffer{})
 
-			err := w.Symlink("../invalid", "target.txt")
+			err := w.Symlink("target.txt", "../invalid")
 
 			Expect(err).To(MatchError(ihfs.ErrInvalid))
 		})
@@ -356,7 +356,7 @@ var _ = Describe("Writer", func() {
 			w := tarfs.NewWriter(&bytes.Buffer{})
 			Expect(w.Close()).To(Succeed())
 
-			err := w.Symlink("link.txt", "target.txt")
+			err := w.Symlink("target.txt", "link.txt")
 
 			Expect(err).To(HaveOccurred())
 		})
