@@ -3,8 +3,12 @@ package tarfs
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"io"
 	"io/fs"
+	"os"
+	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,8 +18,9 @@ import (
 // Writer provides a write-only tar-backed filesystem.
 // Call [Writer.Close] to finalize the archive.
 type Writer struct {
-	tw *tar.Writer
-	mu sync.Mutex
+	tw      *tar.Writer
+	mu      sync.Mutex
+	written map[string]struct{}
 }
 
 // NewWriter creates a Writer that writes a tar archive to w.
@@ -25,7 +30,10 @@ func NewWriter(w io.Writer) *Writer {
 	if !ok {
 		tw = tar.NewWriter(w)
 	}
-	return &Writer{tw: tw}
+	return &Writer{
+		tw:      tw,
+		written: make(map[string]struct{}),
+	}
 }
 
 // Close finalizes the tar archive.
@@ -54,16 +62,121 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: ihfs.ErrInvalid}
 	}
-	err := w.WriteEntry(&tar.Header{
+	hdr := &tar.Header{
 		Name:     name + "/",
 		Typeflag: tar.TypeDir,
 		Mode:     int64(perm.Perm()),
 		ModTime:  time.Now(),
-	}, nil)
-	if err != nil {
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.writeEntry(hdr, nil); err != nil {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: err}
 	}
 	return nil
+}
+
+// MkdirAll implements [ihfs.MkdirAllFS].
+// It writes a directory tar entry for each path component not previously created.
+// If name is already a directory, MkdirAll does nothing and returns nil.
+func (w *Writer) MkdirAll(name string, perm fs.FileMode) error {
+	if name == "." {
+		return nil
+	}
+	if !fs.ValidPath(name) {
+		return &fs.PathError{Op: "mkdirall", Path: name, Err: ihfs.ErrInvalid}
+	}
+	parts := strings.Split(name, "/")
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for i := range parts {
+		part := strings.Join(parts[:i+1], "/")
+		hdr := &tar.Header{
+			Name:     part + "/",
+			Typeflag: tar.TypeDir,
+			Mode:     int64(perm.Perm()),
+			ModTime:  time.Now(),
+		}
+		if err := w.writeEntry(hdr, nil); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				continue
+			}
+			return &fs.PathError{Op: "mkdirall", Path: part, Err: err}
+		}
+	}
+	return nil
+}
+
+// OpenFile implements [ihfs.OpenFileFS].
+// Writer is write-only; OpenFile requires [os.O_WRONLY] or [os.O_RDWR] in flag.
+func (w *Writer) OpenFile(name string, flag int, perm fs.FileMode) (ihfs.File, error) {
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "openfile", Path: name, Err: ihfs.ErrInvalid}
+	}
+	if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
+		return nil, &fs.PathError{Op: "openfile", Path: name, Err: ihfs.ErrPermission}
+	}
+	return &writerFile{name: name, perm: perm, w: w}, nil
+}
+
+// Copy implements [ihfs.CopyFS].
+// It walks fsys from the root and writes each entry into the archive under dir,
+// preserving full metadata via [tar.FileInfoHeader].
+func (w *Writer) Copy(dir string, fsys ihfs.FS) error {
+	if dir != "" && !fs.ValidPath(dir) {
+		return &fs.PathError{Op: "copy", Path: dir, Err: ihfs.ErrInvalid}
+	}
+	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		name := path.Join(dir, p)
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		var link string
+		if info.Mode()&fs.ModeSymlink != 0 {
+			if link, err = fs.ReadLink(fsys, p); err != nil {
+				return err
+			}
+		}
+
+		hdr, err := tar.FileInfoHeader(info, link)
+		if err != nil {
+			return err
+		}
+		hdr.Name = name
+		if d.IsDir() && name != "." {
+			hdr.Name += "/"
+		}
+
+		var r io.Reader
+		if info.Mode().IsRegular() {
+			f, err := fsys.Open(p)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = f.Close() }()
+			r = f
+		}
+
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		if err := w.writeEntry(hdr, r); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				if d.IsDir() {
+					return nil
+				}
+				return &fs.PathError{Op: "copy", Path: name, Err: fs.ErrExist}
+			}
+			return err
+		}
+		return nil
+	})
 }
 
 // WriteEntry writes hdr and the optional content from r to the archive.
@@ -72,6 +185,16 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 func (w *Writer) WriteEntry(hdr *tar.Header, r io.Reader) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	return w.writeEntry(hdr, r)
+}
+
+// writeEntry writes hdr and r to tw. Caller must hold w.mu.
+// Returns [fs.ErrExist] if an entry with the same name was already written.
+func (w *Writer) writeEntry(hdr *tar.Header, r io.Reader) error {
+	key := strings.TrimSuffix(hdr.Name, "/")
+	if _, seen := w.written[key]; seen {
+		return fs.ErrExist
+	}
 	if err := w.tw.WriteHeader(hdr); err != nil {
 		return err
 	}
@@ -80,6 +203,7 @@ func (w *Writer) WriteEntry(hdr *tar.Header, r io.Reader) error {
 			return err
 		}
 	}
+	w.written[key] = struct{}{}
 	return nil
 }
 
