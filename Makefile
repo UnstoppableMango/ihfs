@@ -31,7 +31,7 @@ gomod2nix: gomod2nix.toml
 update:
 	nix flake update
 
-docs/gopls.instructions.md: flake.lock
+docs/gopls.instructions.md: flake.nix flake.lock
 	$(GOPLS) mcp -instructions > $@
 
 .golangci-lint-version: flake.lock
