@@ -457,6 +457,23 @@ var _ = Describe("Writer", func() {
 
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("should return ErrInvalid for an invalid dir", func() {
+			err := tarfs.NewWriter(&bytes.Buffer{}).Copy("../invalid", memfs.New())
+
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+		})
+
+		It("should return ErrExist when copying the same file twice", func() {
+			m := memfs.New()
+			Expect(m.WriteFile("file.txt", []byte("data"), 0644)).To(Succeed())
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			Expect(w.Copy(".", m)).To(Succeed())
+			err := w.Copy(".", m)
+
+			Expect(err).To(MatchError(fs.ErrExist))
+		})
 	})
 
 	Describe("MkdirAll", func() {
