@@ -31,7 +31,7 @@ func (f *failAfterWriter) Write(p []byte) (int, error) {
 var _ = Describe("Writer", func() {
 	Describe("NewWriter", func() {
 		It("should create a writer", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 
 			Expect(w).NotTo(BeNil())
 		})
@@ -40,7 +40,7 @@ var _ = Describe("Writer", func() {
 	Describe("Close", func() {
 		It("should finalize the tar archive", func() {
 			var buf bytes.Buffer
-			w := tarfs.NewWriter("test.tar", &buf)
+			w := tarfs.NewWriter(&buf)
 
 			Expect(w.Close()).To(Succeed())
 
@@ -52,7 +52,7 @@ var _ = Describe("Writer", func() {
 		It("should return error when underlying writer fails on close", func() {
 			writeErr := errors.New("write failed")
 			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 0, err: writeErr}
-			w := tarfs.NewWriter("test.tar", fw)
+			w := tarfs.NewWriter(fw)
 
 			err := w.Close()
 
@@ -62,7 +62,7 @@ var _ = Describe("Writer", func() {
 
 	Describe("Open", func() {
 		It("should return ErrPermission", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 
 			file, err := w.Open("test.txt")
 
@@ -74,7 +74,7 @@ var _ = Describe("Writer", func() {
 	Describe("Create", func() {
 		It("should return a writable file handle for a valid path", func() {
 			var buf bytes.Buffer
-			w := tarfs.NewWriter("test.tar", &buf)
+			w := tarfs.NewWriter(&buf)
 
 			file, err := w.Create("test.txt")
 
@@ -84,7 +84,7 @@ var _ = Describe("Writer", func() {
 		})
 
 		It("should return ErrInvalid for an invalid path", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 
 			file, err := w.Create("../invalid")
 
@@ -94,7 +94,7 @@ var _ = Describe("Writer", func() {
 
 		It("should write buffered content as a tar entry on Close", func() {
 			var buf bytes.Buffer
-			w := tarfs.NewWriter("test.tar", &buf)
+			w := tarfs.NewWriter(&buf)
 
 			file, err := w.Create("hello.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -108,6 +108,7 @@ var _ = Describe("Writer", func() {
 			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("hello.txt")
 			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(f.Close)
 			content, err := io.ReadAll(f)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("hello world"))
@@ -122,7 +123,7 @@ var _ = Describe("Writer", func() {
 
 		BeforeEach(func() {
 			buf.Reset()
-			w = tarfs.NewWriter("test.tar", &buf)
+			w = tarfs.NewWriter(&buf)
 		})
 
 		Describe("Read", func() {
@@ -165,13 +166,28 @@ var _ = Describe("Writer", func() {
 				err = file.Close()
 				Expect(err).To(HaveOccurred())
 			})
+
+			It("should be idempotent", func() {
+				file, err := w.Create("test.txt")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(file.Close()).To(Succeed())
+				Expect(file.Close()).To(Succeed())
+
+				Expect(w.Close()).To(Succeed())
+
+				tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+				entries, err := fs.ReadDir(tfs, ".")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(entries).To(HaveLen(1))
+			})
 		})
 	})
 
 	Describe("Mkdir", func() {
 		It("should write a directory entry", func() {
 			var buf bytes.Buffer
-			w := tarfs.NewWriter("test.tar", &buf)
+			w := tarfs.NewWriter(&buf)
 
 			Expect(w.Mkdir("mydir", 0755)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
@@ -179,13 +195,14 @@ var _ = Describe("Writer", func() {
 			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(f.Close)
 			info, err := f.Stat()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(info.IsDir()).To(BeTrue())
 		})
 
 		It("should return ErrInvalid for an invalid path", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 
 			err := w.Mkdir("../invalid", 0755)
 
@@ -193,7 +210,7 @@ var _ = Describe("Writer", func() {
 		})
 
 		It("should return error when WriteHeader fails", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 			Expect(w.Close()).To(Succeed())
 
 			err := w.Mkdir("mydir", 0755)
@@ -205,7 +222,7 @@ var _ = Describe("Writer", func() {
 	Describe("WriteFile", func() {
 		It("should write file content as a tar entry", func() {
 			var buf bytes.Buffer
-			w := tarfs.NewWriter("test.tar", &buf)
+			w := tarfs.NewWriter(&buf)
 
 			Expect(w.WriteFile("hello.txt", []byte("hello"), 0644)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
@@ -213,13 +230,14 @@ var _ = Describe("Writer", func() {
 			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("hello.txt")
 			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(f.Close)
 			content, err := io.ReadAll(f)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("hello"))
 		})
 
 		It("should return ErrInvalid for an invalid path", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 
 			err := w.WriteFile("../invalid", []byte("data"), 0644)
 
@@ -227,7 +245,7 @@ var _ = Describe("Writer", func() {
 		})
 
 		It("should return error when WriteHeader fails", func() {
-			w := tarfs.NewWriter("test.tar", &bytes.Buffer{})
+			w := tarfs.NewWriter(&bytes.Buffer{})
 			Expect(w.Close()).To(Succeed())
 
 			err := w.WriteFile("test.txt", []byte("data"), 0644)
@@ -237,9 +255,9 @@ var _ = Describe("Writer", func() {
 
 		It("should return error when Write fails", func() {
 			writeErr := errors.New("write failed")
-			// Allow exactly 1 write (the tar header block), then fail on the data write.
-			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 1, err: writeErr}
-			w := tarfs.NewWriter("test.tar", fw)
+			// Allow 3 writes (tar.WriteHeader makes 3 internal calls), then fail on the data write.
+			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 3, err: writeErr}
+			w := tarfs.NewWriter(fw)
 
 			err := w.WriteFile("test.txt", []byte("data"), 0644)
 
