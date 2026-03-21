@@ -1495,6 +1495,42 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
+	Describe("WriteFile", func() {
+		It("should write through to base and layer", func() {
+			var baseWritten, layerWritten string
+			base := testfs.New(
+				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
+					baseWritten = name
+					return nil
+				}),
+			)
+			layer := testfs.New(
+				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
+					layerWritten = name
+					return nil
+				}),
+			)
+
+			cfs := corfs.New(base, layer)
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(baseWritten).To(Equal("test.txt"))
+			Expect(layerWritten).To(Equal("test.txt"))
+		})
+
+		It("should return error when base does not support WriteFile", func() {
+			cfs := corfs.New(&testfs.BoringFs{}, testfs.New())
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when layer does not support WriteFile", func() {
+			cfs := corfs.New(testfs.New(), &testfs.BoringFs{})
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("fstest", func() {
 		It("should pass fstest.TestFS", func() {
 			base := memfs.New()

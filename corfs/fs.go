@@ -59,6 +59,14 @@ const (
 	cacheLocal
 )
 
+// WriteFile implements ihfs.WriteFileFS.
+func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
+	if err := ihfs.WriteFile(f.base, name, data, perm); err != nil {
+		return err
+	}
+	return ihfs.WriteFile(f.layer, name, data, perm)
+}
+
 // cacheStatus checks the cache status of a file
 func (f *Fs) cacheStatus(name string) (state cacheState, fi ihfs.FileInfo, err error) {
 	var lfi, bfi ihfs.FileInfo

@@ -351,6 +351,19 @@ func (f *Fs) OpenFile(name string, flag int, perm os.FileMode) (ihfs.File, error
 	return handle, nil
 }
 
+// WriteFile implements ihfs.WriteFileFS.
+func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
+	file, err := f.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	if _, err = file.(ihfs.Writer).Write(data); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
+}
+
 func (f *Fs) registerWithParent(file *FileData) error {
 	parent := f.findParent(file)
 	if parent == nil {
