@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/unstoppablemango/ihfs/ctrfs/image"
+	"github.com/unstoppablemango/ihfs/ctrfs/v1/image"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
