@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"io"
 	"io/fs"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,8 +16,9 @@ import (
 // Writer provides a write-only tar-backed filesystem.
 // Call [Writer.Close] to finalize the archive.
 type Writer struct {
-	tw *tar.Writer
-	mu sync.Mutex
+	tw   *tar.Writer
+	mu   sync.Mutex
+	dirs map[string]struct{}
 }
 
 // NewWriter creates a Writer that writes a tar archive to w.
@@ -25,7 +28,7 @@ func NewWriter(w io.Writer) *Writer {
 	if !ok {
 		tw = tar.NewWriter(w)
 	}
-	return &Writer{tw: tw}
+	return &Writer{tw: tw, dirs: make(map[string]struct{})}
 }
 
 // Close finalizes the tar archive.
@@ -64,6 +67,47 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: err}
 	}
 	return nil
+}
+
+// MkdirAll implements [ihfs.MkdirAllFS].
+// It writes a directory tar entry for each path component not previously created.
+// If name is already a directory, MkdirAll does nothing and returns nil.
+func (w *Writer) MkdirAll(name string, perm fs.FileMode) error {
+	if name == "." {
+		return nil
+	}
+	if !fs.ValidPath(name) {
+		return &fs.PathError{Op: "mkdirall", Path: name, Err: ihfs.ErrInvalid}
+	}
+	parts := strings.Split(name, "/")
+	for i := range parts {
+		part := strings.Join(parts[:i+1], "/")
+		w.mu.Lock()
+		_, seen := w.dirs[part]
+		w.mu.Unlock()
+		if seen {
+			continue
+		}
+		if err := w.Mkdir(part, perm); err != nil {
+			return err
+		}
+		w.mu.Lock()
+		w.dirs[part] = struct{}{}
+		w.mu.Unlock()
+	}
+	return nil
+}
+
+// OpenFile implements [ihfs.OpenFileFS].
+// Writer is write-only; OpenFile requires [os.O_WRONLY] or [os.O_RDWR] in flag.
+func (w *Writer) OpenFile(name string, flag int, perm fs.FileMode) (ihfs.File, error) {
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "openfile", Path: name, Err: ihfs.ErrInvalid}
+	}
+	if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
+		return nil, &fs.PathError{Op: "openfile", Path: name, Err: ihfs.ErrPermission}
+	}
+	return &writerFile{name: name, perm: perm, w: w}, nil
 }
 
 // WriteEntry writes hdr and the optional content from r to the archive.

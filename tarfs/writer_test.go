@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -261,6 +262,135 @@ var _ = Describe("Writer", func() {
 			err := w.Mkdir("mydir", 0755)
 
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("MkdirAll", func() {
+		It("should write directory entries for each path component", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			Expect(w.MkdirAll("a/b/c", 0755)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			for _, dir := range []string{"a", "a/b", "a/b/c"} {
+				f, err := tfs.Open(dir)
+				Expect(err).NotTo(HaveOccurred(), "expected %s to exist", dir)
+				info, err := f.Stat()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(info.IsDir()).To(BeTrue(), "expected %s to be a directory", dir)
+				f.Close()
+			}
+		})
+
+		It("should not write duplicate entries for already-created directories", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			Expect(w.MkdirAll("a/b", 0755)).To(Succeed())
+			Expect(w.MkdirAll("a/b", 0755)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			var names []string
+			for {
+				hdr, err := tr.Next()
+				if err == io.EOF {
+					break
+				}
+				Expect(err).NotTo(HaveOccurred())
+				names = append(names, hdr.Name)
+			}
+			Expect(names).To(Equal([]string{"a/", "a/b/"}))
+		})
+
+		It("should do nothing for the root path", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			Expect(w.MkdirAll(".", 0755)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			_, err := tr.Next()
+			Expect(err).To(MatchError(io.EOF))
+		})
+
+		It("should return ErrInvalid for an invalid path", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			err := w.MkdirAll("../invalid", 0755)
+
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+		})
+
+		It("should return error when WriteHeader fails", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+			Expect(w.Close()).To(Succeed())
+
+			err := w.MkdirAll("a/b", 0755)
+
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("OpenFile", func() {
+		It("should return a writable file for O_WRONLY", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			file, err := w.OpenFile("test.txt", os.O_CREATE|os.O_WRONLY, 0644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+			DeferCleanup(file.Close)
+		})
+
+		It("should return a writable file for O_RDWR", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			file, err := w.OpenFile("test.txt", os.O_CREATE|os.O_RDWR, 0644)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+			DeferCleanup(file.Close)
+		})
+
+		It("should write content as a tar entry on Close", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			file, err := w.OpenFile("hello.txt", os.O_CREATE|os.O_WRONLY, 0644)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = file.(io.Writer).Write([]byte("hello"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file.Close()).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			data, err := fs.ReadFile(tfs, "hello.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("hello"))
+		})
+
+		It("should return ErrPermission for O_RDONLY", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			file, err := w.OpenFile("test.txt", os.O_RDONLY, 0644)
+
+			Expect(file).To(BeNil())
+			Expect(err).To(MatchError(ihfs.ErrPermission))
+		})
+
+		It("should return ErrInvalid for an invalid path", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			file, err := w.OpenFile("../invalid", os.O_CREATE|os.O_WRONLY, 0644)
+
+			Expect(file).To(BeNil())
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
 		})
 	})
 
