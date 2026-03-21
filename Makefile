@@ -11,6 +11,9 @@ clean:
 lint:
 	$(GOLANGCI) run ./...
 
+check:
+	nix flake check
+
 format fmt:
 	nix fmt
 
@@ -25,8 +28,10 @@ gomod2nix: gomod2nix.toml
 	$(MAKE) -C ghfs gomod2nix.toml
 	$(MAKE) -C mockfs gomod2nix.toml
 
-.PHONY: docs/gopls.instructions.md
-docs/gopls.instructions.md:
+update:
+	nix flake update
+
+docs/gopls.instructions.md: flake.lock
 	$(GOPLS) mcp -instructions > $@
 
 .golangci-lint-version: flake.nix flake.lock
