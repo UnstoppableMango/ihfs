@@ -264,6 +264,104 @@ var _ = Describe("Writer", func() {
 		})
 	})
 
+	Describe("WriteEntry", func() {
+		It("should write a header with no body when r is nil", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			hdr := &tar.Header{
+				Typeflag: tar.TypeSymlink,
+				Name:     "link.txt",
+				Linkname: "target.txt",
+			}
+			Expect(w.WriteEntry(hdr, nil)).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			got, err := tr.Next()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got.Name).To(Equal("link.txt"))
+			Expect(got.Linkname).To(Equal("target.txt"))
+		})
+
+		It("should write a header with body from r", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			content := []byte("hello")
+			hdr := &tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     "file.txt",
+				Size:     int64(len(content)),
+			}
+			Expect(w.WriteEntry(hdr, bytes.NewReader(content))).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			data, err := fs.ReadFile(tfs, "file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("hello"))
+		})
+
+		It("should return error when WriteHeader fails", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+			Expect(w.Close()).To(Succeed())
+
+			err := w.WriteEntry(&tar.Header{Name: "file.txt"}, nil)
+
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when io.Copy fails", func() {
+			writeErr := errors.New("write failed")
+			fw := &failAfterWriter{w: &bytes.Buffer{}, n: 512, err: writeErr}
+			w := tarfs.NewWriter(fw)
+
+			hdr := &tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     "file.txt",
+				Size:     10,
+			}
+			err := w.WriteEntry(hdr, bytes.NewReader([]byte("0123456789")))
+
+			Expect(err).To(MatchError(writeErr))
+		})
+	})
+
+	Describe("Symlink", func() {
+		It("should write a symlink entry", func() {
+			var buf bytes.Buffer
+			w := tarfs.NewWriter(&buf)
+
+			Expect(w.Symlink("target.txt", "link.txt")).To(Succeed())
+			Expect(w.Close()).To(Succeed())
+
+			tr := tar.NewReader(&buf)
+			hdr, err := tr.Next()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hdr.Typeflag).To(Equal(uint8(tar.TypeSymlink)))
+			Expect(hdr.Name).To(Equal("link.txt"))
+			Expect(hdr.Linkname).To(Equal("target.txt"))
+		})
+
+		It("should return ErrInvalid for an invalid path", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+
+			err := w.Symlink("target.txt", "../invalid")
+
+			Expect(err).To(MatchError(ihfs.ErrInvalid))
+		})
+
+		It("should return error when WriteHeader fails", func() {
+			w := tarfs.NewWriter(&bytes.Buffer{})
+			Expect(w.Close()).To(Succeed())
+
+			err := w.Symlink("target.txt", "link.txt")
+
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("WriteFile", func() {
 		It("should write file content as a tar entry", func() {
 			var buf bytes.Buffer
