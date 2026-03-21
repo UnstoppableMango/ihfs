@@ -3,6 +3,7 @@ package tarfs
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -17,10 +18,9 @@ import (
 // Writer provides a write-only tar-backed filesystem.
 // Call [Writer.Close] to finalize the archive.
 type Writer struct {
-	tw    *tar.Writer
-	mu    sync.Mutex
-	dirs  map[string]struct{}
-	files map[string]struct{}
+	tw      *tar.Writer
+	mu      sync.Mutex
+	written map[string]struct{}
 }
 
 // NewWriter creates a Writer that writes a tar archive to w.
@@ -31,9 +31,8 @@ func NewWriter(w io.Writer) *Writer {
 		tw = tar.NewWriter(w)
 	}
 	return &Writer{
-		tw:    tw,
-		dirs:  make(map[string]struct{}),
-		files: make(map[string]struct{}),
+		tw:      tw,
+		written: make(map[string]struct{}),
 	}
 }
 
@@ -74,7 +73,6 @@ func (w *Writer) Mkdir(name string, perm fs.FileMode) error {
 	if err := w.writeEntry(hdr, nil); err != nil {
 		return &fs.PathError{Op: "mkdir", Path: name, Err: err}
 	}
-	w.dirs[name] = struct{}{}
 	return nil
 }
 
@@ -93,9 +91,6 @@ func (w *Writer) MkdirAll(name string, perm fs.FileMode) error {
 	defer w.mu.Unlock()
 	for i := range parts {
 		part := strings.Join(parts[:i+1], "/")
-		if _, seen := w.dirs[part]; seen {
-			continue
-		}
 		hdr := &tar.Header{
 			Name:     part + "/",
 			Typeflag: tar.TypeDir,
@@ -103,9 +98,11 @@ func (w *Writer) MkdirAll(name string, perm fs.FileMode) error {
 			ModTime:  time.Now(),
 		}
 		if err := w.writeEntry(hdr, nil); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				continue
+			}
 			return &fs.PathError{Op: "mkdirall", Path: part, Err: err}
 		}
-		w.dirs[part] = struct{}{}
 	}
 	return nil
 }
@@ -169,22 +166,14 @@ func (w *Writer) Copy(dir string, fsys ihfs.FS) error {
 
 		w.mu.Lock()
 		defer w.mu.Unlock()
-		if d.IsDir() {
-			if _, seen := w.dirs[name]; seen {
-				return nil
-			}
-		} else {
-			if _, written := w.files[name]; written {
+		if err := w.writeEntry(hdr, r); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				if d.IsDir() {
+					return nil
+				}
 				return &fs.PathError{Op: "copy", Path: name, Err: fs.ErrExist}
 			}
-		}
-		if err := w.writeEntry(hdr, r); err != nil {
 			return err
-		}
-		if d.IsDir() {
-			w.dirs[name] = struct{}{}
-		} else {
-			w.files[name] = struct{}{}
 		}
 		return nil
 	})
@@ -200,7 +189,12 @@ func (w *Writer) WriteEntry(hdr *tar.Header, r io.Reader) error {
 }
 
 // writeEntry writes hdr and r to tw. Caller must hold w.mu.
+// Returns [fs.ErrExist] if an entry with the same name was already written.
 func (w *Writer) writeEntry(hdr *tar.Header, r io.Reader) error {
+	key := strings.TrimSuffix(hdr.Name, "/")
+	if _, seen := w.written[key]; seen {
+		return fs.ErrExist
+	}
 	if err := w.tw.WriteHeader(hdr); err != nil {
 		return err
 	}
@@ -209,6 +203,7 @@ func (w *Writer) writeEntry(hdr *tar.Header, r io.Reader) error {
 			return err
 		}
 	}
+	w.written[key] = struct{}{}
 	return nil
 }
 
