@@ -12,6 +12,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/corfs"
+	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/union"
@@ -35,15 +36,15 @@ func (m minimalFSWithMkdirAll) MkdirAll(name string, perm ihfs.FileMode) error {
 
 var _ = Describe("Fs", func() {
 	It("should return the base filesystem", func() {
-		fsys := &testfs.BoringFs{}
+		fsys := memfs.New()
 
-		cfs := corfs.New(fsys, &testfs.BoringFs{})
+		cfs := corfs.New(fsys, memfs.New())
 
 		Expect(cfs.Base()).To(BeIdenticalTo(fsys))
 	})
 
 	It("should have a name", func() {
-		cfs := corfs.New(&testfs.BoringFs{}, &testfs.BoringFs{})
+		cfs := corfs.New(memfs.New(), memfs.New())
 
 		Expect(cfs.Name()).To(Equal("corfs"))
 	})
@@ -210,11 +211,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when file doesn't exist", func() {
-			base := testfs.New(
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return nil, fs.ErrNotExist
-				}),
-			)
+			base := errfs.New(fs.ErrNotExist)
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
@@ -334,7 +331,7 @@ var _ = Describe("Fs", func() {
 
 	Describe("cacheStatus", func() {
 		It("should return cacheMiss when file not in layer", func() {
-			base := testfs.New()
+			base := memfs.New()
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, fs.ErrNotExist
@@ -658,7 +655,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should handle cacheLocal state", func() {
-			base := testfs.New()
+			base := memfs.New()
 
 			layerFile := &testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
@@ -815,11 +812,7 @@ var _ = Describe("Fs", func() {
 		It("should handle base stat error when checking stale cache", func() {
 			oldTime := time.Now().Add(-2 * time.Hour)
 
-			base := testfs.New(
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return nil, errors.New("base stat error")
-				}),
-			)
+			base := errfs.New(errors.New("base stat error"))
 
 			layerFile := &testfs.File{
 				ReadFunc: func(p []byte) (int, error) {
@@ -1133,7 +1126,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should handle cacheStatus error", func() {
-			base := testfs.New()
+			base := memfs.New()
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return nil, errors.New("stat error")
@@ -1194,7 +1187,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should handle cacheLocal case in Open", func() {
-			base := testfs.New()
+			base := memfs.New()
 
 			now := time.Now()
 			layerFile := &testfs.File{
@@ -1479,16 +1472,16 @@ var _ = Describe("Fs", func() {
 
 	Describe("Options", func() {
 		It("should apply WithMergeStrategy option", func() {
-			base := testfs.New()
-			layer := testfs.New()
+			base := memfs.New()
+			layer := memfs.New()
 
 			cfs := corfs.New(base, layer, corfs.WithMergeStrategy(union.DefaultMergeStrategy))
 			Expect(cfs).ToNot(BeNil())
 		})
 
 		It("should apply WithDefaultMergeStrategy option", func() {
-			base := testfs.New()
-			layer := testfs.New()
+			base := memfs.New()
+			layer := memfs.New()
 
 			cfs := corfs.New(base, layer, corfs.WithDefaultMergeStrategy())
 			Expect(cfs).ToNot(BeNil())

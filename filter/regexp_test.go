@@ -8,6 +8,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/filter"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/op"
 	"github.com/unstoppablemango/ihfs/testfs"
 )
@@ -33,7 +34,7 @@ var _ = Describe("NameRegex", func() {
 	})
 
 	It("should return ErrPermission for non-matching name via Open", func() {
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, filter.NameRegex(re))
 
 		_, err := fsys.Open("main.txt")
@@ -55,7 +56,7 @@ var _ = Describe("NameRegex", func() {
 	})
 
 	It("should return ErrPermission for non-matching name via Stat", func() {
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, filter.NameRegex(re))
 
 		_, err := fsys.Stat("main.txt")
@@ -79,7 +80,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should pass through op.Glob (default case)", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.Glob{Pattern: "*.txt"})
@@ -89,7 +90,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.ReadDir by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.ReadDir{Name: "somedir.txt"})
@@ -99,7 +100,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.Lstat by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.Lstat{Name: "main.txt"})
@@ -109,7 +110,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.ReadFile by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.ReadFile{Name: "main.txt"})
@@ -119,7 +120,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.ReadLink by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.ReadLink{Name: "main.txt"})
@@ -129,7 +130,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.WriteFile by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.WriteFile{Name: "main.txt"})
@@ -139,7 +140,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.Remove by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.Remove{Name: "main.txt"})
@@ -149,7 +150,7 @@ var _ = Describe("NameRegex", func() {
 
 	It("should filter op.RemoveAll by name", func() {
 		fn := filter.NameRegex(re)
-		base := testfs.New()
+		base := memfs.New()
 		fsys := ihfs.Filter(base, fn)
 
 		err := fn(fsys, op.RemoveAll{Name: "main.txt"})

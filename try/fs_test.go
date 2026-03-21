@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/try"
@@ -42,9 +43,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			exists, err := try.DirExists(fsys, "nonexistent")
 
@@ -89,9 +88,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return false for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			exists, err := try.Exists(fsys, "nonexistent")
 
@@ -139,9 +136,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			info, err := try.Stat(fsys, "nonexistent")
 
@@ -187,9 +182,7 @@ var _ = Describe("Try Util", func() {
 		})
 
 		It("should return error for nonexistent path", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			isDir, err := try.IsDir(fsys, "nonexistent")
 

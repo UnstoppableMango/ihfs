@@ -12,6 +12,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/cowfs"
+	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/union"
@@ -19,15 +20,15 @@ import (
 
 var _ = Describe("Fs", func() {
 	It("should return the base filesystem", func() {
-		fsys := &testfs.BoringFs{}
+		fsys := memfs.New()
 
-		cfs := cowfs.New(fsys, &testfs.BoringFs{})
+		cfs := cowfs.New(fsys, memfs.New())
 
 		Expect(cfs.Base()).To(BeIdenticalTo(fsys))
 	})
 
 	It("should have a name", func() {
-		cfs := cowfs.New(&testfs.BoringFs{}, &testfs.BoringFs{})
+		cfs := cowfs.New(memfs.New(), memfs.New())
 
 		Expect(cfs.Name()).To(Equal("cowfs"))
 	})
@@ -47,7 +48,7 @@ var _ = Describe("Fs", func() {
 					return testfs.NewFileInfo(name), nil
 				}),
 			)
-			layer := testfs.New()
+			layer := memfs.New()
 
 			cfs := cowfs.New(base, layer)
 			file, err := cfs.Open("test.txt")
@@ -64,7 +65,7 @@ var _ = Describe("Fs", func() {
 					return copy(p, []byte("layer")), io.EOF
 				},
 			}
-			base := testfs.New()
+			base := memfs.New()
 			layer := testfs.New(
 				testfs.WithOpen(func(string) (ihfs.File, error) {
 					return layerFile, nil
@@ -127,12 +128,8 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when base stat fails", func() {
-			base := testfs.New(
-				testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-					return nil, errors.New("stat error")
-				}),
-			)
-			layer := testfs.New()
+			base := errfs.New(errors.New("stat error"))
+			layer := memfs.New()
 
 			cfs := cowfs.New(base, layer)
 			_, err := cfs.Open("test.txt")
@@ -140,12 +137,8 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when layer stat fails", func() {
-			base := testfs.New()
-			layer := testfs.New(
-				testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-					return nil, errors.New("stat error")
-				}),
-			)
+			base := memfs.New()
+			layer := errfs.New(errors.New("stat error"))
 
 			cfs := cowfs.New(base, layer)
 			_, err := cfs.Open("test.txt")
@@ -237,7 +230,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when file doesn't exist", func() {
-			cfs := cowfs.New(testfs.New(), testfs.New())
+			cfs := cowfs.New(memfs.New(), memfs.New())
 			_, err := cfs.Open("nonexistent.txt")
 			Expect(err).To(HaveOccurred())
 		})
@@ -283,7 +276,7 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			cfs := cowfs.New(base, testfs.New())
+			cfs := cowfs.New(base, memfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
@@ -295,7 +288,7 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			cfs := cowfs.New(base, testfs.New())
+			cfs := cowfs.New(base, memfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
@@ -307,7 +300,7 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			cfs := cowfs.New(base, testfs.New())
+			cfs := cowfs.New(base, memfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
@@ -319,7 +312,7 @@ var _ = Describe("Fs", func() {
 				}),
 			)
 
-			cfs := cowfs.New(base, testfs.New())
+			cfs := cowfs.New(base, memfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
 		})
@@ -327,8 +320,8 @@ var _ = Describe("Fs", func() {
 
 	Describe("Options", func() {
 		It("should apply WithMergeStrategy option", func() {
-			base := testfs.New()
-			layer := testfs.New()
+			base := memfs.New()
+			layer := memfs.New()
 
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithMergeStrategy(union.DefaultMergeStrategy)
@@ -338,8 +331,8 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should apply WithDefaultMergeStrategy option", func() {
-			base := testfs.New()
-			layer := testfs.New()
+			base := memfs.New()
+			layer := memfs.New()
 
 			cfs := cowfs.New(base, layer)
 			opt := cowfs.WithDefaultMergeStrategy()
