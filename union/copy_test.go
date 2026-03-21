@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/errfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
 	"github.com/unstoppablemango/ihfs/union"
 )
@@ -140,12 +142,8 @@ var _ = Describe("CopyToLayer", func() {
 	Context("error handling", func() {
 		It("should return error when base file cannot be opened", func() {
 			expectedErr := errors.New("open failed")
-			base := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return nil, expectedErr
-				}),
-			)
-			layer := testfs.New()
+			base := errfs.New(expectedErr)
+			layer := memfs.New()
 
 			err := union.CopyToLayer(base, layer, "test.txt")
 
@@ -395,11 +393,7 @@ var _ = Describe("CopyToLayer", func() {
 			)
 
 			expectedErr := errors.New("stat failed")
-			layer := testfs.New(
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return nil, expectedErr
-				}),
-			)
+			layer := errfs.New(expectedErr)
 
 			err := union.CopyToLayer(base, layer, "dir/test.txt")
 

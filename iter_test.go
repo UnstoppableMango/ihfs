@@ -8,8 +8,8 @@ import (
 
 	"github.com/unmango/go/slices"
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/osfs"
-	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Catch", func() {
@@ -31,9 +31,7 @@ var _ = Describe("Catch", func() {
 	})
 
 	It("should return error when iteration encounters error", func() {
-		fsys := testfs.New(testfs.WithOpen(func(string) (ihfs.File, error) {
-			return nil, fs.ErrNotExist
-		}))
+		fsys := errfs.New(fs.ErrNotExist)
 		seq := ihfs.Iter(fsys, "/nonexistent")
 
 		seq2, err := ihfs.Catch(seq)
@@ -45,9 +43,7 @@ var _ = Describe("Catch", func() {
 
 var _ = Describe("Iter", func() {
 	It("should return open errors", func() {
-		fsys := testfs.New(testfs.WithOpen(func(string) (ihfs.File, error) {
-			return nil, fs.ErrNotExist
-		}))
+		fsys := errfs.New(fs.ErrNotExist)
 
 		seq := ihfs.IterPaths(fsys, "/nonexistent")
 

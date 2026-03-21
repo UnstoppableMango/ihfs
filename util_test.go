@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/osfs"
 	"github.com/unstoppablemango/ihfs/testfs"
@@ -53,9 +54,7 @@ var _ = Describe("Util", func() {
 
 		It("should propagate errors from Walk", func() {
 			walkErr := errors.New("walk error")
-			src := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, walkErr
-			}))
+			src := errfs.New(walkErr)
 
 			err := ihfs.Copy(testfs.BoringFs{}, "dir", src)
 
@@ -376,9 +375,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return false when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			exists, err := ihfs.DirExists(fsys, "nonexistent")
 
@@ -388,9 +385,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, testErr
-			}))
+			fsys := errfs.New(testErr)
 
 			exists, err := ihfs.DirExists(fsys, "dir")
 
@@ -426,9 +421,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return false when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			exists, err := ihfs.Exists(fsys, "nonexistent")
 
@@ -438,9 +431,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, testErr
-			}))
+			fsys := errfs.New(testErr)
 
 			exists, err := ihfs.Exists(fsys, "file.txt")
 
@@ -476,9 +467,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should return error when path does not exist", func() {
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, fs.ErrNotExist
-			}))
+			fsys := errfs.New(fs.ErrNotExist)
 
 			isDir, err := ihfs.IsDir(fsys, "nonexistent")
 
@@ -489,9 +478,7 @@ var _ = Describe("Util", func() {
 
 		It("should return error when stat returns an error", func() {
 			testErr := errors.New("test error")
-			fsys := testfs.New(testfs.WithStat(func(string) (ihfs.FileInfo, error) {
-				return nil, testErr
-			}))
+			fsys := errfs.New(testErr)
 
 			isDir, err := ihfs.IsDir(fsys, "dir")
 
