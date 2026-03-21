@@ -26,14 +26,16 @@ type File struct {
 type FileData struct {
 	sync.Mutex
 
-	name    string
-	content []byte
-	dir     *Dir
-	isDir   bool
-	mode    os.FileMode
-	modTime time.Time
-	uid     int
-	gid     int
+	name       string
+	content    []byte
+	dir        *Dir
+	isDir      bool
+	isSymlink  bool
+	linkTarget string
+	mode       os.FileMode
+	modTime    time.Time
+	uid        int
+	gid        int
 }
 
 func (fd *FileData) error(op string, err error) error {

@@ -1,11 +1,14 @@
 package memfs
 
 import (
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/unstoppablemango/ihfs"
@@ -15,9 +18,10 @@ var separator = string(filepath.Separator)
 
 // Fs represents an in-memory filesystem.
 type Fs struct {
-	mu   sync.RWMutex
-	data map[string]*FileData
-	init sync.Once
+	mu      sync.RWMutex
+	data    map[string]*FileData
+	init    sync.Once
+	tempSeq atomic.Uint64
 }
 
 // New creates a new in-memory filesystem.
@@ -418,6 +422,246 @@ func (f *Fs) findDescendants(name string) []*FileData {
 	}
 
 	return descendants
+}
+
+// ReadDir implements ihfs.ReadDirFS.
+func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
+	name = normalizePath(name)
+
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
+
+	if !ok {
+		return nil, perror("readdir", name, ihfs.ErrNotExist)
+	}
+	if !file.isDir {
+		return nil, perror("readdir", name, ihfs.ErrInvalid)
+	}
+
+	file.dir.Lock()
+	defer file.dir.Unlock()
+
+	entries := make([]ihfs.DirEntry, 0, len(file.dir.children))
+	for _, child := range file.dir.children {
+		entries = append(entries, &FileInfo{data: child})
+	}
+
+	sortDirEntries(entries)
+	return entries, nil
+}
+
+// WriteFile implements ihfs.WriteFileFS.
+func (f *Fs) WriteFile(name string, data []byte, perm ihfs.FileMode) error {
+	normalName := normalizePath(name)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	file, exists := f.getData()[normalName]
+	if !exists {
+		file = CreateFile(normalName)
+		file.mode = perm
+		f.getData()[normalName] = file
+
+		if err := f.registerWithParent(file); err != nil {
+			delete(f.getData(), normalName)
+			return perror("writefile", name, err)
+		}
+	}
+
+	file.Lock()
+	file.content = make([]byte, len(data))
+	copy(file.content, data)
+	file.modTime = time.Now()
+	file.Unlock()
+
+	return nil
+}
+
+// Copy implements ihfs.CopyFS.
+func (f *Fs) Copy(dir string, src ihfs.FS) error {
+	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		var destPath string
+		if path == "." {
+			destPath = normalizePath(dir)
+		} else {
+			destPath = filepath.Join(normalizePath(dir), path)
+		}
+
+		if d.IsDir() {
+			if path == "." {
+				f.mu.RLock()
+				_, exists := f.getData()[destPath]
+				f.mu.RUnlock()
+				if !exists {
+					return f.Mkdir(destPath, 0755)
+				}
+				return nil
+			}
+			return f.Mkdir(destPath, 0755)
+		}
+
+		f.mu.RLock()
+		_, exists := f.getData()[destPath]
+		f.mu.RUnlock()
+		if exists {
+			return perror("copy", destPath, ihfs.ErrExist)
+		}
+
+		srcFile, err := src.Open(path)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = srcFile.Close() }()
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		data, err := io.ReadAll(srcFile)
+		if err != nil {
+			return err
+		}
+
+		return f.WriteFile(destPath, data, info.Mode())
+	})
+}
+
+// nextTempName generates a unique name for a temporary file or directory.
+func (f *Fs) nextTempName(dir, pattern, op string) (string, error) {
+	prefix, suffix, _ := strings.Cut(pattern, "*")
+	normalDir := normalizePath(dir)
+
+	f.mu.RLock()
+	dirData, ok := f.getData()[normalDir]
+	f.mu.RUnlock()
+
+	if !ok {
+		return "", perror(op, dir, ihfs.ErrNotExist)
+	}
+	if !dirData.isDir {
+		return "", perror(op, dir, ihfs.ErrInvalid)
+	}
+
+	seq := strconv.FormatUint(f.tempSeq.Add(1), 10)
+	return filepath.Join(normalDir, prefix+seq+suffix), nil
+}
+
+// CreateTemp implements ihfs.CreateTempFS.
+func (f *Fs) CreateTemp(dir, pattern string) (ihfs.File, error) {
+	name, err := f.nextTempName(dir, pattern, "createtemp")
+	if err != nil {
+		return nil, err
+	}
+	return f.Create(name)
+}
+
+// MkdirTemp implements ihfs.MkdirTempFS.
+func (f *Fs) MkdirTemp(dir, pattern string) (string, error) {
+	name, err := f.nextTempName(dir, pattern, "mkdirtemp")
+	if err != nil {
+		return "", err
+	}
+	if err := f.Mkdir(name, 0700); err != nil {
+		return "", err
+	}
+	return toIOFSPath(name), nil
+}
+
+// TempFile implements ihfs.TempFileFS.
+func (f *Fs) TempFile(dir, pattern string) (string, error) {
+	name, err := f.nextTempName(dir, pattern, "tempfile")
+	if err != nil {
+		return "", err
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	file := CreateFile(name)
+	f.getData()[name] = file
+
+	if err := f.registerWithParent(file); err != nil {
+		delete(f.getData(), name)
+		return "", perror("tempfile", name, err)
+	}
+
+	return toIOFSPath(name), nil
+}
+
+// Symlink implements ihfs.SymlinkFS.
+func (f *Fs) Symlink(oldname, newname string) error {
+	normalNew := normalizePath(newname)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, exists := f.getData()[normalNew]; exists {
+		return perror("symlink", newname, ihfs.ErrExist)
+	}
+
+	link := &FileData{
+		name:       normalNew,
+		isSymlink:  true,
+		linkTarget: oldname,
+		mode:       os.ModeSymlink | 0777,
+		modTime:    time.Now(),
+	}
+	f.getData()[normalNew] = link
+
+	if err := f.registerWithParent(link); err != nil {
+		delete(f.getData(), normalNew)
+		return err
+	}
+	return nil
+}
+
+// ReadLink implements ihfs.ReadLinkFS.
+func (f *Fs) ReadLink(name string) (string, error) {
+	name = normalizePath(name)
+
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
+
+	if !ok {
+		return "", perror("readlink", name, ihfs.ErrNotExist)
+	}
+
+	file.Lock()
+	defer file.Unlock()
+
+	if !file.isSymlink {
+		return "", perror("readlink", name, ihfs.ErrInvalid)
+	}
+
+	return file.linkTarget, nil
+}
+
+// Lstat implements ihfs.ReadLinkFS. It returns info about the named file
+// without following symbolic links.
+func (f *Fs) Lstat(name string) (ihfs.FileInfo, error) {
+	name = normalizePath(name)
+
+	f.mu.RLock()
+	file, ok := f.getData()[name]
+	f.mu.RUnlock()
+
+	if !ok {
+		return nil, perror("lstat", name, ihfs.ErrNotExist)
+	}
+
+	return &FileInfo{data: file}, nil
+}
+
+func toIOFSPath(internalPath string) string {
+	return strings.TrimPrefix(internalPath, separator)
 }
 
 func normalizePath(path string) string {

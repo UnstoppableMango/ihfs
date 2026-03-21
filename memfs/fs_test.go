@@ -1,7 +1,9 @@
 package memfs_test
 
 import (
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"testing/fstest"
 	"time"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/memfs"
+	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Fs", func() {
@@ -1443,6 +1446,431 @@ var _ = Describe("Fs", func() {
 
 			err = fstest.TestFS(mfs, "file.txt", "dir", "dir/nested.txt")
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("ReadDir", func() {
+		It("should return sorted directory entries", func() {
+			mfs := memfs.New()
+			Expect(mfs.Mkdir("testdir", 0755)).To(Succeed())
+			f, err := mfs.Create("testdir/b.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+			f, err = mfs.Create("testdir/a.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			entries, err := mfs.ReadDir("testdir")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(entries).To(HaveLen(2))
+			Expect(entries[0].Name()).To(Equal("a.txt"))
+			Expect(entries[1].Name()).To(Equal("b.txt"))
+		})
+
+		It("should error when directory not found", func() {
+			mfs := memfs.New()
+			_, err := mfs.ReadDir("nonexistent")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when path is not a directory", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			_, err = mfs.ReadDir("file.txt")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("WriteFile", func() {
+		It("should create a new file with content", func() {
+			mfs := memfs.New()
+			err := mfs.WriteFile("test.txt", []byte("hello"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			data, err := fs.ReadFile(mfs,"test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("hello"))
+		})
+
+		It("should overwrite existing file", func() {
+			mfs := memfs.New()
+			Expect(mfs.WriteFile("test.txt", []byte("original"), 0644)).To(Succeed())
+			Expect(mfs.WriteFile("test.txt", []byte("updated"), 0644)).To(Succeed())
+
+			data, err := fs.ReadFile(mfs,"test.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("updated"))
+		})
+
+		It("should error when parent directory does not exist", func() {
+			mfs := memfs.New()
+			err := mfs.WriteFile("nonexistent/file.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Copy", func() {
+		It("should copy files from src to dest", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			f, err := src.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(io.Writer).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			Expect(mfs.Mkdir("dest", 0755)).To(Succeed())
+			Expect(mfs.Copy("dest", src)).To(Succeed())
+
+			data, err := fs.ReadFile(mfs,"dest/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("content"))
+		})
+
+		It("should create dest dir when it does not exist", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+
+			Expect(mfs.Copy("newdir", src)).To(Succeed())
+
+			fi, err := mfs.Stat("newdir")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should succeed when dest dir already exists", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			Expect(mfs.Copy(".", src)).To(Succeed())
+		})
+
+		It("should copy nested directories", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			Expect(src.Mkdir("subdir", 0755)).To(Succeed())
+			f, err := src.Create("subdir/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			Expect(mfs.Copy(".", src)).To(Succeed())
+
+			fi, err := mfs.Stat("subdir")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should error when file already exists in dest", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			f, err := src.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			f2, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
+
+			err = mfs.Copy(".", src)
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrExist)).To(BeTrue())
+		})
+
+		It("should propagate walk errors", func() {
+			mfs := memfs.New()
+			// testfs.New() has Stat returning ErrNotExist by default,
+			// causing WalkDir to fail and call walkFn with err != nil
+			src := testfs.New()
+			err := mfs.Copy(".", src)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when src.Open fails for a file entry", func() {
+			mfs := memfs.New()
+			openErr := errors.New("open error")
+			fileEntry := testfs.NewDirEntry("file.txt", false)
+
+			src := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return name == "." }
+					return fi, nil
+				}),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{fileEntry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return nil, openErr
+				}),
+			)
+
+			err := mfs.Copy(".", src)
+			Expect(err).To(MatchError(openErr))
+		})
+
+		It("should error when DirEntry.Info fails", func() {
+			mfs := memfs.New()
+			infoErr := errors.New("info error")
+			fileEntry := testfs.NewDirEntry("file.txt", false)
+			fileEntry.InfoFunc = func() (ihfs.FileInfo, error) {
+				return nil, infoErr
+			}
+
+			src := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return name == "." }
+					return fi, nil
+				}),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{fileEntry}, nil
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return &testfs.File{
+						StatFunc: func() (ihfs.FileInfo, error) {
+							return testfs.NewFileInfo(name), nil
+						},
+					}, nil
+				}),
+			)
+
+			err := mfs.Copy(".", src)
+			Expect(err).To(MatchError(infoErr))
+		})
+
+		It("should error when file read fails", func() {
+			mfs := memfs.New()
+			readErr := errors.New("read error")
+			fileEntry := testfs.NewDirEntry("file.txt", false)
+
+			src := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return name == "." }
+					return fi, nil
+				}),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{fileEntry}, nil
+				}),
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return &testfs.File{
+						StatFunc: func() (ihfs.FileInfo, error) {
+							return testfs.NewFileInfo(name), nil
+						},
+						ReadFunc: func(p []byte) (int, error) {
+							return 0, readErr
+						},
+					}, nil
+				}),
+			)
+
+			err := mfs.Copy(".", src)
+			Expect(err).To(MatchError(readErr))
+		})
+
+		It("should error when dest root creation fails", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			// "nonexistent/newdir" parent "nonexistent" doesn't exist
+			err := mfs.Copy("nonexistent/newdir", src)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when subdir already exists in dest", func() {
+			mfs := memfs.New()
+			src := memfs.New()
+			Expect(src.Mkdir("subdir", 0755)).To(Succeed())
+			Expect(mfs.Mkdir("subdir", 0755)).To(Succeed())
+
+			err := mfs.Copy(".", src)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("CreateTemp", func() {
+		It("should create a temporary file", func() {
+			mfs := memfs.New()
+			file, err := mfs.CreateTemp(".", "tmp*")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(file).NotTo(BeNil())
+			DeferCleanup(file.Close)
+		})
+
+		It("should error when dir does not exist", func() {
+			mfs := memfs.New()
+			_, err := mfs.CreateTemp("nonexistent", "tmp*")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when dir is not a directory", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			_, err = mfs.CreateTemp("file.txt", "tmp*")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("MkdirTemp", func() {
+		It("should create a temporary directory and return its relative path", func() {
+			mfs := memfs.New()
+			name, err := mfs.MkdirTemp(".", "tmpdir*")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).NotTo(BeEmpty())
+
+			fi, err := mfs.Stat(name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.IsDir()).To(BeTrue())
+		})
+
+		It("should error when dir does not exist", func() {
+			mfs := memfs.New()
+			_, err := mfs.MkdirTemp("nonexistent", "tmpdir*")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when dir is not a directory", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			_, err = mfs.MkdirTemp("file.txt", "tmpdir*")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when pattern creates nested path whose parent does not exist", func() {
+			mfs := memfs.New()
+			_, err := mfs.MkdirTemp(".", "sub/dir*")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("TempFile", func() {
+		It("should create a temporary file and return its relative path", func() {
+			mfs := memfs.New()
+			name, err := mfs.TempFile(".", "tmp*")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(name).NotTo(BeEmpty())
+
+			_, err = mfs.Stat(name)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should error when dir does not exist", func() {
+			mfs := memfs.New()
+			_, err := mfs.TempFile("nonexistent", "tmp*")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when dir is not a directory", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			_, err = mfs.TempFile("file.txt", "tmp*")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when pattern creates nested path causing registration to fail", func() {
+			mfs := memfs.New()
+			_, err := mfs.TempFile(".", "sub/file*")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Symlink", func() {
+		It("should create a symbolic link", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("target.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			err = mfs.Symlink("target.txt", "link.txt")
+			Expect(err).NotTo(HaveOccurred())
+
+			target, err := mfs.ReadLink("link.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(target).To(Equal("target.txt"))
+		})
+
+		It("should error when newname already exists", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("existing.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			err = mfs.Symlink("target.txt", "existing.txt")
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ihfs.ErrExist)).To(BeTrue())
+		})
+
+		It("should error when parent directory does not exist", func() {
+			mfs := memfs.New()
+			err := mfs.Symlink("target.txt", "nonexistent/link.txt")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("ReadLink", func() {
+		It("should return symlink target", func() {
+			mfs := memfs.New()
+			Expect(mfs.Symlink("target.txt", "link.txt")).To(Succeed())
+
+			target, err := mfs.ReadLink("link.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(target).To(Equal("target.txt"))
+		})
+
+		It("should error when path not found", func() {
+			mfs := memfs.New()
+			_, err := mfs.ReadLink("nonexistent.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should error when path is not a symlink", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			_, err = mfs.ReadLink("file.txt")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Lstat", func() {
+		It("should return FileInfo for a regular file", func() {
+			mfs := memfs.New()
+			f, err := mfs.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			fi, err := mfs.Lstat("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.Name()).To(Equal("file.txt"))
+			Expect(fi.IsDir()).To(BeFalse())
+		})
+
+		It("should return symlink info without following it", func() {
+			mfs := memfs.New()
+			Expect(mfs.Symlink("target.txt", "link.txt")).To(Succeed())
+
+			fi, err := mfs.Lstat("link.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fi.Name()).To(Equal("link.txt"))
+			Expect(fi.Mode() & os.ModeSymlink).To(Equal(os.ModeSymlink))
+		})
+
+		It("should error when path not found", func() {
+			mfs := memfs.New()
+			_, err := mfs.Lstat("nonexistent.txt")
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
