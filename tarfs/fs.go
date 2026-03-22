@@ -3,7 +3,6 @@ package tarfs
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io"
 	"io/fs"
 	"strings"
@@ -13,7 +12,7 @@ import (
 )
 
 type Fs struct {
-	cache *cache
+	cache *sync.Map
 	mux   sync.Mutex
 	tr    *tar.Reader
 }
@@ -21,27 +20,13 @@ type Fs struct {
 // FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
 func FromReader(r io.Reader) *Fs {
 	return &Fs{
-		cache: newCache(),
+		cache: &sync.Map{},
 		tr:    tar.NewReader(r),
 	}
 }
 
 // Open implements [ihfs.FS].
 func (t *Fs) Open(name string) (ihfs.File, error) {
-	if name == "." {
-		t.mux.Lock()
-		defer t.mux.Unlock()
-		if err := t.drainIntoCache(); err != nil {
-			return nil, &fs.PathError{Op: "open", Path: ".", Err: err}
-		}
-		return &File{
-			hdr:   &tar.Header{Name: ".", Typeflag: tar.TypeDir, Mode: 0755},
-			name:  ".",
-			cache: t.cache,
-			r:     bytes.NewReader(nil),
-		}, nil
-	}
-
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{
 			Op:   "open",
@@ -49,115 +34,59 @@ func (t *Fs) Open(name string) (ihfs.File, error) {
 			Err:  ihfs.ErrInvalid,
 		}
 	}
-
-	// Non-directory files in the cache need no further work.
-	if file := t.cache.get(name); file != nil && file.hdr.Typeflag != tar.TypeDir {
-		return file.file(t.cache), nil
+	if f, ok := t.cache.Load(name); ok {
+		return f.(fs.File), nil
 	}
 
-	// Directory opens (cache hit or miss) always take the lock so drainIntoCache
-	// can be called safely if the archive has not yet been fully read.
+	return t.until(name)
+}
+
+func (t *Fs) ReadDir(name string) ([]fs.DirEntry, error) {
+	if _, err := t.until(""); err != nil {
+		return nil, err
+	}
+	return dirEntries(t.cache, name), nil
+}
+
+func (t *Fs) until(name string) (fs.File, error) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	// Re-check cache under lock (handles both cache misses and directory hits).
-	if file := t.cache.get(name); file != nil {
-		if file.hdr.Typeflag == tar.TypeDir {
-			if err := t.drainIntoCache(); err != nil {
-				return nil, &fs.PathError{
-					Op:   "open",
-					Path: name,
-					Err:  ihfs.ErrNotExist,
-				}
-			}
-		}
-
-		return file.file(t.cache), nil
-	}
-
-	// Lazy-load entries until we find the requested file
 	for {
-		fd, err := next(t.tr)
+		hdr, err := t.tr.Next()
 		if err == io.EOF {
-			// Check if this is a synthetic directory
-			prefix := name + "/"
-			for _, fd := range t.cache.all() {
-				if strings.HasPrefix(fd.hdr.Name, prefix) {
-					// This is a valid directory - return synthetic entry
-					return &File{
-						hdr: &tar.Header{
-							Name:     name,
-							Typeflag: tar.TypeDir,
-							Mode:     0755,
-						},
-						name:  name,
-						cache: t.cache,
-						r:     bytes.NewReader(nil),
-					}, nil
-				}
-			}
+			return nil, fs.ErrNotExist
 		}
 		if err != nil {
-			return nil, &fs.PathError{
-				Op:   "open",
-				Path: name,
-				Err:  fmt.Errorf("%w: %w", ihfs.ErrNotExist, err),
-			}
+			return nil, err
 		}
 
-		cacheKey := fd.hdr.Name
-		if fd.hdr.Typeflag == tar.TypeDir {
-			cacheKey = strings.TrimSuffix(cacheKey, "/")
+		f, err := t.read(name, hdr)
+		if err != nil {
+			return nil, err
 		}
-		if cacheKey != "" {
-			t.cache.set(cacheKey, fd)
-		}
-		if cacheKey == name {
-			if fd.hdr.Typeflag == tar.TypeDir {
-				// Drain remaining entries so ReadDir returns a complete listing.
-				if err := t.drainIntoCache(); err != nil {
-					return nil, &fs.PathError{
-						Op:   "open",
-						Path: name,
-						Err:  ihfs.ErrNotExist,
-					}
-				}
-			}
-			return fd.file(t.cache), nil
+
+		key := hdr.Name
+		t.cache.Store(key, f)
+		if name == strings.TrimLeft(key, "/") {
+			return f, nil
 		}
 	}
 }
 
-// drainIntoCache reads all remaining entries from the tar stream into the cache.
-// The caller must hold t.mux.
-func (t *Fs) drainIntoCache() error {
-	for {
-		fd, err := next(t.tr)
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		cacheKey := fd.hdr.Name
-		if fd.hdr.Typeflag == tar.TypeDir {
-			cacheKey = strings.TrimSuffix(cacheKey, "/")
-		}
-		if cacheKey != "" {
-			t.cache.set(cacheKey, fd)
-		}
+func (t *Fs) read(name string, hdr *tar.Header) (entry, error) {
+	if hdr.Typeflag == tar.TypeDir {
+		return &Dir{name: name, fsys: t}, nil
 	}
-}
 
-func next(tr *tar.Reader) (*fileData, error) {
-	hdr, err := tr.Next()
+	data, err := io.ReadAll(t.tr)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := io.ReadAll(tr)
-	if err != nil {
-		return nil, err
-	}
-	return &fileData{hdr, data}, nil
+	return &File{
+		name: name,
+		hdr:  hdr,
+		r:    bytes.NewReader(data),
+	}, nil
 }

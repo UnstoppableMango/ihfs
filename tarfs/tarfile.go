@@ -2,6 +2,7 @@ package tarfs
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"sync/atomic"
 
@@ -80,4 +81,24 @@ func (t *TarFile) wrapErr(name string, err error) error {
 		err = pathErr.Err
 	}
 	return &TarError{Archive: t.name, Name: name, Err: err}
+}
+
+// TarError represents an error that occurred while accessing a file in a tar archive.
+type TarError struct {
+	Archive, Name string
+	Err, Cause    error
+}
+
+func (e *TarError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf(
+			"%s(%s): %v: %v",
+			e.Archive, e.Name, e.Err, e.Cause,
+		)
+	}
+	return fmt.Sprintf("%s(%s): %v", e.Archive, e.Name, e.Err)
+}
+
+func (e *TarError) Unwrap() []error {
+	return []error{e.Err, e.Cause}
 }

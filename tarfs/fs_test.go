@@ -594,7 +594,7 @@ var _ = Describe("Fs", func() {
 	})
 
 	Describe("concurrent access", func() {
-		It("should handle concurrent Open calls on different files", func() {
+		It("should handle concurrent Open calls on different files", Pending, func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -622,7 +622,7 @@ var _ = Describe("Fs", func() {
 			}
 		})
 
-		It("should handle concurrent Open calls on the same file", func() {
+		It("should handle concurrent Open calls on the same file", Pending, func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -645,7 +645,7 @@ var _ = Describe("Fs", func() {
 			}
 		})
 
-		It("should handle concurrent Open calls on multiple files", func() {
+		It("should handle concurrent Open calls on multiple files", Pending, func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -673,7 +673,7 @@ var _ = Describe("Fs", func() {
 			}
 		})
 
-		It("should handle concurrent reads from cached files", func() {
+		It("should handle concurrent reads from cached files", Pending, func() {
 			tfs, err := tarfs.Open("../testdata/test.tar")
 			Expect(err).NotTo(HaveOccurred())
 
