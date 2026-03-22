@@ -5,7 +5,7 @@ Type-safe wrappers that attempt optional filesystem interface methods.
 ## Design
 
 - Each function accepts an `ihfs.FS` or `ihfs.File`, checks whether it implements an optional interface, and calls it if so
-- Returns `ihfs.ErrNotImplemented` when the interface is not satisfied — never panics
+- Returns an error wrapping `ihfs.ErrNotImplemented` (detectable with `errors.Is`) when the interface is not satisfied — never panics
 - No side effects; purely functional
 
 ## Coverage
