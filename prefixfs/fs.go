@@ -6,38 +6,36 @@ import (
 	"io/fs"
 	"path"
 	"strings"
-
-	"github.com/unstoppablemango/ihfs"
 )
 
 // Fs wraps an FS and makes it accessible only under a prefix path.
 // It is the inverse of [fs.Sub]: where Sub strips a prefix from paths,
 // Fs adds one, so the wrapped FS is reachable only under the given prefix.
 type Fs struct {
-	fsys   ihfs.FS
+	fsys   fs.FS
 	prefix string
 }
 
 // New creates a new Fs that makes fsys accessible under prefix.
 // prefix is cleaned via [path.Clean] before use, and must resolve to a
-// valid, non-root [fs.ValidPath].
-func New(fsys ihfs.FS, prefix string) (*Fs, error) {
+// valid, non-root [fs.ValidPath]. New panics if the cleaned prefix is invalid.
+func New(fsys fs.FS, prefix string) *Fs {
 	prefix = path.Clean(prefix)
 	if !fs.ValidPath(prefix) || prefix == "." {
-		return nil, &ihfs.PathError{Op: "prefix", Path: prefix, Err: ihfs.ErrInvalid}
+		panic("prefixfs: invalid prefix: " + prefix)
 	}
-	return &Fs{fsys: fsys, prefix: prefix}, nil
+	return &Fs{fsys: fsys, prefix: prefix}
 }
 
-// Base implements [ihfs.Decorator].
-func (f *Fs) Base() ihfs.FS {
+// Base returns the underlying filesystem.
+func (f *Fs) Base() fs.FS {
 	return f.fsys
 }
 
 // Open implements [fs.FS].
-func (f *Fs) Open(name string) (ihfs.File, error) {
+func (f *Fs) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
-		return nil, &ihfs.PathError{Op: "open", Path: name, Err: ihfs.ErrInvalid}
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
@@ -55,13 +53,13 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 		return f.fsys.Open(name[len(f.prefix)+1:])
 	}
 
-	return nil, &ihfs.PathError{Op: "open", Path: name, Err: ihfs.ErrNotExist}
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
-// Stat implements [ihfs.StatFS].
-func (f *Fs) Stat(name string) (ihfs.FileInfo, error) {
+// Stat implements [fs.StatFS].
+func (f *Fs) Stat(name string) (fs.FileInfo, error) {
 	if !fs.ValidPath(name) {
-		return nil, &ihfs.PathError{Op: "stat", Path: name, Err: ihfs.ErrInvalid}
+		return nil, &fs.PathError{Op: "stat", Path: name, Err: fs.ErrInvalid}
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
@@ -76,17 +74,17 @@ func (f *Fs) Stat(name string) (ihfs.FileInfo, error) {
 		return fs.Stat(f.fsys, name[len(f.prefix)+1:])
 	}
 
-	return nil, &ihfs.PathError{Op: "stat", Path: name, Err: ihfs.ErrNotExist}
+	return nil, &fs.PathError{Op: "stat", Path: name, Err: fs.ErrNotExist}
 }
 
-// ReadDir implements [ihfs.ReadDirFS].
-func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
+// ReadDir implements [fs.ReadDirFS].
+func (f *Fs) ReadDir(name string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(name) {
-		return nil, &ihfs.PathError{Op: "readdir", Path: name, Err: ihfs.ErrInvalid}
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrInvalid}
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
-		return []ihfs.DirEntry{&dirEntry{name: f.childComponent(name)}}, nil
+		return []fs.DirEntry{&dirEntry{name: f.childComponent(name)}}, nil
 	}
 
 	if name == f.prefix {
@@ -97,7 +95,7 @@ func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 		return fs.ReadDir(f.fsys, name[len(f.prefix)+1:])
 	}
 
-	return nil, &ihfs.PathError{Op: "readdir", Path: name, Err: ihfs.ErrNotExist}
+	return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrNotExist}
 }
 
 func (f *Fs) childComponent(name string) string {

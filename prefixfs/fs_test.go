@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/prefixfs"
 )
 
@@ -24,40 +23,29 @@ var _ = Describe("Fs", func() {
 
 	Describe("New", func() {
 		It("should create an Fs with a single-level prefix", func() {
-			f, err := prefixfs.New(inner, "a")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(f).NotTo(BeNil())
+			Expect(prefixfs.New(inner, "a")).NotTo(BeNil())
 		})
 
 		It("should create an Fs with a multi-level prefix", func() {
-			f, err := prefixfs.New(inner, "a/b/c")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(f).NotTo(BeNil())
+			Expect(prefixfs.New(inner, "a/b/c")).NotTo(BeNil())
 		})
 
 		It("should clean the prefix before validating", func() {
-			f, err := prefixfs.New(inner, "a/b/../c")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(f).NotTo(BeNil())
+			Expect(prefixfs.New(inner, "a/b/../c")).NotTo(BeNil())
 		})
 
-		It("should return ErrInvalid for '.'", func() {
-			_, err := prefixfs.New(inner, ".")
-			Expect(err).To(MatchError(fs.ErrInvalid))
+		It("should panic for '.'", func() {
+			Expect(func() { prefixfs.New(inner, ".") }).To(Panic())
 		})
 
-		It("should return ErrInvalid for an absolute path", func() {
-			_, err := prefixfs.New(inner, "/absolute")
-			Expect(err).To(MatchError(fs.ErrInvalid))
+		It("should panic for an absolute path", func() {
+			Expect(func() { prefixfs.New(inner, "/absolute") }).To(Panic())
 		})
 	})
 
 	Describe("Base", func() {
 		It("should return the wrapped FS", func() {
-			f, err := prefixfs.New(inner, "a")
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(f.Base()).To(Equal(ihfs.FS(inner)))
+			Expect(prefixfs.New(inner, "a").Base()).To(Equal(fs.FS(inner)))
 		})
 	})
 
@@ -65,9 +53,7 @@ var _ = Describe("Fs", func() {
 		var fsys *prefixfs.Fs
 
 		BeforeEach(func() {
-			var err error
-			fsys, err = prefixfs.New(inner, "a/b")
-			Expect(err).NotTo(HaveOccurred())
+			fsys = prefixfs.New(inner, "a/b")
 		})
 
 		It("should return ErrInvalid for invalid paths", func() {
@@ -104,8 +90,8 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
-		It("should implement ihfs.FS", func() {
-			var _ ihfs.FS = fsys
+		It("should implement fs.FS", func() {
+			var _ fs.FS = fsys
 		})
 	})
 
@@ -113,9 +99,7 @@ var _ = Describe("Fs", func() {
 		var fsys *prefixfs.Fs
 
 		BeforeEach(func() {
-			var err error
-			fsys, err = prefixfs.New(inner, "a/b")
-			Expect(err).NotTo(HaveOccurred())
+			fsys = prefixfs.New(inner, "a/b")
 		})
 
 		It("should return ErrInvalid for invalid paths", func() {
@@ -159,8 +143,8 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
-		It("should implement ihfs.StatFS", func() {
-			var _ ihfs.StatFS = fsys
+		It("should implement fs.StatFS", func() {
+			var _ fs.StatFS = fsys
 		})
 	})
 
@@ -168,9 +152,7 @@ var _ = Describe("Fs", func() {
 		var fsys *prefixfs.Fs
 
 		BeforeEach(func() {
-			var err error
-			fsys, err = prefixfs.New(inner, "a/b")
-			Expect(err).NotTo(HaveOccurred())
+			fsys = prefixfs.New(inner, "a/b")
 		})
 
 		It("should return ErrInvalid for invalid paths", func() {
@@ -212,8 +194,8 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
-		It("should implement ihfs.ReadDirFS", func() {
-			var _ ihfs.ReadDirFS = fsys
+		It("should implement fs.ReadDirFS", func() {
+			var _ fs.ReadDirFS = fsys
 		})
 	})
 
@@ -224,9 +206,8 @@ var _ = Describe("Fs", func() {
 		)
 
 		BeforeEach(func() {
+			fsys = prefixfs.New(inner, "a/b")
 			var err error
-			fsys, err = prefixfs.New(inner, "a/b")
-			Expect(err).NotTo(HaveOccurred())
 			dir, err = fsys.Open(".")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(dir.Close)
@@ -245,10 +226,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should report the full path in read errors for multi-level ancestors", func() {
-			deep, err := prefixfs.New(inner, "a/b/c")
-			Expect(err).NotTo(HaveOccurred())
-
-			f, err := deep.Open("a/b")
+			f, err := prefixfs.New(inner, "a/b/c").Open("a/b")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(f.Close)
 
@@ -301,9 +279,8 @@ var _ = Describe("Fs", func() {
 		)
 
 		BeforeEach(func() {
+			fsys = prefixfs.New(inner, "a/b/c")
 			var err error
-			fsys, err = prefixfs.New(inner, "a/b/c")
-			Expect(err).NotTo(HaveOccurred())
 			dir, err = fsys.Open("a")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(dir.Close)
@@ -332,9 +309,8 @@ var _ = Describe("Fs", func() {
 		)
 
 		BeforeEach(func() {
+			fsys = prefixfs.New(inner, "a/b")
 			var err error
-			fsys, err = prefixfs.New(inner, "a/b")
-			Expect(err).NotTo(HaveOccurred())
 			entries, err = fsys.ReadDir(".")
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -368,9 +344,7 @@ var _ = Describe("Fs", func() {
 		var fsys *prefixfs.Fs
 
 		BeforeEach(func() {
-			var err error
-			fsys, err = prefixfs.New(inner, "mount")
-			Expect(err).NotTo(HaveOccurred())
+			fsys = prefixfs.New(inner, "mount")
 		})
 
 		It("should open files under the prefix", func() {
