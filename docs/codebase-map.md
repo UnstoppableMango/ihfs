@@ -133,7 +133,7 @@
 - **errfs (`errfs_test`)**: `errfs_suite_test.go`, `fs_test.go`, `file_test.go`
 - **prefixfs (`prefixfs_test`)**: `prefixfs_suite_test.go`, `fs_test.go`
 - **filter (`filter_test`)**: `filter_suite_test.go`, `regexp_test.go`
-- **ghfs (`ghfs_test`)**: `ghfs_suite_test.go`, `fs_test.go`, `file_test.go`, `fileinfo_test.go` (+ internal tests)
+- **ghfs (`ghfs_test`)**: `ghfs_suite_test.go`, `fs_test.go`, `file_test.go`, `option_test.go`, `path_test.go`, `util_test.go` (+ internal tests)
 - **ctrfs/v1 (`v1_test`)**: `v1_suite_test.go`, `image_test.go`, `layer_test.go`
 
 ### Test Data
