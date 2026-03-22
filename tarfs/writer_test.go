@@ -69,7 +69,7 @@ var _ = Describe("Writer", func() {
 
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			_, err := tfs.Open("nonexistent.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
@@ -130,7 +130,7 @@ var _ = Describe("Writer", func() {
 			Expect(file.Close()).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("hello.txt")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(f.Close)
@@ -236,7 +236,7 @@ var _ = Describe("Writer", func() {
 
 				Expect(w.Close()).To(Succeed())
 
-				tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+				tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 				entries, err := fs.ReadDir(tfs, ".")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(entries).To(HaveLen(1))
@@ -252,7 +252,7 @@ var _ = Describe("Writer", func() {
 			Expect(w.Mkdir("mydir", 0755)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(f.Close)
@@ -295,7 +295,7 @@ var _ = Describe("Writer", func() {
 			Expect(w.Copy(".", m)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			data, err := fs.ReadFile(tfs, "subdir/hello.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data)).To(Equal("hello"))
@@ -484,7 +484,7 @@ var _ = Describe("Writer", func() {
 			Expect(w.MkdirAll("a/b/c", 0755)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			for _, dir := range []string{"a", "a/b", "a/b/c"} {
 				f, err := tfs.Open(dir)
 				Expect(err).NotTo(HaveOccurred(), "expected %s to exist", dir)
@@ -580,7 +580,7 @@ var _ = Describe("Writer", func() {
 			Expect(file.Close()).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			data, err := fs.ReadFile(tfs, "hello.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data)).To(Equal("hello"))
@@ -638,7 +638,7 @@ var _ = Describe("Writer", func() {
 			Expect(w.WriteEntry(hdr, bytes.NewReader(content))).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			data, err := fs.ReadFile(tfs, "file.txt")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data)).To(Equal("hello"))
@@ -711,7 +711,7 @@ var _ = Describe("Writer", func() {
 			Expect(w.WriteFile("hello.txt", []byte("hello"), 0644)).To(Succeed())
 			Expect(w.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 			f, err := tfs.Open("hello.txt")
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(f.Close)

@@ -99,10 +99,9 @@ var _ = Describe("Fs", func() {
 			Expect(tw.Close()).To(Succeed())
 
 			reader := bytes.NewReader(buf.Bytes())
-			tfs := tarfs.FromReader("test.tar", reader)
+			tfs := tarfs.FromReader(reader)
 
 			Expect(tfs).NotTo(BeNil())
-			Expect(tfs.Name()).To(Equal("test.tar"))
 
 			file, err := tfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -116,10 +115,9 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(file.Close)
 
-			tfs := tarfs.FromReader("test.tar", file)
+			tfs := tarfs.FromReader(file)
 
 			Expect(tfs).NotTo(BeNil())
-			Expect(tfs.Name()).To(Equal("test.tar"))
 		})
 	})
 
@@ -264,7 +262,7 @@ var _ = Describe("Fs", func() {
 				closeErr: closeErr,
 			}
 
-			tfs := tarfs.FromReader("test.tar", reader)
+			tfs := tarfs.FromReader(reader)
 
 			file, err := tfs.Open("nonexistent.txt")
 
@@ -912,7 +910,7 @@ var _ = Describe("Fs", func() {
 			err = tw.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			f, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
@@ -977,7 +975,7 @@ var _ = Describe("Fs", func() {
 
 		Expect(tw.Close()).To(Succeed())
 
-		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+		tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 		file, err := tfs.Open("dir1")
 		Expect(err).NotTo(HaveOccurred())
@@ -1019,7 +1017,7 @@ var _ = Describe("Fs", func() {
 
 		Expect(tw.Close()).To(Succeed())
 
-		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+		tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 		file, err := tfs.Open("mydir")
 		Expect(err).NotTo(HaveOccurred())
@@ -1050,7 +1048,7 @@ var _ = Describe("Fs", func() {
 			Expect(tw.Close()).To(Succeed())
 
 			closeErr := errors.New("close failed")
-			tfs := tarfs.FromReader("test.tar", &errCloser{bytes.NewReader(buf.Bytes()), closeErr})
+			tfs := tarfs.FromReader(&errCloser{bytes.NewReader(buf.Bytes()), closeErr})
 
 			file, err := tfs.Open(".")
 
@@ -1070,7 +1068,7 @@ var _ = Describe("Fs", func() {
 			_, _ = tw.Write([]byte("hello"))
 			Expect(tw.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			// Open "." triggers full root scan including "mydir/"
 			root, err := tfs.Open(".")

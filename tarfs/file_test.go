@@ -109,7 +109,7 @@ var _ = Describe("File", func() {
 			_, _ = tw.Write([]byte("data"))
 			Expect(tw.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			// Open "parent" — synthetic dir, but "parent/child" is a real cached entry
 			parentFile, err := tfs.Open("parent")
@@ -135,7 +135,7 @@ var _ = Describe("File", func() {
 			_, _ = tw.Write([]byte("hello"))
 			Expect(tw.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			dir, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
@@ -163,7 +163,7 @@ var _ = Describe("File", func() {
 			_, _ = tw.Write([]byte("b"))
 			Expect(tw.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			dirFile, err := tfs.Open("dir")
 			Expect(err).NotTo(HaveOccurred())
