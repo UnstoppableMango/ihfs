@@ -13,18 +13,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
-
-type errCloser struct {
-	io.Reader
-	closeErr error
-}
-
-func (e *errCloser) Close() error {
-	return e.closeErr
-}
 
 var _ = Describe("Fs", func() {
 	Describe("Open", func() {
@@ -99,10 +89,9 @@ var _ = Describe("Fs", func() {
 			Expect(tw.Close()).To(Succeed())
 
 			reader := bytes.NewReader(buf.Bytes())
-			tfs := tarfs.FromReader("test.tar", reader)
+			tfs := tarfs.FromReader(reader)
 
 			Expect(tfs).NotTo(BeNil())
-			Expect(tfs.Name()).To(Equal("test.tar"))
 
 			file, err := tfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -116,10 +105,9 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(file.Close)
 
-			tfs := tarfs.FromReader("test.tar", file)
+			tfs := tarfs.FromReader(file)
 
 			Expect(tfs).NotTo(BeNil())
-			Expect(tfs.Name()).To(Equal("test.tar"))
 		})
 	})
 
@@ -244,35 +232,6 @@ var _ = Describe("Fs", func() {
 			Expect(err.Error()).To(Equal("test.tar(test.txt): file does not exist: unexpected EOF"))
 		})
 
-		It("should handle close error when reaching EOF", func() {
-			var buf bytes.Buffer
-			tw := tar.NewWriter(&buf)
-
-			err := tw.WriteHeader(&tar.Header{
-				Name: "file1.txt",
-				Mode: 0644,
-				Size: 5,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			_, err = tw.Write([]byte("data1"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(tw.Close()).To(Succeed())
-
-			closeErr := errors.New("close failed")
-			reader := &errCloser{
-				Reader:   bytes.NewReader(buf.Bytes()),
-				closeErr: closeErr,
-			}
-
-			tfs := tarfs.FromReader("test.tar", reader)
-
-			file, err := tfs.Open("nonexistent.txt")
-
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(fs.ErrNotExist))
-			Expect(err).To(MatchError(closeErr))
-			Expect(file).To(BeNil())
-		})
 	})
 
 	Describe("lazy loading", func() {
@@ -629,7 +588,7 @@ var _ = Describe("Fs", func() {
 
 			file, err := corruptTfs.Open(".")
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ihfs.ErrInvalid))
+			Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 			Expect(file).To(BeNil())
 		})
 	})
@@ -745,7 +704,7 @@ var _ = Describe("Fs", func() {
 			}
 		})
 
-		It("should handle race when one goroutine hits EOF and closes", func() {
+		It("should return ErrNotExist for concurrent opens of nonexistent files after EOF", func() {
 			var buf bytes.Buffer
 			tw := tar.NewWriter(&buf)
 
@@ -791,20 +750,15 @@ var _ = Describe("Fs", func() {
 				}(i)
 			}
 
-			var closedErrors, notExistErrors int
+			var notExistErrors int
 			for range goroutines {
 				err := <-done
-				if err != nil {
-					if errors.Is(err, fs.ErrClosed) {
-						closedErrors++
-					} else if errors.Is(err, fs.ErrNotExist) {
-						notExistErrors++
-					}
+				if errors.Is(err, fs.ErrNotExist) {
+					notExistErrors++
 				}
 			}
 
-			Expect(closedErrors).To(Equal(7))
-			Expect(notExistErrors).To(Equal(1))
+			Expect(notExistErrors).To(Equal(8))
 		})
 	})
 
@@ -912,7 +866,7 @@ var _ = Describe("Fs", func() {
 			err = tw.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			f, err := tfs.Open("mydir")
 			Expect(err).NotTo(HaveOccurred())
@@ -977,7 +931,7 @@ var _ = Describe("Fs", func() {
 
 		Expect(tw.Close()).To(Succeed())
 
-		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+		tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 		file, err := tfs.Open("dir1")
 		Expect(err).NotTo(HaveOccurred())
@@ -1019,7 +973,7 @@ var _ = Describe("Fs", func() {
 
 		Expect(tw.Close()).To(Succeed())
 
-		tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+		tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 		file, err := tfs.Open("mydir")
 		Expect(err).NotTo(HaveOccurred())
@@ -1041,26 +995,6 @@ var _ = Describe("Fs", func() {
 		})
 	})
 
-	Context("close error when loading root", func() {
-		It("should return error when close fails after reading all entries for root", func() {
-			var buf bytes.Buffer
-			tw := tar.NewWriter(&buf)
-			Expect(tw.WriteHeader(&tar.Header{Name: "f.txt", Mode: 0644, Size: 4})).To(Succeed())
-			_, _ = tw.Write([]byte("data"))
-			Expect(tw.Close()).To(Succeed())
-
-			closeErr := errors.New("close failed")
-			tfs := tarfs.FromReader("test.tar", &errCloser{bytes.NewReader(buf.Bytes()), closeErr})
-
-			file, err := tfs.Open(".")
-
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ihfs.ErrInvalid))
-			Expect(err).To(MatchError(closeErr))
-			Expect(file).To(BeNil())
-		})
-	})
-
 	Context("root directory trailing slash normalization", func() {
 		It("should normalize directory headers with trailing slashes when loading root", func() {
 			var buf bytes.Buffer
@@ -1070,7 +1004,7 @@ var _ = Describe("Fs", func() {
 			_, _ = tw.Write([]byte("hello"))
 			Expect(tw.Close()).To(Succeed())
 
-			tfs := tarfs.FromReader("test.tar", bytes.NewReader(buf.Bytes()))
+			tfs := tarfs.FromReader(bytes.NewReader(buf.Bytes()))
 
 			// Open "." triggers full root scan including "mydir/"
 			root, err := tfs.Open(".")
