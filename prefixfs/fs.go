@@ -3,11 +3,9 @@
 package prefixfs
 
 import (
-	"io"
 	"io/fs"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/unstoppablemango/ihfs"
 )
@@ -43,7 +41,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
 		return &dir{
-			name:  path.Base(name),
+			path:  name,
 			child: f.childComponent(name),
 		}, nil
 	}
@@ -87,7 +85,7 @@ func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
-		return []ihfs.DirEntry{&dir{name: f.childComponent(name)}}, nil
+		return []ihfs.DirEntry{&dirEntry{name: f.childComponent(name)}}, nil
 	}
 
 	if name == f.prefix {
@@ -112,52 +110,3 @@ func firstComponent(p string) string {
 	first, _, _ := strings.Cut(p, "/")
 	return first
 }
-
-// dir is a synthetic read-only directory for ancestor paths of the prefix.
-// It implements both [fs.ReadDirFile] and [fs.DirEntry].
-type dir struct {
-	name  string
-	child string
-	pos   int
-}
-
-func (d *dir) Stat() (ihfs.FileInfo, error) { return &dirInfo{name: d.name}, nil }
-func (d *dir) Read([]byte) (int, error)     { return 0, d.error("read", ihfs.ErrInvalid) }
-func (d *dir) Close() error                 { return nil }
-func (d *dir) Name() string                 { return d.name }
-func (d *dir) IsDir() bool                  { return true }
-func (d *dir) Type() ihfs.FileMode          { return fs.ModeDir }
-func (d *dir) Info() (ihfs.FileInfo, error) { return &dirInfo{name: d.name}, nil }
-
-func (d *dir) ReadDir(n int) ([]ihfs.DirEntry, error) {
-	entries := []ihfs.DirEntry{&dir{name: d.child}}
-	if n <= 0 {
-		if d.pos >= 1 {
-			return nil, nil
-		}
-		d.pos = 1
-		return entries, nil
-	}
-
-	if d.pos >= 1 {
-		return nil, io.EOF
-	}
-	d.pos = 1
-	return entries, nil
-}
-
-func (d *dir) error(op string, err error) error {
-	return &ihfs.PathError{Op: op, Path: d.name, Err: err}
-}
-
-// dirInfo implements [fs.FileInfo] for synthetic ancestor directories.
-type dirInfo struct {
-	name string
-}
-
-func (i *dirInfo) Name() string        { return i.name }
-func (i *dirInfo) Size() int64         { return 0 }
-func (i *dirInfo) Mode() ihfs.FileMode { return fs.ModeDir | 0o555 }
-func (i *dirInfo) ModTime() time.Time  { return time.Time{} }
-func (i *dirInfo) IsDir() bool         { return true }
-func (i *dirInfo) Sys() any            { return nil }

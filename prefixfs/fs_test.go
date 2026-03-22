@@ -244,6 +244,20 @@ var _ = Describe("Fs", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("should report the full path in read errors for multi-level ancestors", func() {
+			deep, err := prefixfs.New(inner, "a/b/c")
+			Expect(err).NotTo(HaveOccurred())
+
+			f, err := deep.Open("a/b")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(f.Close)
+
+			_, err = f.Read(make([]byte, 10))
+			var pathErr *fs.PathError
+			Expect(err).To(BeAssignableToTypeOf(pathErr))
+			Expect(err.(*fs.PathError).Path).To(Equal("a/b"))
+		})
+
 		It("should implement fs.ReadDirFile", func() {
 			_, ok := dir.(fs.ReadDirFile)
 			Expect(ok).To(BeTrue())
@@ -342,6 +356,11 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(info.Name()).To(Equal("a"))
 			Expect(info.IsDir()).To(BeTrue())
+		})
+
+		It("should not implement fs.ReadDirFile", func() {
+			_, ok := entries[0].(fs.ReadDirFile)
+			Expect(ok).To(BeFalse())
 		})
 	})
 
