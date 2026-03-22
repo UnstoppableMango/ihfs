@@ -58,7 +58,8 @@ make format
 - Type aliases and error constants in `fs.go` for standard interfaces
 - `Operation` interface defined in `fs.go`
 - Concrete operation types in `op/` package
-- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`)
+- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`, `errfs/`, `prefixfs/`, `ghfs/`, `ctrfs/v1/`)
+- Filter utilities in `filter.go` (root) and `filter/` package
 - Iterator utilities in `iter.go`
 
 ### Interface Design
@@ -160,7 +161,7 @@ This section contains repository-specific practices learned from user feedback:
 - **Test coverage must be 100% for all implementation packages**
 - Use mock implementations in tests rather than complex test fixtures
 - **Coverage targets by package type:**
-  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try): 100% coverage required**
+  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try, errfs, prefixfs, filter, ghfs, ctrfs/v1): 100% coverage required**
   - Utility packages (op, osfs, testfs): Coverage not required - these are simple wrappers or test helpers that don't contain business logic
   - Note: memfs aims for 100% but some defensive code for impossible cases (e.g., empty path parts after normalization) may not be reachable
 - When creating tests for filesystem implementations:

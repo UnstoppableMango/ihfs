@@ -48,6 +48,25 @@
   - `fs.go`: In-memory filesystem implementation with full read/write support
   - `file.go`: In-memory file implementation with read/write capabilities
   - `fileinfo.go`: FileInfo implementation for in-memory files
+- **`errfs/`**: Error filesystem implementation (for testing error paths)
+  - `fs.go`: Filesystem that returns a fixed error for all operations
+  - `file.go`: File that returns a fixed error for all operations
+- **`prefixfs/`**: Prefix filesystem implementation (inverse of `fs.Sub`)
+  - `fs.go`: Filesystem that makes an underlying FS accessible under a prefix path
+  - `dir.go`: Virtual directory implementation for prefix path components
+- **`filter/`**: Filter utilities for `ihfs.FilterFS`
+  - `regexp.go`: `NameRegex` filter — allows operations on files matching a regexp
+- **`ghfs/`**: GitHub filesystem implementation
+  - `fs.go`: Filesystem backed by the GitHub API (releases/assets)
+  - `file.go`: GitHub file implementation
+  - `fileinfo.go`: FileInfo for GitHub files
+  - `path.go`: GitHub path parsing (`owner/repo/...` format)
+  - `option.go`: Configuration options (token, context function, client)
+  - `util.go`: Internal utilities
+- **`ctrfs/v1/`**: OCI v1 image/layer filesystem adapters
+  - `fs.go`: Filesystem adapter for OCI v1 layers
+  - `image.go`: OCI v1 image support
+  - `layer.go`: OCI v1 layer support
 
 ### Filesystem Implementation Overview
 
@@ -74,6 +93,14 @@
   - Supports standard filesystem operations (Create, Mkdir, Remove, Rename, Chmod, etc.)
   - Constructor: `memfs.New() *Fs`
 - **testfs**: Mock filesystem for testing with configurable behavior
+- **errfs**: Filesystem that always returns a fixed error — useful for testing error handling paths
+- **prefixfs**: Makes an underlying FS accessible only under a prefix path (inverse of `fs.Sub`)
+  - Constructor: `prefixfs.New(fsys fs.FS, prefix string) *Fs`
+- **filter**: Utilities for `ihfs.FilterFS` — `filter.NameRegex` creates a filter that allows only matching filenames
+- **ghfs**: Read-only filesystem backed by the GitHub API
+  - Supports owner/repo/release/asset path format
+  - Constructor: `ghfs.New(options ...Option) *Fs`
+- **ctrfs/v1**: Read-only filesystem adapters for OCI v1 images and layers
 
 ### Operation Types
 
@@ -103,6 +130,11 @@
 - **union (`union_test`)**: `union_suite_test.go`, `copy_test.go`, `file_test.go`, `merge_test.go`
 - **tarfs (`tarfs_test`)**: `tarfs_suite_test.go`, `fs_test.go`, `file_test.go`
 - **memfs (`memfs_test`)**: `memfs_suite_test.go`, `fs_test.go`
+- **errfs (`errfs_test`)**: `errfs_suite_test.go`, `fs_test.go`, `file_test.go`
+- **prefixfs (`prefixfs_test`)**: `prefixfs_suite_test.go`, `fs_test.go`
+- **filter (`filter_test`)**: `filter_suite_test.go`, `regexp_test.go`
+- **ghfs (`ghfs_test`)**: `ghfs_suite_test.go`, `fs_test.go`, `file_test.go`, `fileinfo_test.go` (+ internal tests)
+- **ctrfs/v1 (`v1_test`)**: `v1_suite_test.go`, `image_test.go`, `layer_test.go`
 
 ### Test Data
 
@@ -120,9 +152,9 @@
 ## Package Naming Conventions
 
 - **Main package**: `ihfs` (core library code)
-- **Tests**: `ihfs_test`, `try_test`, `cowfs_test`, `corfs_test`, `union_test`, `tarfs_test`, `memfs_test` (external test packages)
-- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `corfs`, `tarfs`, `memfs`, `testfs`)
-- **Utilities**: `union` for layered filesystem utilities
+- **Tests**: `ihfs_test`, `try_test`, `cowfs_test`, `corfs_test`, `union_test`, `tarfs_test`, `memfs_test`, `errfs_test`, `prefixfs_test`, `filter_test`, `ghfs_test`, `v1_test` (external test packages)
+- **Implementations**: Named after their purpose (`osfs`, `cowfs`, `corfs`, `tarfs`, `memfs`, `testfs`, `errfs`, `prefixfs`, `ghfs`, `ctrfs/v1`)
+- **Utilities**: `union` for layered filesystem utilities, `filter` for FilterFS utilities
 - **Test suites**: Follow `*_suite_test.go` pattern
 - **Test files**: Follow `*_test.go` pattern
 
@@ -180,6 +212,26 @@
 │   ├── testfs.go      # Additional test utilities
 │   └── factory/
 │       └── fs.go      # Queue-based factory filesystem for per-call mock control
+├── errfs/             # Error filesystem (always returns a fixed error)
+│   ├── fs.go          # Filesystem implementation
+│   └── file.go        # File implementation
+├── prefixfs/          # Prefix filesystem (inverse of fs.Sub)
+│   ├── fs.go          # Filesystem implementation
+│   └── dir.go         # Virtual directory for prefix path components
+├── filter/            # FilterFS utilities
+│   └── regexp.go      # NameRegex filter
+├── ghfs/              # GitHub API filesystem
+│   ├── fs.go          # Filesystem implementation
+│   ├── file.go        # File implementation
+│   ├── fileinfo.go    # FileInfo implementation
+│   ├── path.go        # GitHub path parsing
+│   ├── option.go      # Configuration options
+│   └── util.go        # Internal utilities
+├── ctrfs/             # Container filesystem (separate go.mod)
+│   └── v1/            # OCI v1 image/layer adapters
+│       ├── fs.go      # Layer filesystem adapter
+│       ├── image.go   # OCI v1 image support
+│       └── layer.go   # OCI v1 layer support
 └── testdata/          # Test data files
     ├── 2-files/       # Test fixture with two files
     └── test.tar       # Tar archive for testing tar filesystem
