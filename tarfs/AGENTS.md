@@ -13,7 +13,7 @@ Read-only filesystem backed by a tar archive with lazy, streaming reads.
 
 - **Read-only**: no write operations are supported
 - Random access requires seeking back to the beginning of the archive (expensive if the underlying reader is not seekable)
-- Memory is held in the entry cache until the `TarFile` is closed — avoid holding open unnecessarily on large archives
+- Memory for entries is cached and may remain referenced by open `File` handles even after `TarFile.Close()` (which only closes the underlying stream); memory is released only once no references remain and GC runs, so avoid holding files open unnecessarily on large archives
 
 ## Relationships
 
