@@ -55,9 +55,9 @@ type dirInfo struct {
 	name string
 }
 
-func (i *dirInfo) Name() string      { return i.name }
-func (i *dirInfo) Size() int64       { return 0 }
-func (i *dirInfo) Mode() fs.FileMode { return fs.ModeDir | 0o555 }
+func (i *dirInfo) Name() string       { return i.name }
+func (i *dirInfo) Size() int64        { return 0 }
+func (i *dirInfo) Mode() fs.FileMode  { return fs.ModeDir | 0o555 }
 func (i *dirInfo) ModTime() time.Time { return time.Time{} }
-func (i *dirInfo) IsDir() bool       { return true }
-func (i *dirInfo) Sys() any          { return nil }
+func (i *dirInfo) IsDir() bool        { return true }
+func (i *dirInfo) Sys() any           { return nil }
