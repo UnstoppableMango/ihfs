@@ -96,6 +96,28 @@ make format
 
 See [docs/codebase-map.md](docs/codebase-map.md).
 
+## Package-Specific Instructions
+
+Each package has its own `AGENTS.md` with design constraints, coverage requirements, and gotchas. **Read the relevant file before modifying a package.**
+
+| Package | AGENTS.md | Purpose |
+|---|---|---|
+| `osfs/` | [osfs/AGENTS.md](osfs/AGENTS.md) | OS filesystem adapter |
+| `cowfs/` | [cowfs/AGENTS.md](cowfs/AGENTS.md) | Copy-on-write filesystem |
+| `corfs/` | [corfs/AGENTS.md](corfs/AGENTS.md) | Cache-on-read filesystem |
+| `union/` | [union/AGENTS.md](union/AGENTS.md) | Layered FS primitives (used by cowfs/corfs) |
+| `tarfs/` | [tarfs/AGENTS.md](tarfs/AGENTS.md) | Read-only tar archive filesystem |
+| `memfs/` | [memfs/AGENTS.md](memfs/AGENTS.md) | In-memory filesystem |
+| `errfs/` | [errfs/AGENTS.md](errfs/AGENTS.md) | Always-error filesystem (test helper) |
+| `prefixfs/` | [prefixfs/AGENTS.md](prefixfs/AGENTS.md) | Prefix-mount filesystem (inverse of fs.Sub) |
+| `filter/` | [filter/AGENTS.md](filter/AGENTS.md) | FilterFS predicate utilities |
+| `ghfs/` | [ghfs/AGENTS.md](ghfs/AGENTS.md) | GitHub API filesystem |
+| `ctrfs/v1/` | [ctrfs/v1/AGENTS.md](ctrfs/v1/AGENTS.md) | OCI v1 image/layer filesystem |
+| `try/` | [try/AGENTS.md](try/AGENTS.md) | Optional-interface wrappers |
+| `op/` | [op/AGENTS.md](op/AGENTS.md) | Operation type definitions |
+| `testfs/` | [testfs/AGENTS.md](testfs/AGENTS.md) | Configurable mock filesystem |
+| `mockfs/` | [mockfs/AGENTS.md](mockfs/AGENTS.md) | Generated mocks (do not edit by hand) |
+
 ## Common Tasks
 
 ### Adding a New Filesystem Type
