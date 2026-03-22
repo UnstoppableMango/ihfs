@@ -1073,14 +1073,28 @@ var _ = Describe("Util", func() {
 	})
 
 	Describe("Prefix", func() {
-		It("should return an FS accessible under the prefix", func() {
+		It("should make underlying files reachable under the prefix", func() {
 			inner := memfs.New()
+			Expect(ihfs.WriteFile(inner, "file.txt", []byte("hello"), 0o644)).To(Succeed())
 
 			fsys := ihfs.Prefix(inner, "a/b")
 
-			f, err := fsys.Open("a/b")
+			f, err := fsys.Open("a/b/file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			data, err := io.ReadAll(f)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(f.Close()).To(Succeed())
+			Expect(string(data)).To(Equal("hello"))
+		})
+
+		It("should not expose files outside the prefix", func() {
+			inner := memfs.New()
+			Expect(ihfs.WriteFile(inner, "file.txt", []byte("hello"), 0o644)).To(Succeed())
+
+			fsys := ihfs.Prefix(inner, "a/b")
+
+			_, err := fsys.Open("file.txt")
+			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
 		})
 
 		It("should panic for an invalid prefix", func() {
