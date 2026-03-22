@@ -1,4 +1,4 @@
-package ctrfs
+package v1
 
 import (
 	"errors"

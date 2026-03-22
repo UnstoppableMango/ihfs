@@ -1,4 +1,4 @@
-package ctrfs_test
+package v1_test
 
 import (
 	"archive/tar"
@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/fs"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	gv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/unstoppablemango/ihfs"
@@ -20,9 +20,9 @@ type tarEntry struct {
 	data string
 }
 
-// makeLayer creates a v1.Layer from a slice of tar entries.
+// makeLayer creates a gv1.Layer from a slice of tar entries.
 // The opener produces a gzip-compressed tar archive as expected by go-containerregistry.
-func makeLayer(entries []tarEntry) (v1.Layer, error) {
+func makeLayer(entries []tarEntry) (gv1.Layer, error) {
 	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
 		var buf bytes.Buffer
 		gw := gzip.NewWriter(&buf)
@@ -78,13 +78,13 @@ func rootDirStat(name string) (ihfs.FileInfo, error) {
 	return fi, nil
 }
 
-// errLayer is a v1.Layer whose methods all return a fixed error.
+// errLayer is a gv1.Layer whose methods all return a fixed error.
 type errLayer struct {
 	err error
 }
 
-func (e *errLayer) Digest() (v1.Hash, error)             { return v1.Hash{}, e.err }
-func (e *errLayer) DiffID() (v1.Hash, error)             { return v1.Hash{}, e.err }
+func (e *errLayer) Digest() (gv1.Hash, error)            { return gv1.Hash{}, e.err }
+func (e *errLayer) DiffID() (gv1.Hash, error)            { return gv1.Hash{}, e.err }
 func (e *errLayer) Compressed() (io.ReadCloser, error)   { return nil, e.err }
 func (e *errLayer) Uncompressed() (io.ReadCloser, error) { return nil, e.err }
 func (e *errLayer) Size() (int64, error)                 { return 0, e.err }

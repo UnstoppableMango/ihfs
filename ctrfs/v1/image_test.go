@@ -1,4 +1,4 @@
-package ctrfs_test
+package v1_test
 
 import (
 	"archive/tar"
@@ -11,10 +11,12 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/unstoppablemango/ihfs/ctrfs"
+	ctrfsv1 "github.com/unstoppablemango/ihfs/ctrfs/v1"
+	"github.com/unstoppablemango/ihfs/memfs"
+	"github.com/unstoppablemango/ihfs/testfs"
 )
 
-var _ = Describe("ImageFS", func() {
+var _ = Describe("FS", Label("image"), func() {
 	Describe("FromImage", func() {
 		It("should open a file from an image", func() {
 			layer, err := makeLayer([]tarEntry{
@@ -25,7 +27,7 @@ var _ = Describe("ImageFS", func() {
 			img, err := mutate.AppendLayers(empty.Image, layer)
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys := ctrfs.FromImage(img)
+			fsys := ctrfsv1.FromImage(img)
 			defer fsys.Close()
 
 			f, err := fsys.Open("hello.txt")
@@ -46,7 +48,7 @@ var _ = Describe("ImageFS", func() {
 			img, err := mutate.AppendLayers(empty.Image, layer)
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys := ctrfs.FromImage(img)
+			fsys := ctrfsv1.FromImage(img)
 			defer fsys.Close()
 
 			info, err := fs.Stat(fsys, "readme.md")
@@ -64,7 +66,7 @@ var _ = Describe("ImageFS", func() {
 			img, err := mutate.AppendLayers(empty.Image, layer)
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys := ctrfs.FromImage(img)
+			fsys := ctrfsv1.FromImage(img)
 			defer fsys.Close()
 
 			entries, err := fs.ReadDir(fsys, "dir")
@@ -85,7 +87,7 @@ var _ = Describe("ImageFS", func() {
 				img, err := mutate.AppendLayers(empty.Image, layer)
 				Expect(err).NotTo(HaveOccurred())
 
-				fsys := ctrfs.FromImage(img)
+				fsys := ctrfsv1.FromImage(img)
 				defer fsys.Close()
 
 				err = fstest.TestFS(fsys, "dir/hello.txt", "readme.md")
@@ -107,7 +109,7 @@ var _ = Describe("ImageFS", func() {
 			img, err := mutate.AppendLayers(empty.Image, layer1, layer2)
 			Expect(err).NotTo(HaveOccurred())
 
-			fsys := ctrfs.FromImage(img)
+			fsys := ctrfsv1.FromImage(img)
 			defer fsys.Close()
 
 			data1, err := fs.ReadFile(fsys, "base.txt")
@@ -118,5 +120,27 @@ var _ = Describe("ImageFS", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data2)).To(Equal("overlay"))
 		})
+	})
+})
+
+var _ = Describe("AppendFS", func() {
+	It("should append a layer from an fs.FS onto a base image", func() {
+		m := memfs.New()
+		f, err := m.Create("app.bin")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(f.Close()).To(Succeed())
+
+		img, err := ctrfsv1.AppendFS(empty.Image, m, ".")
+		Expect(err).NotTo(HaveOccurred())
+
+		layers, err := img.Layers()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(layers).To(HaveLen(1))
+	})
+
+	It("should propagate ToLayer errors", func() {
+		_, err := ctrfsv1.AppendFS(empty.Image, testfs.BoringFs{}, "nonexistent")
+
+		Expect(err).To(HaveOccurred())
 	})
 })

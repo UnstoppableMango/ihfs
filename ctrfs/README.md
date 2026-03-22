@@ -8,6 +8,10 @@ An `io/fs` adapter for OCI container images and layers, backed by [google/go-con
 
 ## Usage
 
+```go
+import ctrfsv1 "github.com/unstoppablemango/ihfs/ctrfs/v1"
+```
+
 ### Reading a full image
 
 `FromImage` merges all layers (with whiteouts applied) into a single read-only filesystem:
@@ -15,11 +19,11 @@ An `io/fs` adapter for OCI container images and layers, backed by [google/go-con
 ```go
 import (
     "github.com/google/go-containerregistry/pkg/v1/remote"
-    "github.com/unstoppablemango/ihfs/ctrfs"
+    ctrfsv1 "github.com/unstoppablemango/ihfs/ctrfs/v1"
 )
 
 img, err := remote.Image(ref)
-fsys := ctrfs.FromImage(img)
+fsys := ctrfsv1.FromImage(img)
 defer fsys.Close()
 
 f, err := fsys.Open("etc/os-release")
@@ -31,7 +35,7 @@ f, err := fsys.Open("etc/os-release")
 
 ```go
 layer, err := img.LayerByDiffID(hash)
-fsys, err := ctrfs.FromLayer(layer)
+fsys, err := ctrfsv1.FromLayer(layer)
 defer fsys.Close()
 
 data, err := fs.ReadFile(fsys, "usr/bin/myapp")
@@ -42,17 +46,17 @@ data, err := fs.ReadFile(fsys, "usr/bin/myapp")
 `ToLayer` walks an `fs.FS` rooted at `dir` and produces an OCI layer:
 
 ```go
-layer, err := ctrfs.ToLayer(myFS, ".")
+layer, err := ctrfsv1.ToLayer(myFS, ".")
 ```
 
-`ToImage` appends that layer onto a base image in one step:
+`AppendFS` appends that layer onto a base image in one step:
 
 ```go
-newImg, err := ctrfs.ToImage(baseImg, myFS, ".")
+newImg, err := ctrfsv1.AppendFS(baseImg, myFS, ".")
 ```
 
 To root the layer at a subdirectory:
 
 ```go
-layer, err := ctrfs.ToLayer(myFS, "dist")
+layer, err := ctrfsv1.ToLayer(myFS, "dist")
 ```
