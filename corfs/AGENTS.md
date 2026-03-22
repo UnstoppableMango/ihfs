@@ -19,7 +19,3 @@ Cache-on-read filesystem: files are copied from base to layer on first read; sub
 
 - Uses `union.File` for merged directory reads
 - Uses `union.CopyToLayer` when caching a file
-
-## Coverage
-
-100% coverage required.

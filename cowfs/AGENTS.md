@@ -20,7 +20,3 @@ Copy-on-write filesystem: reads come from both layers (layer preferred), writes 
 
 - Delegates directory merging to `union.File`
 - Pass `union.Option` values through `cowfs.New` to configure merge strategy
-
-## Coverage
-
-100% coverage required.

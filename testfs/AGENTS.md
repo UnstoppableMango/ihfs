@@ -29,3 +29,8 @@ info := testfs.NewFileInfo("example.txt")
 ## Coverage
 
 Coverage not required — this is a test helper package.
+
+## Notes
+
+- This package is verbose and awkward to use. Prefer memfs, errfs, or fstest over testfs.
+- The factory package is a work-in-progress builder-style API for mocking filesystems

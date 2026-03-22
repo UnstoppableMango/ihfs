@@ -4,7 +4,13 @@ Read-only filesystem backed by the GitHub API (releases and release assets).
 
 ## Path Format
 
-Paths follow an `owner/repo[/releases[/tag|/id]/assets[/name|/id]]` convention. See `path.go` for the full grammar parsed by `Parse`.
+Paths follow one of three conventions.
+
+- api.github.com API paths
+- github.com Web paths
+- raw.githubusercontent.com Web paths
+
+See `path.go` for the full grammar parsed by `Parse`.
 
 ## Design
 

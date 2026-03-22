@@ -10,7 +10,3 @@ Intended exclusively for testing error-handling paths in other packages. Use `er
 
 - Both `Fs` and `File` implement wide interfaces (all optional methods) so callers never get `ErrNotImplemented` unexpectedly
 - No state beyond the stored error
-
-## Coverage
-
-100% coverage required.

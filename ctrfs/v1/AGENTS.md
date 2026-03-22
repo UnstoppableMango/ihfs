@@ -13,7 +13,3 @@
 - **Read-only**: OCI layers are immutable; no write operations are supported
 - This package lives in its own Go module (`ctrfs/go.mod`); dependency updates must be managed separately from the root module
 - Run `gomod2nix generate` inside `ctrfs/` after updating `go.mod`
-
-## Coverage
-
-100% coverage required.
