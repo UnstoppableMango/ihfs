@@ -1,7 +1,9 @@
 package tarfs
 
 import (
+	"errors"
 	"io/fs"
+	"sync/atomic"
 
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/osfs"
@@ -23,7 +25,7 @@ type TarFile struct {
 
 	name   string
 	file   fs.File
-	closed bool
+	closed atomic.Bool
 }
 
 // Open opens a tar file as a read-only file system.
@@ -49,29 +51,30 @@ func (t *TarFile) Name() string {
 	return t.name
 }
 
+// Open implements [ihfs.FS], adding closed-state checking and [TarError] wrapping.
+func (t *TarFile) Open(name string) (ihfs.File, error) {
+	if t.closed.Load() {
+		return nil, &TarError{Archive: t.name, Name: name, Err: fs.ErrNotExist}
+	}
+	file, err := t.Fs.Open(name)
+	if err != nil {
+		return nil, t.wrapErr(name, err)
+	}
+	return file, nil
+}
+
 // Close closes the underlying tar archive.
 func (t *TarFile) Close() error {
-	t.mux.Lock()
-	defer t.mux.Unlock()
-
-	if t.closed {
+	if t.closed.Swap(true) {
 		return nil
 	}
-
-	t.closed = true
 	return t.file.Close()
 }
 
-func (t *TarFile) close() error {
-	t.closed = true
-	return t.file.Close()
-}
-
-func (t *TarFile) error(name string, err, cause error) error {
-	return &TarError{
-		Archive: t.name,
-		Name:    name,
-		Err:     err,
-		Cause:   cause,
+func (t *TarFile) wrapErr(name string, err error) error {
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		err = pathErr.Err
 	}
+	return &TarError{Archive: t.name, Name: name, Err: err}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
+
 type Fs struct {
 	cache *cache
 	mux   sync.Mutex
@@ -34,6 +35,20 @@ func FromReader(r io.Reader) *Fs {
 
 // Open implements [ihfs.FS].
 func (t *Fs) Open(name string) (ihfs.File, error) {
+	if name == "." {
+		t.mux.Lock()
+		defer t.mux.Unlock()
+		if err := t.drainIntoCache(); err != nil {
+			return nil, &fs.PathError{Op: "open", Path: ".", Err: ihfs.ErrInvalid}
+		}
+		return &File{
+			hdr:   &tar.Header{Name: ".", Typeflag: tar.TypeDir, Mode: 0755},
+			name:  ".",
+			cache: t.cache,
+			r:     bytes.NewReader(nil),
+		}, nil
+	}
+
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{
 			Op:   "open",
@@ -93,7 +108,7 @@ func (t *Fs) Open(name string) (ihfs.File, error) {
 			return nil, &fs.PathError{
 				Op:   "open",
 				Path: name,
-				Err:  ihfs.ErrNotExist,
+				Err:  fmt.Errorf("%w: %w", ihfs.ErrNotExist, err),
 			}
 		}
 
@@ -121,8 +136,7 @@ func (t *Fs) Open(name string) (ihfs.File, error) {
 }
 
 // drainIntoCache reads all remaining entries from the tar stream into the cache.
-// The caller must hold t.mux and t.closed must be false.
-// drainIntoCache calls t.close() after reaching EOF.
+// The caller must hold t.mux.
 func (t *Fs) drainIntoCache() error {
 	for {
 		fd, err := next(t.tr)
