@@ -34,8 +34,8 @@ func Open(name string) (*TarFile, error) {
 }
 
 // OpenFS opens a tar file from fs as a read-only file system.
-func OpenFS(fs ihfs.FS, name string) (*TarFile, error) {
-	f, err := fs.Open(name)
+func OpenFS(fsys ihfs.FS, name string) (*TarFile, error) {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return nil, err
 	}
