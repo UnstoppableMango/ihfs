@@ -42,7 +42,10 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
-		return f.newVirtualDir(name), nil
+		return &dir{
+			name:  path.Base(name),
+			child: f.childComponent(name),
+		}, nil
 	}
 
 	if name == f.prefix {
@@ -63,7 +66,7 @@ func (f *Fs) Stat(name string) (ihfs.FileInfo, error) {
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
-		return &virtualDirInfo{name: path.Base(name)}, nil
+		return &dirInfo{name: path.Base(name)}, nil
 	}
 
 	if name == f.prefix {
@@ -84,7 +87,7 @@ func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 	}
 
 	if name == "." || strings.HasPrefix(f.prefix, name+"/") {
-		return []ihfs.DirEntry{f.nextEntry(name)}, nil
+		return []ihfs.DirEntry{&dir{name: f.childComponent(name)}}, nil
 	}
 
 	if name == f.prefix {
@@ -96,17 +99,6 @@ func (f *Fs) ReadDir(name string) ([]ihfs.DirEntry, error) {
 	}
 
 	return nil, &ihfs.PathError{Op: "readdir", Path: name, Err: ihfs.ErrNotExist}
-}
-
-func (f *Fs) newVirtualDir(name string) *virtualDir {
-	return &virtualDir{
-		name:  path.Base(name),
-		child: f.childComponent(name),
-	}
-}
-
-func (f *Fs) nextEntry(name string) *virtualDirEntry {
-	return &virtualDirEntry{name: f.childComponent(name)}
 }
 
 func (f *Fs) childComponent(name string) string {
@@ -121,27 +113,24 @@ func firstComponent(p string) string {
 	return first
 }
 
-// virtualDir is a synthetic read-only directory for ancestor paths of the prefix.
-type virtualDir struct {
+// dir is a synthetic read-only directory for ancestor paths of the prefix.
+// It implements both [fs.ReadDirFile] and [fs.DirEntry].
+type dir struct {
 	name  string
 	child string
 	pos   int
 }
 
-func (d *virtualDir) Stat() (ihfs.FileInfo, error) {
-	return &virtualDirInfo{name: d.name}, nil
-}
+func (d *dir) Stat() (ihfs.FileInfo, error) { return &dirInfo{name: d.name}, nil }
+func (d *dir) Read([]byte) (int, error)     { return 0, d.error("read", ihfs.ErrInvalid) }
+func (d *dir) Close() error                 { return nil }
+func (d *dir) Name() string                 { return d.name }
+func (d *dir) IsDir() bool                  { return true }
+func (d *dir) Type() ihfs.FileMode          { return fs.ModeDir }
+func (d *dir) Info() (ihfs.FileInfo, error) { return &dirInfo{name: d.name}, nil }
 
-func (d *virtualDir) Read([]byte) (int, error) {
-	return 0, &ihfs.PathError{Op: "read", Path: d.name, Err: ihfs.ErrInvalid}
-}
-
-func (d *virtualDir) Close() error {
-	return nil
-}
-
-func (d *virtualDir) ReadDir(n int) ([]ihfs.DirEntry, error) {
-	entries := []ihfs.DirEntry{&virtualDirEntry{name: d.child}}
+func (d *dir) ReadDir(n int) ([]ihfs.DirEntry, error) {
+	entries := []ihfs.DirEntry{&dir{name: d.child}}
 	if n <= 0 {
 		if d.pos >= 1 {
 			return nil, nil
@@ -157,24 +146,18 @@ func (d *virtualDir) ReadDir(n int) ([]ihfs.DirEntry, error) {
 	return entries, nil
 }
 
-// virtualDirInfo implements [fs.FileInfo] for synthetic ancestor directories.
-type virtualDirInfo struct {
+func (d *dir) error(op string, err error) error {
+	return &ihfs.PathError{Op: op, Path: d.name, Err: err}
+}
+
+// dirInfo implements [fs.FileInfo] for synthetic ancestor directories.
+type dirInfo struct {
 	name string
 }
 
-func (i *virtualDirInfo) Name() string        { return i.name }
-func (i *virtualDirInfo) Size() int64         { return 0 }
-func (i *virtualDirInfo) Mode() ihfs.FileMode { return fs.ModeDir | 0o555 }
-func (i *virtualDirInfo) ModTime() time.Time  { return time.Time{} }
-func (i *virtualDirInfo) IsDir() bool         { return true }
-func (i *virtualDirInfo) Sys() any            { return nil }
-
-// virtualDirEntry implements [fs.DirEntry] for synthetic ancestor directories.
-type virtualDirEntry struct {
-	name string
-}
-
-func (e *virtualDirEntry) Name() string                    { return e.name }
-func (e *virtualDirEntry) IsDir() bool                     { return true }
-func (e *virtualDirEntry) Type() ihfs.FileMode             { return fs.ModeDir }
-func (e *virtualDirEntry) Info() (ihfs.FileInfo, error)    { return &virtualDirInfo{name: e.name}, nil }
+func (i *dirInfo) Name() string        { return i.name }
+func (i *dirInfo) Size() int64         { return 0 }
+func (i *dirInfo) Mode() ihfs.FileMode { return fs.ModeDir | 0o555 }
+func (i *dirInfo) ModTime() time.Time  { return time.Time{} }
+func (i *dirInfo) IsDir() bool         { return true }
+func (i *dirInfo) Sys() any            { return nil }
