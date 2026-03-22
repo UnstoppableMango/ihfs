@@ -10,7 +10,8 @@ import (
 // FromImage creates a read-only [io/fs.FS] from a [v1.Image].
 // The returned FS presents the merged, whiteout-resolved view of all image layers.
 func FromImage(img v1.Image) *FS {
-	return &FS{tarfs.FromReader("", mutate.Extract(img))}
+	rc := mutate.Extract(img)
+	return &FS{Fs: tarfs.FromReader(rc), closer: rc}
 }
 
 // AppendFS appends a new layer built from fsys onto base and returns the resulting image.
