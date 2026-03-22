@@ -370,7 +370,7 @@ func Rename(fsys FS, oldpath, newpath string) error {
 }
 
 // Prefix returns an FS that makes fsys accessible only under prefix.
-// It is the inverse of [Sub]. See [prefixfs.New] for details and panic conditions.
+// It is the inverse of [fs.Sub] semantics. See [prefixfs.New] for details and panic conditions.
 func Prefix(fsys FS, prefix string) FS {
 	return prefixfs.New(fsys, prefix)
 }
