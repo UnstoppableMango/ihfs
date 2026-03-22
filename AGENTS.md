@@ -106,7 +106,7 @@ Each package has its own `AGENTS.md` with design constraints, coverage requireme
 | `cowfs/` | [cowfs/AGENTS.md](cowfs/AGENTS.md) | Copy-on-write filesystem |
 | `corfs/` | [corfs/AGENTS.md](corfs/AGENTS.md) | Cache-on-read filesystem |
 | `union/` | [union/AGENTS.md](union/AGENTS.md) | Layered FS primitives (used by cowfs/corfs) |
-| `tarfs/` | [tarfs/AGENTS.md](tarfs/AGENTS.md) | Read-only tar archive filesystem |
+| `tarfs/` | [tarfs/AGENTS.md](tarfs/AGENTS.md) | Tar archive filesystem (read-only reader + write-only writer) |
 | `memfs/` | [memfs/AGENTS.md](memfs/AGENTS.md) | In-memory filesystem |
 | `errfs/` | [errfs/AGENTS.md](errfs/AGENTS.md) | Always-error filesystem (test helper) |
 | `prefixfs/` | [prefixfs/AGENTS.md](prefixfs/AGENTS.md) | Prefix-mount filesystem (inverse of fs.Sub) |
