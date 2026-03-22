@@ -58,7 +58,8 @@ make format
 - Type aliases and error constants in `fs.go` for standard interfaces
 - `Operation` interface defined in `fs.go`
 - Concrete operation types in `op/` package
-- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`)
+- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`, `errfs/`, `prefixfs/`, `ghfs/`, `ctrfs/v1/`)
+- Filter utilities in `filter.go` (root) and `filter/` package
 - Iterator utilities in `iter.go`
 
 ### Interface Design
@@ -94,6 +95,28 @@ make format
 ## Codebase Map
 
 See [docs/codebase-map.md](docs/codebase-map.md).
+
+## Package-Specific Instructions
+
+Each package has its own `AGENTS.md` with design constraints, coverage requirements, and gotchas. **Read the relevant file before modifying a package.**
+
+| Package | AGENTS.md | Purpose |
+|---|---|---|
+| `osfs/` | [osfs/AGENTS.md](osfs/AGENTS.md) | OS filesystem adapter |
+| `cowfs/` | [cowfs/AGENTS.md](cowfs/AGENTS.md) | Copy-on-write filesystem |
+| `corfs/` | [corfs/AGENTS.md](corfs/AGENTS.md) | Cache-on-read filesystem |
+| `union/` | [union/AGENTS.md](union/AGENTS.md) | Layered FS primitives (used by cowfs/corfs) |
+| `tarfs/` | [tarfs/AGENTS.md](tarfs/AGENTS.md) | Tar archive filesystem (read-only reader + write-only writer) |
+| `memfs/` | [memfs/AGENTS.md](memfs/AGENTS.md) | In-memory filesystem |
+| `errfs/` | [errfs/AGENTS.md](errfs/AGENTS.md) | Always-error filesystem (test helper) |
+| `prefixfs/` | [prefixfs/AGENTS.md](prefixfs/AGENTS.md) | Prefix-mount filesystem (inverse of fs.Sub) |
+| `filter/` | [filter/AGENTS.md](filter/AGENTS.md) | FilterFS predicate utilities |
+| `ghfs/` | [ghfs/AGENTS.md](ghfs/AGENTS.md) | GitHub API filesystem |
+| `ctrfs/v1/` | [ctrfs/v1/AGENTS.md](ctrfs/v1/AGENTS.md) | OCI v1 image/layer filesystem |
+| `try/` | [try/AGENTS.md](try/AGENTS.md) | Optional-interface wrappers |
+| `op/` | [op/AGENTS.md](op/AGENTS.md) | Operation type definitions |
+| `testfs/` | [testfs/AGENTS.md](testfs/AGENTS.md) | Configurable mock filesystem |
+| `mockfs/` | [mockfs/AGENTS.md](mockfs/AGENTS.md) | Generated mocks (do not edit by hand) |
 
 ## Common Tasks
 
@@ -160,7 +183,7 @@ This section contains repository-specific practices learned from user feedback:
 - **Test coverage must be 100% for all implementation packages**
 - Use mock implementations in tests rather than complex test fixtures
 - **Coverage targets by package type:**
-  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try): 100% coverage required**
+  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try, errfs, prefixfs, filter, ghfs, ctrfs/v1): 100% coverage required**
   - Utility packages (op, osfs, testfs): Coverage not required - these are simple wrappers or test helpers that don't contain business logic
   - Note: memfs aims for 100% but some defensive code for impossible cases (e.g., empty path parts after normalization) may not be reachable
 - When creating tests for filesystem implementations:
