@@ -19,7 +19,8 @@ type Fs struct {
 }
 
 // New creates a new Fs that makes fsys accessible under prefix.
-// prefix must be a valid, non-root path (no leading slashes, no "..").
+// prefix is cleaned via [path.Clean] before use, and must resolve to a
+// valid, non-root [fs.ValidPath].
 func New(fsys ihfs.FS, prefix string) (*Fs, error) {
 	prefix = path.Clean(prefix)
 	if !fs.ValidPath(prefix) || prefix == "." {
