@@ -1072,6 +1072,22 @@ var _ = Describe("Util", func() {
 		})
 	})
 
+	Describe("Prefix", func() {
+		It("should return an FS accessible under the prefix", func() {
+			inner := memfs.New()
+
+			fsys := ihfs.Prefix(inner, "a/b")
+
+			f, err := fsys.Open("a/b")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+		})
+
+		It("should panic for an invalid prefix", func() {
+			Expect(func() { ihfs.Prefix(memfs.New(), ".") }).To(Panic())
+		})
+	})
+
 	Describe("Sub", func() {
 		It("should call underlying Sub when SubFS is implemented", func() {
 			var capturedDir string

@@ -9,6 +9,8 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+
+	"github.com/unstoppablemango/ihfs/prefixfs"
 )
 
 // ErrNotImplemented is returned when a filesystem operation is not supported.
@@ -365,6 +367,12 @@ func Rename(fsys FS, oldpath, newpath string) error {
 		return rename.Rename(oldpath, newpath)
 	}
 	return fmt.Errorf("rename: %w", ErrNotImplemented)
+}
+
+// Prefix returns an FS that makes fsys accessible only under prefix.
+// It is the inverse of [Sub]. See [prefixfs.New] for details and panic conditions.
+func Prefix(fsys FS, prefix string) FS {
+	return prefixfs.New(fsys, prefix)
 }
 
 // Sub returns an FS rooted at fsys's dir subtree.
