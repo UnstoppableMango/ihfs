@@ -13,8 +13,8 @@ Configurable mock filesystem for use in tests across the repo.
 
 ```go
 // Simple mock
-fs := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
-    return nil, fs.ErrNotExist
+fsys := testfs.New(testfs.WithOpen(func(name string) (ihfs.File, error) {
+    return nil, ihfs.ErrNotExist
 }))
 
 // FileInfo
