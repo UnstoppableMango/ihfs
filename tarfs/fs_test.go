@@ -17,7 +17,6 @@ import (
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
-
 var _ = Describe("Fs", func() {
 	Describe("Open", func() {
 		It("should open a tar file", func() {
@@ -233,7 +232,6 @@ var _ = Describe("Fs", func() {
 
 			Expect(err.Error()).To(Equal("test.tar(test.txt): file does not exist: unexpected EOF"))
 		})
-
 
 	})
 
@@ -997,7 +995,6 @@ var _ = Describe("Fs", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-
 
 	Context("root directory trailing slash normalization", func() {
 		It("should normalize directory headers with trailing slashes when loading root", func() {

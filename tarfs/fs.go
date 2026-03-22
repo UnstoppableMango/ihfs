@@ -12,7 +12,6 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-
 type Fs struct {
 	cache *cache
 	mux   sync.Mutex
