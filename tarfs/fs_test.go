@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
 )
 
@@ -589,7 +588,7 @@ var _ = Describe("Fs", func() {
 
 			file, err := corruptTfs.Open(".")
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ihfs.ErrInvalid))
+			Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 			Expect(file).To(BeNil())
 		})
 	})

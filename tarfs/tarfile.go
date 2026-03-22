@@ -54,7 +54,11 @@ func (t *TarFile) Name() string {
 // Open implements [ihfs.FS], adding closed-state checking and [TarError] wrapping.
 func (t *TarFile) Open(name string) (ihfs.File, error) {
 	if t.closed.Load() {
-		return nil, &TarError{Archive: t.name, Name: name, Err: fs.ErrNotExist}
+		return nil, &TarError{
+			Archive: t.name,
+			Name:    name,
+			Err:     fs.ErrNotExist,
+		}
 	}
 	file, err := t.Fs.Open(name)
 	if err != nil {
@@ -72,8 +76,7 @@ func (t *TarFile) Close() error {
 }
 
 func (t *TarFile) wrapErr(name string, err error) error {
-	var pathErr *fs.PathError
-	if errors.As(err, &pathErr) {
+	if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
 		err = pathErr.Err
 	}
 	return &TarError{Archive: t.name, Name: name, Err: err}

@@ -19,12 +19,6 @@ type Fs struct {
 }
 
 // FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
-//
-// FromReader takes ownership of r, reading from it as needed. If r is an
-// [io.ReadCloser] it will be closed when either [r.Read] returns an error
-// or [Close] is called.
-//
-// If r is not an [io.ReadCloser], it will be wrapped in [io.NopCloser].
 func FromReader(r io.Reader) *Fs {
 	return &Fs{
 		cache: newCache(),
@@ -38,7 +32,7 @@ func (t *Fs) Open(name string) (ihfs.File, error) {
 		t.mux.Lock()
 		defer t.mux.Unlock()
 		if err := t.drainIntoCache(); err != nil {
-			return nil, &fs.PathError{Op: "open", Path: ".", Err: ihfs.ErrInvalid}
+			return nil, &fs.PathError{Op: "open", Path: ".", Err: err}
 		}
 		return &File{
 			hdr:   &tar.Header{Name: ".", Typeflag: tar.TypeDir, Mode: 0755},
@@ -166,24 +160,4 @@ func next(tr *tar.Reader) (*fileData, error) {
 		return nil, err
 	}
 	return &fileData{hdr, data}, nil
-}
-
-// TarError represents an error that occurred while accessing a file in a tar archive.
-type TarError struct {
-	Archive, Name string
-	Err, Cause    error
-}
-
-func (e *TarError) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf(
-			"%s(%s): %v: %v",
-			e.Archive, e.Name, e.Err, e.Cause,
-		)
-	}
-	return fmt.Sprintf("%s(%s): %v", e.Archive, e.Name, e.Err)
-}
-
-func (e *TarError) Unwrap() []error {
-	return []error{e.Err, e.Cause}
 }
