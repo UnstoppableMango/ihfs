@@ -21,7 +21,7 @@ func FromLayer(l v1.Layer) (*FS, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FS{tarfs.FromReader("", rc)}, nil
+	return &FS{Fs: tarfs.FromReader(rc), closer: rc}, nil
 }
 
 // ToLayer creates a [v1.Layer] from the files in fsys rooted at dir.

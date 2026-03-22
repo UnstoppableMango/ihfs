@@ -1,6 +1,6 @@
 module github.com/unstoppablemango/ihfs/ctrfs
 
-go 1.25.7
+go 1.26.1
 
 tool (
 	github.com/nix-community/gomod2nix
@@ -11,7 +11,7 @@ require (
 	github.com/google/go-containerregistry v0.21.3
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/unstoppablemango/ihfs v0.0.3
+	github.com/unstoppablemango/ihfs v0.0.5
 )
 
 require (
@@ -22,7 +22,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/nix-community/go-nix v0.0.0-20250101154619-4bdde671e0a1 // indirect
 	github.com/nix-community/gomod2nix v1.7.1-0.20260208211840-1201ddd1279c // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

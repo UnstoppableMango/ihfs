@@ -37,6 +37,8 @@ github.com/joshdk/go-junit v1.0.0 h1:S86cUKIdwBHWwA6xCmFlf3RTLfVXYQfvanM5Uh+K6GE
 github.com/joshdk/go-junit v1.0.0/go.mod h1:TiiV0PqkaNfFXjEiyjWM3XXrhVyCa1K4Zfga6W52ung=
 github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE9a2c=
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
+github.com/klauspost/compress v1.18.5 h1:/h1gH5Ce+VWNLSWqPzOVn6XBO+vJbCNGvjoaGBFW2IE=
+github.com/klauspost/compress v1.18.5/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
@@ -91,6 +93,10 @@ github.com/unstoppablemango/ihfs v0.0.2 h1:65Us4W/jAVZpffxCYf3xHZCVN3LuhYihlonDp
 github.com/unstoppablemango/ihfs v0.0.2/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
 github.com/unstoppablemango/ihfs v0.0.3 h1:03ULeGUOopm148Y9pw7Vcw28FejADA62lIgKby0JitE=
 github.com/unstoppablemango/ihfs v0.0.3/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
+github.com/unstoppablemango/ihfs v0.0.4 h1:4z2Yo8cWLRT1vDLUQs4mzugWMjeia3CzL2I2Nkf6WDU=
+github.com/unstoppablemango/ihfs v0.0.4/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
+github.com/unstoppablemango/ihfs v0.0.5 h1:bL1jLqdp1RJqt3tFeWOx1d7+AQpFk6sIi1fIrsTm3wI=
+github.com/unstoppablemango/ihfs v0.0.5/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
 github.com/vbatts/tar-split v0.12.2 h1:w/Y6tjxpeiFMR47yzZPlPj/FcPLpXbTUi/9H7d3CPa4=
 github.com/vbatts/tar-split v0.12.2/go.mod h1:eF6B6i6ftWQcDqEn3/iGFRFRo8cBIMSJVOpnNdfTMFA=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
