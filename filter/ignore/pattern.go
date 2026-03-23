@@ -47,15 +47,29 @@ func (p *Pattern) Ignores(name string) bool {
 }
 
 // Matches reports whether the pattern's glob matches name, regardless of negation.
+// Following gitignore semantics, it also returns true if any ancestor directory of
+// name matches the pattern.
 func (p *Pattern) Matches(name string) bool {
 	if p == nil || p.dirOnly {
 		return false
 	}
+	for {
+		if p.matchExact(name) {
+			return true
+		}
+		parent := path.Dir(name)
+		if parent == name || parent == "." {
+			return false
+		}
+		name = parent
+	}
+}
+
+func (p *Pattern) matchExact(name string) bool {
 	if p.rooted {
 		return p.match(name)
 	}
-
-	// non-rooted, match against base name at any depth
+	// non-rooted: match against base name only
 	return p.match(path.Base(name))
 }
 

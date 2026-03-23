@@ -126,6 +126,16 @@ var _ = Describe("Ignore", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	It("should block files under a matched directory", func() {
+		fn := filter.Ignore([]string{"vendor"})
+		base := memfs.New()
+		fsys := ihfs.Filter(base, fn)
+
+		_, err := fsys.Open("vendor/pkg/file.go")
+
+		Expect(err).To(MatchError(ihfs.ErrPermission))
+	})
+
 	It("should allow directories regardless of pattern", func() {
 		fn := filter.Ignore([]string{"*.txt"})
 		dirInfo := testfs.NewFileInfo("notes.txt")

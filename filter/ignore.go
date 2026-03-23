@@ -16,6 +16,8 @@ import (
 // always pass through to allow traversal, such patterns have no effect here.
 // Patterns containing '/' are anchored to the filesystem root; patterns without
 // '/' match against the file's base name at any depth.
+// When a pattern matches a directory name, all files under that directory are
+// also blocked, following standard gitignore semantics.
 // The wildcards '*', '?', '[...]', and '**' follow gitignore semantics.
 func Ignore(lines []string) ihfs.FilterFunc {
 	var patterns []ignore.Pattern
@@ -30,12 +32,12 @@ func Ignore(lines []string) ihfs.FilterFunc {
 		if !ok {
 			return nil
 		}
+		if !ignore.Ignored(patterns, name) {
+			return nil
+		}
 		if info, err := fs.Stat(f.Base(), name); err == nil && info.IsDir() {
 			return nil
 		}
-		if ignore.Ignored(patterns, name) {
-			return ihfs.ErrPermission
-		}
-		return nil
+		return ihfs.ErrPermission
 	}
 }

@@ -150,6 +150,20 @@ var _ = Describe("Ignores", func() {
 		Expect(p.Ignores("important.txt")).To(BeFalse())
 		Expect(p.Ignores("other.txt")).To(BeFalse())
 	})
+
+	It("should ignore files under a matched directory (non-rooted)", func() {
+		p := ignore.Parse("vendor")
+
+		Expect(p.Ignores("vendor/pkg/file.go")).To(BeTrue())
+		Expect(p.Ignores("a/vendor/b/c.go")).To(BeTrue())
+	})
+
+	It("should ignore files under a matched directory (rooted)", func() {
+		p := ignore.Parse("/vendor")
+
+		Expect(p.Ignores("vendor/pkg/file.go")).To(BeTrue())
+		Expect(p.Ignores("a/vendor/file.go")).To(BeFalse())
+	})
 })
 
 var _ = Describe("Ignored", func() {
