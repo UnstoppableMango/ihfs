@@ -91,6 +91,6 @@ func match(isegs, psegs []string) bool {
 
 // Ignored returns true if filePath should be blocked by the patterns.
 // Patterns are evaluated in order; a negation pattern overrides prior matches.
-func Ignored(patterns []Pattern, path string) bool {
-	return File(patterns).Ignores(path)
+func Ignored(patterns []Pattern, filePath string) bool {
+	return File(patterns).Ignores(filePath)
 }
