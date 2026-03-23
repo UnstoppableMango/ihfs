@@ -20,11 +20,8 @@ func (f File) Iter() iter.Seq[Pattern] {
 func (f File) Ignored(filePath string) bool {
 	result := false
 	for pattern := range f.Iter() {
-		if pattern.dirOnly {
-			continue
-		}
-		if pattern.Match(filePath) {
-			result = !pattern.negated
+		if m := pattern.Match(filePath); m != nil {
+			result = *m
 		}
 	}
 	return result

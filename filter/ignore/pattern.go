@@ -49,18 +49,27 @@ func Parse(line string) *Pattern {
 	return &p
 }
 
-func (p *Pattern) Match(name string) bool {
-	if p == nil {
-		return false
+// Match returns the ignore effect of this pattern on name.
+// Returns nil if the pattern has no effect: nil receiver, dir-only pattern, or no glob match.
+// Returns a pointer to true if the file should be ignored (non-negated match).
+// Returns a pointer to false if the file should be un-ignored (negated match).
+func (p *Pattern) Match(name string) *bool {
+	if p == nil || p.dirOnly {
+		return nil
 	}
 	segs := strings.Split(name, "/")
+	var globMatched bool
 	if p.rooted {
-		return match(p.segments, segs)
+		globMatched = match(p.segments, segs)
+	} else {
+		// Non-rooted: match against the base name at any depth.
+		globMatched, _ = path.Match(p.segments[0], segs[len(segs)-1])
 	}
-	// Non-rooted: match against the base name at any depth.
-	base := segs[len(segs)-1]
-	matched, _ := path.Match(p.segments[0], base)
-	return matched
+	if !globMatched {
+		return nil
+	}
+	ignored := !p.negated
+	return &ignored
 }
 
 // match recursively matches pattern segments against path segments,
