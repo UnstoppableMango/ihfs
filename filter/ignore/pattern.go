@@ -27,49 +27,38 @@ func Parse(line string) *Pattern {
 	case line[0] == '\\' && len(line) > 1 && (line[1] == '#' || line[1] == '!'):
 		line = line[1:]
 	}
+
+	line, p.dirOnly = strings.CutSuffix(line, "/")
 	if line == "" {
 		return nil
 	}
 
-	if line[len(line)-1] == '/' {
-		p.dirOnly = true
-		line = line[:len(line)-1]
-	}
-	if line == "" {
-		return nil
-	}
-
-	if strings.Contains(line, "/") {
-		p.rooted = true
-	}
-
+	p.rooted = strings.Contains(line, "/")
 	line = strings.TrimPrefix(line, "/")
 	p.segments = strings.Split(line, "/")
 
 	return &p
 }
 
-// Match returns the ignore effect of this pattern on name.
-// Returns nil if the pattern has no effect: nil receiver, dir-only pattern, or no glob match.
-// Returns a pointer to true if the file should be ignored (non-negated match).
-// Returns a pointer to false if the file should be un-ignored (negated match).
-func (p *Pattern) Match(name string) *bool {
+// Match returns true if this pattern causes name to be ignored:
+// the pattern is not dir-only, the glob matches, and the pattern is not negated.
+func (p *Pattern) Match(name string) bool {
+	return p.fires(name) && !p.negated
+}
+
+// fires returns true if the pattern's glob matches name and the pattern is not dir-only,
+// regardless of negation.
+func (p *Pattern) fires(name string) bool {
 	if p == nil || p.dirOnly {
-		return nil
+		return false
 	}
 	segs := strings.Split(name, "/")
-	var globMatched bool
 	if p.rooted {
-		globMatched = match(p.segments, segs)
-	} else {
-		// Non-rooted: match against the base name at any depth.
-		globMatched, _ = path.Match(p.segments[0], segs[len(segs)-1])
+		return match(p.segments, segs)
 	}
-	if !globMatched {
-		return nil
-	}
-	ignored := !p.negated
-	return &ignored
+	// Non-rooted: match against the base name at any depth.
+	matched, _ := path.Match(p.segments[0], segs[len(segs)-1])
+	return matched
 }
 
 // match recursively matches pattern segments against path segments,
@@ -78,6 +67,9 @@ func match(isegs, psegs []string) bool {
 	if len(isegs) == 0 {
 		return len(psegs) == 0
 	}
+	if len(psegs) == 0 {
+		return false
+	}
 
 	if isegs[0] == "**" {
 		for i := 0; i <= len(psegs); i++ {
@@ -85,9 +77,6 @@ func match(isegs, psegs []string) bool {
 				return true
 			}
 		}
-		return false
-	}
-	if len(psegs) == 0 {
 		return false
 	}
 
@@ -100,6 +89,6 @@ func match(isegs, psegs []string) bool {
 
 // Ignored returns true if filePath should be blocked by the patterns.
 // Patterns are evaluated in order; a negation pattern overrides prior matches.
-func Ignored(patterns []Pattern, filePath string) bool {
-	return File(patterns).Ignored(filePath)
+func Ignored(patterns []Pattern, path string) bool {
+	return File(patterns).Ignored(path)
 }
