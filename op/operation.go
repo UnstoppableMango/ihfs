@@ -2,6 +2,12 @@ package op
 
 import "io/fs"
 
+// Operation represents a file system operation.
+type Operation interface {
+	// Subject returns the subject of the operation, typically a file or directory path.
+	Subject() string
+}
+
 // Open represents an operation to open a file.
 type Open struct {
 	Name string
