@@ -1,6 +1,6 @@
 module github.com/unstoppablemango/ihfs/ghfs
 
-go 1.25.5
+go 1.26.1
 
 tool (
 	github.com/nix-community/gomod2nix
@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/unmango/go v0.15.1
 	github.com/unstoppablemango/go-github-mock v1.5.1
-	github.com/unstoppablemango/ihfs v0.0.3
+	github.com/unstoppablemango/ihfs v0.0.5
 )
 
 require (

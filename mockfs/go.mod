@@ -1,6 +1,6 @@
 module github.com/unstoppablemango/ihfs/mockfs
 
-go 1.25.5
+go 1.26.1
 
 tool (
 	github.com/nix-community/gomod2nix
@@ -9,7 +9,7 @@ tool (
 
 require (
 	github.com/unmango/go v0.15.1
-	github.com/unstoppablemango/ihfs v0.0.3
+	github.com/unstoppablemango/ihfs v0.0.5
 	go.uber.org/mock v0.6.0
 )
 
