@@ -11,19 +11,19 @@ import (
 var _ = Describe("Fs", func() {
 	It("should panic on nil fsys", func() {
 		Expect(func() {
-			ihfs.Filter(nil)
+			ihfs.FilterWith(nil)
 		}).To(Panic())
 	})
 
 	It("should have a name", func() {
-		fsys := ihfs.Filter(testfs.BoringFs{})
+		fsys := ihfs.FilterWith(testfs.BoringFs{})
 
 		Expect(fsys.Name()).To(Equal("filter"))
 	})
 
 	It("should return the base fsys", func() {
 		base := &testfs.BoringFs{}
-		fsys := ihfs.Filter(base)
+		fsys := ihfs.FilterWith(base)
 
 		Expect(fsys.Base()).To(BeIdenticalTo(base))
 	})
@@ -37,7 +37,7 @@ var _ = Describe("Fs", func() {
 			return info, nil
 		}))
 
-		filtered := ihfs.Filter(fsys)
+		filtered := ihfs.FilterWith(fsys)
 		result, err := filtered.Stat("test.txt")
 
 		Expect(err).ToNot(HaveOccurred())
@@ -51,7 +51,7 @@ var _ = Describe("Fs", func() {
 			return info, nil
 		}))
 
-		filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
+		filtered := ihfs.FilterWith(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 			if o.Subject() == "forbidden.txt" {
 				return ihfs.ErrPermission
 			}
@@ -71,7 +71,7 @@ var _ = Describe("Fs", func() {
 			return file, nil
 		}))
 
-		filtered := ihfs.Filter(fsys)
+		filtered := ihfs.FilterWith(fsys)
 
 		f, err := filtered.Open("somefile.txt")
 		Expect(err).ToNot(HaveOccurred())
@@ -85,7 +85,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := ihfs.Filter(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
+			filtered := ihfs.FilterWith(fsys, func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 				if o.Subject() == "forbidden.txt" {
 					return ihfs.ErrPermission
 				}
@@ -105,7 +105,7 @@ var _ = Describe("Fs", func() {
 				return file, nil
 			}))
 
-			filtered := ihfs.Filter(fsys,
+			filtered := ihfs.FilterWith(fsys,
 				func(_ *ihfs.FilterFS, o ihfs.Operation) error {
 					if o.Subject() == "forbidden1.txt" {
 						return ihfs.ErrPermission

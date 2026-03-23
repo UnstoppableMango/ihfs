@@ -1,68 +1,58 @@
 package ihfs
 
 import (
+	"io/fs"
+
 	"github.com/unstoppablemango/ihfs/op"
 )
 
 type (
+	// Operation is an alias for [op.Operation].
 	Operation = op.Operation
-
-	// FilterFunc is a function that filters filesystem operations.
-	FilterFunc func(*FilterFS, Operation) error
-	// Predicate is a function that returns true if an operation should be allowed.
-	Predicate func(Operation) bool
 )
 
-// Filter implements [FilterFunc] for a Predicate, returning [ErrPermission] when the predicate returns false.
-func (p Predicate) Filter(_ *FilterFS, op Operation) error {
-	if p(op) {
-		return nil
-	}
-	return ErrPermission
+type Filter[T fs.FS] interface {
+	Matches(T, Operation) error
 }
 
 // FilterFS is a file system that applies filter functions to operations
 // before delegating them to the underlying file system.
-type FilterFS struct {
-	fs     FS
-	filter FilterFunc
+type FilterFS[T fs.FS] struct {
+	fs     T
+	filter Filter[T]
 }
 
-// Filter creates a new [FilterFS] that wraps the given file system with the provided filter functions.
-func Filter(fsys FS, filters ...FilterFunc) *FilterFS {
-	if fsys == nil {
-		panic("filter: fsys cannot be nil")
-	}
-
-	return &FilterFS{
+// FilterWith creates a new [FilterFS] that wraps the given file system with the provided filter functions.
+func FilterWith[T fs.FS](fsys T, filter ...Filter[T]) *FilterFS[T] {
+	return &FilterFS[T]{
 		fs:     fsys,
-		filter: flat(filters),
+		filter: filters[T](filter),
 	}
 }
 
 // Base implements [Decorator].
-func (f *FilterFS) Base() FS {
+func (f *FilterFS[T]) Base() FS {
 	return f.fs
 }
 
 // Name returns the name of the filter filesystem.
-func (f *FilterFS) Name() string {
+func (f *FilterFS[T]) Name() string {
 	return "filter"
 }
 
 // Stat implements [StatFS].
-func (f *FilterFS) Stat(name string) (FileInfo, error) {
+func (f *FilterFS[T]) Stat(name string) (FileInfo, error) {
 	op := op.Stat{Name: name}
-	if err := f.filter(f, op); err != nil {
+	if err := f.filter.Matches(f.fs, op); err != nil {
 		return nil, err
 	}
 	return Stat(f.fs, name)
 }
 
 // Open implements [FS].
-func (f *FilterFS) Open(name string) (File, error) {
+func (f *FilterFS[T]) Open(name string) (File, error) {
 	op := op.Open{Name: name}
-	if err := f.filter(f, op); err != nil {
+	if err := f.filter.Matches(f.fs, op); err != nil {
 		return nil, err
 	}
 	return f.fs.Open(name)
@@ -75,20 +65,31 @@ func Where(fsys FS, predicates ...Predicate) *FilterFS {
 	for _, p := range predicates {
 		filters = append(filters, p.Filter)
 	}
-	return Filter(fsys, filters...)
+	return FilterWith(fsys, filters...)
 }
 
-func flat(filters []FilterFunc) FilterFunc {
+type filters[T fs.FS] []Filter[T]
+
+func (fs filters[T]) Matches(f T, op Operation) error {
+	for _, filter := range fs {
+		if err := filter.Matches(f, op); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func flat[T fs.FS](filters []Filter[T]) Filter[T] {
 	switch len(filters) {
 	case 0:
-		return none
+		return none[T]
 	case 1:
 		return filters[0]
 	}
 
-	return func(f *FilterFS, op Operation) error {
+	return func(f *FilterFS[T], op Operation) error {
 		for _, filter := range filters {
-			if err := filter(f, op); err != nil {
+			if err := filter.Matches(f.fs, op); err != nil {
 				return err
 			}
 		}
@@ -96,6 +97,6 @@ func flat(filters []FilterFunc) FilterFunc {
 	}
 }
 
-func none(*FilterFS, Operation) error {
+func none[T fs.FS](T, Operation) error {
 	return nil
 }
