@@ -1,0 +1,110 @@
+package ignore
+
+import (
+	"path"
+	"strings"
+)
+
+type Pattern struct {
+	segments []string
+	negated  bool
+	dirOnly  bool
+	rooted   bool
+}
+
+func Parse(line string) *Pattern {
+	line = strings.TrimRight(line, " \t")
+	if line == "" || line[0] == '#' {
+		return nil
+	}
+
+	var p Pattern
+
+	switch {
+	case line[0] == '!':
+		p.negated = true
+		line = line[1:]
+	case line[0] == '\\' && len(line) > 1 && (line[1] == '#' || line[1] == '!'):
+		line = line[1:]
+	}
+
+	line, p.dirOnly = strings.CutSuffix(line, "/")
+	if line == "" {
+		return nil
+	}
+
+	p.rooted = strings.Contains(line, "/")
+	line = strings.TrimPrefix(line, "/")
+	p.segments = strings.Split(line, "/")
+
+	return &p
+}
+
+// Ignores returns true if this pattern causes name to be ignored:
+// the pattern is not dir-only, the glob matches, and the pattern is not negated.
+func (p *Pattern) Ignores(name string) bool {
+	return p.Matches(name) && !p.negated
+}
+
+// Matches reports whether the pattern's glob matches name, regardless of negation.
+// Following gitignore semantics, it also returns true if any ancestor directory of
+// name matches the pattern.
+func (p *Pattern) Matches(name string) bool {
+	if p == nil || p.dirOnly {
+		return false
+	}
+	for {
+		if p.matchExact(name) {
+			return true
+		}
+		parent := path.Dir(name)
+		if parent == name || parent == "." {
+			return false
+		}
+		name = parent
+	}
+}
+
+func (p *Pattern) matchExact(name string) bool {
+	if p.rooted {
+		return p.match(name)
+	}
+	// non-rooted: match against base name only
+	return p.match(path.Base(name))
+}
+
+func (p *Pattern) match(name string) bool {
+	return match(p.segments, strings.Split(name, "/"))
+}
+
+// match recursively matches pattern segments against path segments,
+// treating "**" as a wildcard for zero or more path components.
+func match(isegs, psegs []string) bool {
+	if len(isegs) == 0 {
+		return len(psegs) == 0
+	}
+	if len(psegs) == 0 {
+		return false
+	}
+
+	matched, _ := path.Match(isegs[0], psegs[0])
+	if !matched {
+		return false
+	}
+	if isegs[0] != "**" {
+		return match(isegs[1:], psegs[1:])
+	}
+
+	for i := 0; i <= len(psegs); i++ {
+		if match(isegs[1:], psegs[i:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// Ignored returns true if filePath should be blocked by the patterns.
+// Patterns are evaluated in order; a negation pattern overrides prior matches.
+func Ignored(patterns []Pattern, filePath string) bool {
+	return File(patterns).Ignores(filePath)
+}

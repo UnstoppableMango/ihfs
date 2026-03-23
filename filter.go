@@ -5,6 +5,8 @@ import (
 )
 
 type (
+	Operation = op.Operation
+
 	// FilterFunc is a function that filters filesystem operations.
 	FilterFunc func(*FilterFS, Operation) error
 	// Predicate is a function that returns true if an operation should be allowed.

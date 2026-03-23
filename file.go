@@ -69,12 +69,6 @@ type DirNameReader interface {
 	ReadDirNames(n int) ([]string, error)
 }
 
-// Operation represents a file system operation.
-type Operation interface {
-	// Subject returns the subject of the operation, typically a file or directory path.
-	Subject() string
-}
-
 // ReaderAt is the interface implemented by a file that supports reading at a specific offset.
 type ReaderAt interface {
 	File
