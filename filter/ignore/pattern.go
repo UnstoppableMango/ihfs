@@ -43,12 +43,6 @@ func Parse(line string) *Pattern {
 // Match returns true if this pattern causes name to be ignored:
 // the pattern is not dir-only, the glob matches, and the pattern is not negated.
 func (p *Pattern) Match(name string) bool {
-	return p.fires(name) && !p.negated
-}
-
-// fires returns true if the pattern's glob matches name and the pattern is not dir-only,
-// regardless of negation.
-func (p *Pattern) fires(name string) bool {
 	if p == nil || p.dirOnly {
 		return false
 	}
@@ -56,6 +50,7 @@ func (p *Pattern) fires(name string) bool {
 	if p.rooted {
 		return match(p.segments, segs)
 	}
+
 	// Non-rooted: match against the base name at any depth.
 	matched, _ := path.Match(p.segments[0], segs[len(segs)-1])
 	return matched
