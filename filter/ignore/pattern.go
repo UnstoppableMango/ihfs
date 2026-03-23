@@ -40,20 +40,23 @@ func Parse(line string) *Pattern {
 	return &p
 }
 
-// Match returns true if this pattern causes name to be ignored:
+// Ignores returns true if this pattern causes name to be ignored:
 // the pattern is not dir-only, the glob matches, and the pattern is not negated.
-func (p *Pattern) Match(name string) bool {
+func (p *Pattern) Ignores(name string) bool {
+	return p.Matches(name) && !p.negated
+}
+
+// Matches reports whether the pattern's glob matches name, regardless of negation.
+func (p *Pattern) Matches(name string) bool {
 	if p == nil || p.dirOnly {
 		return false
 	}
 	segs := strings.Split(name, "/")
-	if p.rooted {
-		return match(p.segments, segs)
+	if !p.rooted {
+		// Non-rooted: match against the base name at any depth.
+		segs = segs[len(segs)-1:]
 	}
-
-	// Non-rooted: match against the base name at any depth.
-	matched, _ := path.Match(p.segments[0], segs[len(segs)-1])
-	return matched
+	return match(p.segments, segs)
 }
 
 // match recursively matches pattern segments against path segments,
@@ -85,5 +88,5 @@ func match(isegs, psegs []string) bool {
 // Ignored returns true if filePath should be blocked by the patterns.
 // Patterns are evaluated in order; a negation pattern overrides prior matches.
 func Ignored(patterns []Pattern, path string) bool {
-	return File(patterns).Ignored(path)
+	return File(patterns).Ignores(path)
 }
