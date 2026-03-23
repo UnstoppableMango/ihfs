@@ -51,12 +51,16 @@ func (p *Pattern) Matches(name string) bool {
 	if p == nil || p.dirOnly {
 		return false
 	}
-	segs := strings.Split(name, "/")
-	if !p.rooted {
-		// Non-rooted: match against the base name at any depth.
-		segs = segs[len(segs)-1:]
+	if p.rooted {
+		return p.match(name)
 	}
-	return match(p.segments, segs)
+
+	// non-rooted, match against base name at any depth
+	return p.match(path.Base(name))
+}
+
+func (p *Pattern) match(name string) bool {
+	return match(p.segments, strings.Split(name, "/"))
 }
 
 // match recursively matches pattern segments against path segments,
@@ -69,20 +73,20 @@ func match(isegs, psegs []string) bool {
 		return false
 	}
 
-	if isegs[0] == "**" {
-		for i := 0; i <= len(psegs); i++ {
-			if match(isegs[1:], psegs[i:]) {
-				return true
-			}
-		}
-		return false
-	}
-
 	matched, _ := path.Match(isegs[0], psegs[0])
 	if !matched {
 		return false
 	}
-	return match(isegs[1:], psegs[1:])
+	if isegs[0] != "**" {
+		return match(isegs[1:], psegs[1:])
+	}
+
+	for i := 0; i <= len(psegs); i++ {
+		if match(isegs[1:], psegs[i:]) {
+			return true
+		}
+	}
+	return false
 }
 
 // Ignored returns true if filePath should be blocked by the patterns.
