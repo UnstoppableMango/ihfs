@@ -24,7 +24,7 @@ jobs:
         env:
           TEST_ARGS: --skip-package=ctrfs,ghfs,mockfs
 
-      - uses: codecov/codecov-action@v5.5.3
+      - uses: codecov/codecov-action@v5.5.4
         with:
           use_oidc: true
           fail_ci_if_error: true
