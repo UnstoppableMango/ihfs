@@ -24,7 +24,7 @@ type (
 	SubFS = fs.SubFS
 )
 
-// OsFS is an alias for [os.Fs].
+// OsFS matches the interface exposed by the [os] package.
 type OsFS interface {
 	os.Fs
 	CreateFS
