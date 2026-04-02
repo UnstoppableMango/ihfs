@@ -47,14 +47,16 @@ file_interfaces=(
 join()       { local IFS=,; echo "$*"; }
 mock_names() { local names=(); for i in "$@"; do names+=("$i=$i"); done; join "${names[@]}"; }
 
-mockgen \
+# Use go tool to ensure the go version matches source
+
+go tool mockgen \
 	-destination=mock_fs.go \
 	-package=mockfs \
 	-mock_names="$(mock_names "${fs_interfaces[@]}")" \
 	github.com/unstoppablemango/ihfs \
 	"$(join "${fs_interfaces[@]}")"
 
-mockgen \
+go tool mockgen \
 	-destination=mock_file.go \
 	-package=mockfs \
 	-mock_names="$(mock_names "${file_interfaces[@]}")" \

@@ -78,8 +78,8 @@ schema = 3
     hash = 'sha256-Xyz9L4UWlgjJ277GBPUSm7xWS0Y7Zf1lzO7xv0s4PLA='
 
   [mod.'github.com/unstoppablemango/ihfs']
-    version = 'v0.0.1'
-    hash = 'sha256-R38Gnl5xzWnIJN3GmL50HblOO/avd120OKYZo5/j7N0='
+    version = 'v0.0.5'
+    hash = 'sha256-oAMpLjRMNyI8Yde6dPyDRdw9ceP8neiZKyQE5YIMxZg='
 
   [mod.'go.yaml.in/yaml/v3']
     version = 'v3.0.4'

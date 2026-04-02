@@ -34,8 +34,8 @@ schema = 3
     hash = 'sha256-iaw6AuhEYu7LdLQnOL6Zmu9kp41nRwaz+lpeZ5ihRww='
 
   [mod.'github.com/unstoppablemango/ihfs']
-    version = 'v0.0.1'
-    hash = 'sha256-R38Gnl5xzWnIJN3GmL50HblOO/avd120OKYZo5/j7N0='
+    version = 'v0.0.5'
+    hash = 'sha256-oAMpLjRMNyI8Yde6dPyDRdw9ceP8neiZKyQE5YIMxZg='
 
   [mod.'go.uber.org/mock']
     version = 'v0.6.0'
