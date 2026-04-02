@@ -37,12 +37,6 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/unmango/go v0.15.1 h1:JvZg+4baEAKypm68LhZisu0KeZeXmZ9yewfjV19JQuA=
 github.com/unmango/go v0.15.1/go.mod h1:kHGDNngCnYp+2XKvPeniSLHDTU81cE+Dc1eNtSA1gZw=
-github.com/unstoppablemango/ihfs v0.0.1 h1:FmwsvRGSTAZ8mtp2dQmWMgqvzWs7xXqtU70a275nWnM=
-github.com/unstoppablemango/ihfs v0.0.1/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
-github.com/unstoppablemango/ihfs v0.0.2 h1:65Us4W/jAVZpffxCYf3xHZCVN3LuhYihlonDp6xUFzg=
-github.com/unstoppablemango/ihfs v0.0.2/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
-github.com/unstoppablemango/ihfs v0.0.3 h1:03ULeGUOopm148Y9pw7Vcw28FejADA62lIgKby0JitE=
-github.com/unstoppablemango/ihfs v0.0.3/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
 github.com/unstoppablemango/ihfs v0.0.5 h1:bL1jLqdp1RJqt3tFeWOx1d7+AQpFk6sIi1fIrsTm3wI=
 github.com/unstoppablemango/ihfs v0.0.5/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
 go.uber.org/mock v0.6.0 h1:hyF9dfmbgIX5EfOdasqLsWD6xqpNZlXblLB/Dbnwv3Y=
