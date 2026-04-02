@@ -2,6 +2,7 @@ package tarfs
 
 import (
 	"errors"
+	"io"
 	"io/fs"
 	"sync/atomic"
 
@@ -21,11 +22,10 @@ import (
 //
 // Entries are accessed in order and cached as they are read, so random access may be inefficient.
 type TarFile struct {
-	*Fs
-
 	name   string
 	file   fs.File
 	closed atomic.Bool
+	fs     fs.FS
 }
 
 // Open opens a tar file as a read-only file system.
@@ -40,7 +40,30 @@ func OpenFS(fsys ihfs.FS, name string) (*TarFile, error) {
 		return nil, err
 	}
 	return &TarFile{
-		Fs:   FromReader(f),
+		fs:   FromReader(f),
+		name: name,
+		file: f,
+	}, nil
+}
+
+func Create(name string) (*TarFile, error) {
+	return CreateFS(osfs.Default, name)
+}
+
+func CreateFS(fsys ihfs.FS, name string) (*TarFile, error) {
+	f, err := ihfs.Create(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+
+	w, ok := f.(io.Writer)
+	if !ok {
+		_ = f.Close()
+		return nil, errors.New("file does not support writing")
+	}
+
+	return &TarFile{
+		fs:   NewWriter(w),
 		name: name,
 		file: f,
 	}, nil
@@ -60,7 +83,7 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 			Err:     fs.ErrNotExist,
 		}
 	}
-	file, err := t.Fs.Open(name)
+	file, err := t.fs.Open(name)
 	if err != nil {
 		return nil, t.wrapErr(name, err)
 	}
@@ -79,5 +102,9 @@ func (t *TarFile) wrapErr(name string, err error) error {
 	if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
 		err = pathErr.Err
 	}
-	return &TarError{Archive: t.name, Name: name, Err: err}
+	return &TarError{
+		Archive: t.name,
+		Name:    name,
+		Err:     err,
+	}
 }
