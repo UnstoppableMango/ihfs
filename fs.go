@@ -12,8 +12,6 @@ type (
 	FS = fs.FS
 	// GlobFS is an alias for [fs.GlobFS].
 	GlobFS = fs.GlobFS
-	// OsFS is an alias for [os.Fs].
-	OsFS = os.Fs
 	// ReadDirFS is an alias for [fs.ReadDirFS].
 	ReadDirFS = fs.ReadDirFS
 	// ReadFileFS is an alias for [fs.ReadFileFS].
@@ -26,8 +24,11 @@ type (
 	SubFS = fs.SubFS
 )
 
-// Ensure interface compliance with [os.Os].
-var _ FS = (OsFS)(nil)
+// OsFS matches the interface exposed by the [os] package.
+type OsFS interface {
+	os.Fs
+	CreateFS
+}
 
 // ChmodFS is the interface implemented by a file system that supports changing file modes.
 type ChmodFS interface {

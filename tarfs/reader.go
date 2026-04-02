@@ -12,22 +12,22 @@ import (
 	"github.com/unstoppablemango/ihfs"
 )
 
-type Fs struct {
+type Reader struct {
 	cache *cache
 	mux   sync.Mutex
 	tr    *tar.Reader
 }
 
 // FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
-func FromReader(r io.Reader) *Fs {
-	return &Fs{
+func FromReader(r io.Reader) *Reader {
+	return &Reader{
 		cache: newCache(),
 		tr:    tar.NewReader(r),
 	}
 }
 
 // Open implements [ihfs.FS].
-func (t *Fs) Open(name string) (ihfs.File, error) {
+func (t *Reader) Open(name string) (ihfs.File, error) {
 	if name == "." {
 		t.mux.Lock()
 		defer t.mux.Unlock()
@@ -130,7 +130,7 @@ func (t *Fs) Open(name string) (ihfs.File, error) {
 
 // drainIntoCache reads all remaining entries from the tar stream into the cache.
 // The caller must hold t.mux.
-func (t *Fs) drainIntoCache() error {
+func (t *Reader) drainIntoCache() error {
 	for {
 		fd, err := next(t.tr)
 		if err == io.EOF {

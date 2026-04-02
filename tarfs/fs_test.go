@@ -13,7 +13,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
+	"github.com/unstoppablemango/ihfs/testfs"
 )
 
 var _ = Describe("Fs", func() {
@@ -70,6 +73,62 @@ var _ = Describe("Fs", func() {
 			file, err := tfs.Open("tartest/test.txt")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 			Expect(file).To(BeNil())
+		})
+	})
+
+	Describe("Create", func() {
+		It("should create a tar file", func() {
+			tmpDir := GinkgoT().TempDir()
+			testPath := tmpDir + "/new.tar"
+
+			tfs, err := tarfs.Create(testPath)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tfs).NotTo(BeNil())
+			DeferCleanup(tfs.Close)
+		})
+
+		It("should return error for invalid path", func() {
+			tfs, err := tarfs.Create("/nonexistent-dir/new.tar")
+
+			Expect(err).To(HaveOccurred())
+			Expect(tfs).To(BeNil())
+		})
+	})
+
+	Describe("CreateFS", func() {
+		It("should create a tar file from a custom FS", func() {
+			fsys := memfs.New()
+
+			tfs, err := tarfs.CreateFS(fsys, "new.tar")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tfs).NotTo(BeNil())
+			DeferCleanup(tfs.Close)
+		})
+
+		It("should return error when FS does not support Create", func() {
+			fsys := testfs.New()
+
+			tfs, err := tarfs.CreateFS(fsys, "new.tar")
+
+			Expect(err).To(HaveOccurred())
+			Expect(tfs).To(BeNil())
+		})
+
+		It("should return error when created file does not support writing", func() {
+			boringFile := testfs.BoringFile{
+				CloseFunc: func() error { return nil },
+			}
+			fsys := testfs.New(testfs.WithCreate(func(string) (ihfs.File, error) {
+				return boringFile, nil
+			}))
+
+			tfs, err := tarfs.CreateFS(fsys, "new.tar")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("file does not support writing"))
+			Expect(tfs).To(BeNil())
 		})
 	})
 

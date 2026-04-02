@@ -16,3 +16,7 @@ type Fs struct{ os.Fs }
 func New() ihfs.OsFS {
 	return Fs{os.System}
 }
+
+func (Fs) Create(name string) (ihfs.File, error) {
+	return os.Create(name)
+}
