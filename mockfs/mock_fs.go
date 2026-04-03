@@ -784,6 +784,21 @@ func (mr *OsFSMockRecorder) CopyFS(dir, fsys any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyFS", reflect.TypeOf((*OsFS)(nil).CopyFS), dir, fsys)
 }
 
+// Create mocks base method.
+func (m *OsFS) Create(name string) (ihfs.File, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", name)
+	ret0, _ := ret[0].(ihfs.File)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *OsFSMockRecorder) Create(name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*OsFS)(nil).Create), name)
+}
+
 // CreateTemp mocks base method.
 func (m *OsFS) CreateTemp(dir, pattern string) (fs.File, error) {
 	m.ctrl.T.Helper()
