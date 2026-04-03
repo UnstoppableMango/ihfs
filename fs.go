@@ -65,6 +65,13 @@ type ChtimesFS interface {
 	Chtimes(name string, atime, mtime time.Time) error
 }
 
+type CloserFS interface {
+	FS
+
+	// Close releases any resources associated with the file system.
+	Close() error
+}
+
 // CopyFS is the interface implemented by a file system that supports copying another file system.
 type CopyFS interface {
 	FS
