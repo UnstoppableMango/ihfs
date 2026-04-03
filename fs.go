@@ -65,6 +65,7 @@ type ChtimesFS interface {
 	Chtimes(name string, atime, mtime time.Time) error
 }
 
+// CloserFS is the interface implemented by a file system that supports closing to release resources.
 type CloserFS interface {
 	FS
 
