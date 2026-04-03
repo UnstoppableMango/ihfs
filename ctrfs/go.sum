@@ -97,6 +97,8 @@ github.com/unstoppablemango/ihfs v0.0.4 h1:4z2Yo8cWLRT1vDLUQs4mzugWMjeia3CzL2I2N
 github.com/unstoppablemango/ihfs v0.0.4/go.mod h1:YTr6aw14iR3rlCm28TXcFzB9jsgRIc12NeZObzdS3rE=
 github.com/unstoppablemango/ihfs v0.0.5 h1:bL1jLqdp1RJqt3tFeWOx1d7+AQpFk6sIi1fIrsTm3wI=
 github.com/unstoppablemango/ihfs v0.0.5/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
+github.com/unstoppablemango/ihfs v0.0.6 h1:pmbLsWbR0Q4+sk+Y2aVfMT2mSWGyc8p1S7+QyqpG5r0=
+github.com/unstoppablemango/ihfs v0.0.6/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
 github.com/vbatts/tar-split v0.12.2 h1:w/Y6tjxpeiFMR47yzZPlPj/FcPLpXbTUi/9H7d3CPa4=
 github.com/vbatts/tar-split v0.12.2/go.mod h1:eF6B6i6ftWQcDqEn3/iGFRFRo8cBIMSJVOpnNdfTMFA=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
