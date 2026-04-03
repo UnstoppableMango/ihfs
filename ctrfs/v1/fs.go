@@ -10,7 +10,7 @@ import (
 //
 // Call [FS.Close] when the FS is no longer needed to release the underlying stream.
 type FS struct {
-	*tarfs.Fs
+	*tarfs.Reader
 	closer io.Closer
 }
 
