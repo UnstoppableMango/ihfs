@@ -82,8 +82,8 @@ schema = 3
     hash = 'sha256-iaw6AuhEYu7LdLQnOL6Zmu9kp41nRwaz+lpeZ5ihRww='
 
   [mod.'github.com/unstoppablemango/ihfs']
-    version = 'v0.0.5'
-    hash = 'sha256-oAMpLjRMNyI8Yde6dPyDRdw9ceP8neiZKyQE5YIMxZg='
+    version = 'v0.0.6'
+    hash = 'sha256-thNRqxh/XRH7DdXJR63Zu3ulB1FB9TG4XhgSCOh/qts='
 
   [mod.'github.com/vbatts/tar-split']
     version = 'v0.12.2'
