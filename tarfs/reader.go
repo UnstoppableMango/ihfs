@@ -18,11 +18,15 @@ type Reader struct {
 	tr    *tar.Reader
 }
 
-// FromReader creates a new TarFile from an [io.Reader] containing a tar archive.
+// FromReader creates a new [Reader] from an [io.Reader] containing a tar archive.
 func FromReader(r io.Reader) *Reader {
+	tr, ok := r.(*tar.Reader)
+	if !ok {
+		tr = tar.NewReader(r)
+	}
 	return &Reader{
 		cache: newCache(),
-		tr:    tar.NewReader(r),
+		tr:    tr,
 	}
 }
 
