@@ -251,8 +251,6 @@ func (f *writerFile) Name() string {
 	return f.name
 }
 
-// Close flushes the buffered content as a tar entry.
-// If the first Close fails, subsequent calls return the same error.
 func (f *writerFile) Close() error {
 	if f.closed {
 		return f.closeErr
@@ -270,12 +268,10 @@ func (f *writerFile) Close() error {
 	return f.closeErr
 }
 
-// Read implements [fs.File]. writerFile is write-only; Read always returns [ihfs.ErrPermission].
 func (f *writerFile) Read([]byte) (int, error) {
 	return 0, f.perror("read", ihfs.ErrPermission)
 }
 
-// Stat implements [fs.File]. writerFile is write-only; Stat always returns [ihfs.ErrPermission].
 func (f *writerFile) Stat() (fs.FileInfo, error) {
 	return nil, f.perror("stat", ihfs.ErrPermission)
 }

@@ -10,17 +10,11 @@ import (
 	"github.com/unstoppablemango/ihfs/osfs"
 )
 
-// TarFile represents a read-only file system backed by a tar archive.
-// It will lazily buffer the contents of the tar archive as files are accessed.
-// Opening a directory entry causes all remaining archive entries to be read
-// eagerly so that ReadDir returns a complete listing.
-//
-// Memory: All file content read from the archive is held in memory to support
-// random access on a sequential stream. For large archives this can be
-// significant. Closing TarFile does not release cached content because open
-// File handles may still hold references to the cache.
-//
-// Entries are accessed in order and cached as they are read, so random access may be inefficient.
+// TarFile represents a file system backed by a tar archive.
+// It supports either reading or writing, but never both.
+// For reading, use [Open] or [OpenFS]. For writing, use [Create] or [CreateFS].
+// Read-only TarFiles are backed by [Reader].
+// Write-only TarFiles are backed by [Writer].
 type TarFile struct {
 	name   string
 	file   fs.File
@@ -86,12 +80,61 @@ func (t *TarFile) Open(name string) (ihfs.File, error) {
 	return file, nil
 }
 
+func (t *TarFile) OpenFile(name string, flag int, perm fs.FileMode) (ihfs.File, error) {
+	if t.closed.Load() {
+		return nil, t.wrapErr(name, fs.ErrNotExist)
+	}
+	return ihfs.OpenFile(t.fs, name, flag, perm)
+}
+
 // Close closes the underlying tar archive.
 func (t *TarFile) Close() error {
 	if t.closed.Swap(true) {
 		return nil
 	}
 	return t.file.Close()
+}
+
+func (t *TarFile) Create(name string) (ihfs.File, error) {
+	if t.closed.Load() {
+		return nil, t.wrapErr(name, fs.ErrNotExist)
+	}
+	return ihfs.Create(t.fs, name)
+}
+
+func (t *TarFile) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	if t.closed.Load() {
+		return t.wrapErr(name, fs.ErrNotExist)
+	}
+	return ihfs.WriteFile(t.fs, name, data, perm)
+}
+
+func (t *TarFile) Mkdir(name string, perm fs.FileMode) error {
+	if t.closed.Load() {
+		return t.wrapErr(name, fs.ErrNotExist)
+	}
+	return ihfs.Mkdir(t.fs, name, perm)
+}
+
+func (t *TarFile) MkdirAll(name string, perm fs.FileMode) error {
+	if t.closed.Load() {
+		return t.wrapErr(name, fs.ErrNotExist)
+	}
+	return ihfs.MkdirAll(t.fs, name, perm)
+}
+
+func (t *TarFile) Copy(dir string, fsys ihfs.FS) error {
+	if t.closed.Load() {
+		return t.wrapErr(dir, fs.ErrNotExist)
+	}
+	return ihfs.Copy(t.fs, dir, fsys)
+}
+
+func (t *TarFile) Symlink(oldname, newname string) error {
+	if t.closed.Load() {
+		return t.wrapErr(newname, fs.ErrNotExist)
+	}
+	return ihfs.Symlink(t.fs, oldname, newname)
 }
 
 func (t *TarFile) wrapErr(name string, err error) error {
