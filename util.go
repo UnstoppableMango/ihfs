@@ -321,6 +321,15 @@ func MkdirTemp(fsys FS, dir, pattern string) (string, error) {
 	return "", fmt.Errorf("mkdir temp: %w", ErrNotImplemented)
 }
 
+type noopCloser struct{ FS }
+
+func (noopCloser) Close() error { return nil }
+
+// NopCloser returns an FS that implements [CloserFS] with a no-op Close method.
+func NopCloser(fsys FS) CloserFS {
+	return noopCloser{fsys}
+}
+
 // ReadFile reads the named file in fsys.
 //
 // If fsys implements [ReadFileFS], ReadFile calls fsys.ReadFile.
