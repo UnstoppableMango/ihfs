@@ -15,7 +15,6 @@ import (
 	"github.com/unstoppablemango/ihfs/errfs"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/testfs"
-	"github.com/unstoppablemango/ihfs/union"
 )
 
 var _ = Describe("Fs", func() {
@@ -54,9 +53,9 @@ var _ = Describe("Fs", func() {
 			file, err := cfs.Open("test.txt")
 			Expect(err).ToNot(HaveOccurred())
 
-			buf := make([]byte, 100)
-			n, _ := file.Read(buf)
-			Expect(string(buf[:n])).To(Equal("base"))
+			data, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("base"))
 		})
 
 		It("should open file from layer", func() {
@@ -79,30 +78,15 @@ var _ = Describe("Fs", func() {
 			file, err := cfs.Open("test.txt")
 			Expect(err).ToNot(HaveOccurred())
 
-			buf := make([]byte, 100)
-			n, _ := file.Read(buf)
-			Expect(string(buf[:n])).To(Equal("layer"))
+			data, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("layer"))
 		})
 
 		It("should merge directories from both layers", func() {
-			baseDir := &testfs.File{
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("not applicable")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
-			}
-			layerDir := &testfs.File{
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("not applicable")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
-			}
-
 			base := testfs.New(
 				testfs.WithOpen(func(string) (ihfs.File, error) {
-					return baseDir, nil
+					return &testfs.File{}, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo(name)
@@ -112,7 +96,7 @@ var _ = Describe("Fs", func() {
 			)
 			layer := testfs.New(
 				testfs.WithOpen(func(string) (ihfs.File, error) {
-					return layerDir, nil
+					return &testfs.File{}, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo(name)
@@ -149,11 +133,6 @@ var _ = Describe("Fs", func() {
 			layerClosed := false
 			layerDir := &testfs.File{
 				CloseFunc: func() error { layerClosed = true; return nil },
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("not applicable")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
 			}
 
 			base := testfs.New(
@@ -191,11 +170,6 @@ var _ = Describe("Fs", func() {
 			baseClosed := false
 			baseDir := &testfs.File{
 				CloseFunc: func() error { baseClosed = true; return nil },
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("not applicable")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
 			}
 
 			base := testfs.New(
@@ -236,24 +210,14 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should open layer directory when base is not directory", func() {
-			layerDir := &testfs.File{
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("not applicable")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
-				},
-			}
-
 			base := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(name)
-					fi.IsDirFunc = func() bool { return false }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 			)
 			layer := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return layerDir, nil
+					return &testfs.File{}, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					fi := testfs.NewFileInfo(name)
@@ -315,30 +279,6 @@ var _ = Describe("Fs", func() {
 			cfs := cowfs.New(base, memfs.New())
 			_, err := cfs.Open("test.txt")
 			Expect(err).To(HaveOccurred())
-		})
-	})
-
-	Describe("Options", func() {
-		It("should apply WithMergeStrategy option", func() {
-			base := memfs.New()
-			layer := memfs.New()
-
-			cfs := cowfs.New(base, layer)
-			opt := cowfs.WithMergeStrategy(union.DefaultMergeStrategy)
-			opt(cfs)
-
-			Expect(cfs).ToNot(BeNil())
-		})
-
-		It("should apply WithDefaultMergeStrategy option", func() {
-			base := memfs.New()
-			layer := memfs.New()
-
-			cfs := cowfs.New(base, layer)
-			opt := cowfs.WithDefaultMergeStrategy()
-			opt(cfs)
-
-			Expect(cfs).ToNot(BeNil())
 		})
 	})
 
