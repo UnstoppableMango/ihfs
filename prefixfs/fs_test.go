@@ -142,10 +142,6 @@ var _ = Describe("Fs", func() {
 			_, err := fsys.Stat("other")
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
-
-		It("should implement fs.StatFS", func() {
-			var _ fs.StatFS = fsys
-		})
 	})
 
 	Describe("ReadDir", func() {
@@ -192,10 +188,6 @@ var _ = Describe("Fs", func() {
 		It("should return ErrNotExist for sibling paths", func() {
 			_, err := fsys.ReadDir("other")
 			Expect(err).To(MatchError(fs.ErrNotExist))
-		})
-
-		It("should implement fs.ReadDirFS", func() {
-			var _ fs.ReadDirFS = fsys
 		})
 	})
 

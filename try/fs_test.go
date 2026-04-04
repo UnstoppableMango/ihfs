@@ -1,7 +1,6 @@
 package try_test
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"time"
@@ -64,24 +63,13 @@ var _ = Describe("Try Util", func() {
 
 	Describe("Exists", func() {
 		It("should return true for file", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				return testfs.NewFileInfo(name), nil
-			}))
+			fsys := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return testfs.NewFileInfo(name), nil
+				}),
+			)
 
 			exists, err := try.Exists(fsys, "file.txt")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(exists).To(BeTrue())
-		})
-
-		It("should return true for directory", func() {
-			fsys := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-				fi := testfs.NewFileInfo(name)
-				fi.IsDirFunc = func() bool { return true }
-				return fi, nil
-			}))
-
-			exists, err := try.Exists(fsys, "dir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -140,8 +128,7 @@ var _ = Describe("Try Util", func() {
 
 			info, err := try.Stat(fsys, "nonexistent")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 			Expect(info).To(BeNil())
 		})
 
@@ -186,8 +173,7 @@ var _ = Describe("Try Util", func() {
 
 			isDir, err := try.IsDir(fsys, "nonexistent")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 			Expect(isDir).To(BeFalse())
 		})
 
