@@ -37,9 +37,7 @@ make format
 - Test files follow `*_test.go` convention
 - Suite tests use `*_suite_test.go` pattern
 - Run tests recursively with `ginkgo -r`
-- Aim for high test coverage on all implementation packages (check with `make cover`)
 - Test data goes in `testdata/` directory
-- Do not write messy or low-value tests just to hit a coverage number — skip branches that require complex setup with little benefit
 
 ## Code Conventions
 
@@ -79,7 +77,6 @@ make format
 
 - **Core**: Standard library `io/fs` package
 - **External**: `github.com/unmango/go/os` for OS filesystem
-- **Testing**: Ginkgo v2 and Gomega
 - **Tools**: gomod2nix for Nix integration
 
 ## Development Workflow
@@ -87,10 +84,8 @@ make format
 1. Make changes to Go source files
 2. Run `make test` to ensure tests pass
 3. Run `make fmt` to format code
-4. **Check coverage with `make cover` - aim for high coverage, but skip branches that require messy or low-value tests**
+4. Check coverage with `make cover`
 5. Update `go.mod` if adding dependencies, then run `gomod2nix generate`
-
-**Note**: `codecov.yml` sets a minimum threshold of 60% for CI purposes. The project standard is high coverage, but 100% is not required — do not write messy or low-value tests just to hit a number.
 
 ## Codebase Map
 
@@ -194,10 +189,6 @@ This section contains repository-specific practices learned from user feedback:
   - First understand what the code actually does, not what the test expects
   - Update test expectations to match actual behavior, not the other way around (unless it's a bug)
   - Test the happy path first, then add error cases
-- **Refactoring for coverage:**
-  - When defensive code branches are unreachable, simplify the code rather than writing impossible tests
-  - Example: Use `cmp.Compare()` instead of if-else chains for string comparisons in sort functions
-  - Remove unnecessary else branches when both if and else-if conditions cover all realistic cases
 - **Working with testfs:**
   - Use `testfs.NewFileInfo(name)` to create mock FileInfo objects
   - There is no `testfs.BoringFileInfo` type - use `testfs.NewFileInfo()` or `testfs.FileInfo` instead
