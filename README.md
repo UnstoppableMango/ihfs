@@ -6,6 +6,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/unstoppablemango/ihfs.svg)](https://pkg.go.dev/github.com/unstoppablemango/ihfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/unstoppablemango/ihfs)](https://goreportcard.com/report/github.com/unstoppablemango/ihfs)
 [![Go version](https://img.shields.io/github/go-mod/go-version/UnstoppableMango/ihfs)](https://github.com/UnstoppableMango/ihfs/blob/main/go.mod)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/UnstoppableMango/ihfs/badge)](https://scorecard.dev/viewer/?uri=github.com/UnstoppableMango/ihfs)
 
 Similar to [afero](https://github.com/spf13/afero), but built around the extension interface pattern described in the [io/fs draft design](https://github.com/golang/proposal/blob/master/design/draft-iofs.md).
 
