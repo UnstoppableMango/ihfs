@@ -2,29 +2,28 @@ package typed
 
 import (
 	"io"
-
-	"github.com/unstoppablemango/ihfs"
+	"io/fs"
 )
 
-type DirEntry[T ihfs.FileInfo] interface {
+type DirEntry[T fs.FileInfo] interface {
 	Name() string
 	IsDir() bool
-	Type() ihfs.FileMode
+	Type() fs.FileMode
 	Info() (T, error)
 }
 
-type File[T ihfs.FileInfo] interface {
+type File[T fs.FileInfo] interface {
 	io.ReadCloser
 
 	Stat() (T, error)
 }
 
-type Directory[T ihfs.FileInfo] interface {
+type Directory[T fs.FileInfo] interface {
 	io.Closer
 
 	ReadDir(n int) ([]DirEntry[T], error)
 }
 
-type FS[F File[FI], FI ihfs.FileInfo] interface {
-	Open(name string) (F, error)
+type FS[T File[V], V fs.FileInfo] interface {
+	Open(name string) (T, error)
 }

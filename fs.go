@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/unmango/go/os"
+	"github.com/unstoppablemango/ihfs/typed"
 )
 
 type (
-	// FS is an alias for [fs.FS].
-	FS = fs.FS
+	FS = typed.FS[File, FileInfo]
 	// GlobFS is an alias for [fs.GlobFS].
 	GlobFS = fs.GlobFS
 	// ReadDirFS is an alias for [fs.ReadDirFS].
@@ -20,9 +20,17 @@ type (
 	ReadLinkFS = fs.ReadLinkFS
 	// StatFS is an alias for [fs.StatFS].
 	StatFS = fs.StatFS
-	// SubFS is an alias for [fs.SubFS].
-	SubFS = fs.SubFS
 )
+
+type SubFS interface {
+	FS
+
+	// Sub returns an FS corresponding to the subtree rooted at dir.
+	// The returned FS should only access files with the given prefix.
+	// If dir does not exist, Sub should return an error such that errors.Is(err, fs.ErrNotExist) will be true.
+	// If dir is not a directory, Sub should return an error such that errors.Is(err, fs.ErrInvalid) will be true.
+	Sub(dir string) (FS, error)
+}
 
 // OsFS matches the interface exposed by the [os] package.
 type OsFS interface {

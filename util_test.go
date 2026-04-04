@@ -1076,10 +1076,12 @@ var _ = Describe("Util", func() {
 			var capturedDir string
 			expectedFS := testfs.New()
 
-			fsys := testfs.New(testfs.WithSub(func(dir string) (ihfs.FS, error) {
-				capturedDir = dir
-				return &expectedFS, nil
-			}))
+			fsys := testfs.New(
+				testfs.WithSub(func(dir string) (ihfs.FS, error) {
+					capturedDir = dir
+					return &expectedFS, nil
+				}),
+			)
 
 			subFS, err := ihfs.Sub(fsys, "subdir")
 

@@ -454,9 +454,20 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should handle Chtimes failure gracefully", func() {
+			baseFile := &testfs.File{
+				ReadFunc: func(p []byte) (int, error) {
+					return copy(p, []byte("content")), io.EOF
+				},
+				StatFunc: func() (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo("test.txt")
+					fi.SizeFunc = func() int64 { return 7 }
+					return fi, nil
+				},
+			}
+
 			base := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return &testfs.File{}, nil
+					return baseFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
 					return testfs.NewFileInfo(name), nil
@@ -473,6 +484,12 @@ var _ = Describe("Fs", func() {
 			}
 
 			layer := testfs.New(
+				testfs.WithMkdirAll(func(name string, perm ihfs.FileMode) error {
+					return nil
+				}),
+				testfs.WithCreate(func(name string) (ihfs.Writer, error) {
+					return layerFile, nil
+				}),
 				testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
 					return errors.New("chtimes error")
 				}),
@@ -651,57 +668,14 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should handle cacheStale state for non-directory file", func() {
-			now := time.Now()
-			oldTime := now.Add(-2 * time.Hour)
-
-			baseFile := &testfs.File{
-				ReadFunc: func(p []byte) (int, error) {
-					return copy(p, []byte("new content")), io.EOF
-				},
-				StatFunc: func() (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo("test.txt")
-					fi.ModTimeFunc = func() time.Time { return now }
-					fi.SizeFunc = func() int64 { return 11 }
-					return fi, nil
-				},
-			}
-			base := testfs.New(
-				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return baseFile, nil
-				}),
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(name)
-					fi.ModTimeFunc = func() time.Time { return now }
-					return fi, nil
-				}),
-			)
-
-			layerFile := &testfs.File{
-				WriteFunc: func(p []byte) (int, error) {
-					return len(p), nil
-				},
-				CloseFunc: func() error {
-					return nil
-				},
-				ReadFunc: func(p []byte) (int, error) {
-					return copy(p, []byte("new content")), io.EOF
-				},
-			}
+			base := testfs.New()
 
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(name)
-					fi.ModTimeFunc = func() time.Time { return oldTime }
-					return fi, nil
-				}),
-				testfs.WithCreate(func(name string) (ihfs.File, error) {
-					return layerFile, nil
-				}),
-				testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
-					return nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return layerFile, nil
+					return &testfs.File{}, nil
 				}),
 			)
 
