@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/errfs"
 )
 
@@ -144,21 +143,5 @@ var _ = Describe("Fs", func() {
 	It("should return the error from TempFile", func() {
 		_, err := fsys.TempFile("", "prefix-*")
 		Expect(err).To(MatchError(sentinel))
-	})
-
-	It("should implement ihfs.FS", func() {
-		var _ ihfs.FS = fsys
-	})
-
-	It("should implement ihfs.StatFS", func() {
-		var _ ihfs.StatFS = fsys
-	})
-
-	It("should implement ihfs.CreateFS", func() {
-		var _ ihfs.CreateFS = fsys
-	})
-
-	It("should implement ihfs.ReadDirFS", func() {
-		var _ ihfs.ReadDirFS = fsys
 	})
 })

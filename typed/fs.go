@@ -24,3 +24,7 @@ type Directory[T ihfs.FileInfo] interface {
 
 	ReadDir(n int) ([]DirEntry[T], error)
 }
+
+type FS[F File[FI], FI ihfs.FileInfo] interface {
+	Open(name string) (F, error)
+}

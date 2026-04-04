@@ -29,7 +29,7 @@ func (f *Fs) Stat(_ string) (ihfs.FileInfo, error) {
 }
 
 // Create implements [ihfs.CreateFS].
-func (f *Fs) Create(_ string) (ihfs.File, error) {
+func (f *Fs) Create(_ string) (ihfs.Writer, error) {
 	return nil, f.err
 }
 

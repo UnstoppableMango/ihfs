@@ -60,10 +60,10 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("hello world"))
 		})
@@ -258,9 +258,9 @@ var _ = Describe("Fs", func() {
 			_, err = mfs.Stat("/old.txt")
 			Expect(err).To(HaveOccurred())
 
-			file, err = mfs.Open("new.txt")
+			ro, err := mfs.Open("new.txt")
 			Expect(err).NotTo(HaveOccurred())
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("content"))
 		})
@@ -404,17 +404,17 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.OpenFile("/test.txt", os.O_TRUNC|os.O_RDWR, 0644)
+			ro, err := mfs.OpenFile("/test.txt", os.O_TRUNC|os.O_RDWR, 0644)
 			Expect(err).NotTo(HaveOccurred())
-			writer = file.(io.Writer)
+			writer = ro.(io.Writer)
 			_, err = writer.Write([]byte("new"))
 			Expect(err).NotTo(HaveOccurred())
-			err = file.Close()
+			err = ro.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("new"))
 		})
@@ -432,16 +432,16 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			seeker := file.(io.Seeker)
+			seeker := ro.(io.Seeker)
 			pos, err := seeker.Seek(5, io.SeekStart)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pos).To(Equal(int64(5)))
 
 			buf := make([]byte, 5)
-			n, err := file.Read(buf)
+			n, err := ro.Read(buf)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(Equal(5))
 			Expect(string(buf)).To(Equal("56789"))
@@ -462,9 +462,9 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("01234"))
 		})
@@ -518,10 +518,10 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			writer := file.(io.Writer)
+			writer := ro.(io.Writer)
 			_, err = writer.Write([]byte("test"))
 			Expect(err).To(HaveOccurred())
 		})
@@ -585,9 +585,9 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("01234XXX89"))
 		})
@@ -714,10 +714,10 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			truncater := file.(interface{ Truncate(int64) error })
+			truncater := ro.(interface{ Truncate(int64) error })
 			err = truncater.Truncate(5)
 			Expect(err).To(HaveOccurred())
 		})
@@ -925,18 +925,18 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.OpenFile("/test.txt", os.O_APPEND|os.O_WRONLY, 0644)
+			ro, err := mfs.OpenFile("/test.txt", os.O_APPEND|os.O_WRONLY, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			writer = file.(io.Writer)
+			writer = ro.(io.Writer)
 			_, err = writer.Write([]byte("more"))
 			Expect(err).NotTo(HaveOccurred())
-			err = file.Close()
+			err = ro.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err = mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
-			content, err := io.ReadAll(file)
+			content, err := io.ReadAll(ro)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(Equal("initialmore"))
 		})
@@ -1009,10 +1009,10 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.Open("test.txt")
+			ro, err := mfs.Open("test.txt")
 			Expect(err).NotTo(HaveOccurred())
 
-			seeker := file.(io.Seeker)
+			seeker := ro.(io.Seeker)
 			// First seek to position 5
 			_, err = seeker.Seek(5, io.SeekStart)
 			Expect(err).NotTo(HaveOccurred())
@@ -1094,11 +1094,11 @@ var _ = Describe("Fs", func() {
 			Expect(info.Name()).To(Equal("file.txt"))
 
 			// Verify we can still read the original file
-			file, err = mfs.Open("file.txt")
+			ro, err := mfs.Open("file.txt")
 			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(file.Close)
+			DeferCleanup(ro.Close)
 			content := make([]byte, 12)
-			n, err := file.Read(content)
+			n, err := ro.Read(content)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(Equal(12))
 			Expect(string(content)).To(Equal("test content"))
@@ -1164,10 +1164,10 @@ var _ = Describe("Fs", func() {
 			err = file.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			file, err = mfs.OpenFile("/test.txt", os.O_RDONLY, 0644)
+			ro, err := mfs.OpenFile("/test.txt", os.O_RDONLY, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			writer := file.(io.Writer)
+			writer := ro.(io.Writer)
 			_, err = writer.Write([]byte("test"))
 			Expect(err).To(HaveOccurred())
 		})

@@ -24,7 +24,7 @@ func WithStat(fn func(string) (ihfs.FileInfo, error)) Option {
 }
 
 // WithCreate sets the Create function on the test filesystem.
-func WithCreate(fn func(string) (ihfs.File, error)) Option {
+func WithCreate(fn func(string) (ihfs.Writer, error)) Option {
 	return func(fs *Fs) {
 		fs.CreateFunc = fn
 	}

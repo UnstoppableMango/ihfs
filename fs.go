@@ -97,7 +97,7 @@ type CreateFS interface {
 	// Create creates a new file with the specified name.
 	// If the file already exists, it should be truncated.
 	// If there is an error, it should be of type [*PathError].
-	Create(name string) (File, error)
+	Create(name string) (Writer, error)
 }
 
 // CreateTempFS is the interface implemented by a file system that supports creating temporary files.

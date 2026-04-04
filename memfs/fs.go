@@ -60,7 +60,7 @@ func (f *Fs) Open(name string) (ihfs.File, error) {
 }
 
 // Create implements ihfs.CreateFS.
-func (f *Fs) Create(name string) (ihfs.File, error) {
+func (f *Fs) Create(name string) (ihfs.Writer, error) {
 	name = normalizePath(name)
 
 	f.mu.Lock()

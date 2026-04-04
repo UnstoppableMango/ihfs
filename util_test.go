@@ -874,7 +874,7 @@ var _ = Describe("Util", func() {
 			var capturedName string
 			expectedFile := &testfs.File{}
 
-			fsys := testfs.New(testfs.WithCreate(func(name string) (ihfs.File, error) {
+			fsys := testfs.New(testfs.WithCreate(func(name string) (ihfs.Writer, error) {
 				capturedName = name
 				return expectedFile, nil
 			}))

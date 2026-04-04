@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/memfs"
 	"github.com/unstoppablemango/ihfs/tarfs"
 	"github.com/unstoppablemango/ihfs/testfs"
@@ -113,18 +112,6 @@ var _ = Describe("Fs", func() {
 			tfs, err := tarfs.CreateFS(fsys, "new.tar")
 
 			Expect(err).To(HaveOccurred())
-			Expect(tfs).To(BeNil())
-		})
-
-		It("should return error when created file does not support writing", func() {
-			fsys := testfs.New(testfs.WithCreate(func(string) (ihfs.File, error) {
-				return testfs.BoringFile{}, nil
-			}))
-
-			tfs, err := tarfs.CreateFS(fsys, "new.tar")
-
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("file does not support writing"))
 			Expect(tfs).To(BeNil())
 		})
 	})

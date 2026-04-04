@@ -17,6 +17,6 @@ func New() ihfs.OsFS {
 	return Fs{os.System}
 }
 
-func (Fs) Create(name string) (ihfs.File, error) {
+func (Fs) Create(name string) (ihfs.Writer, error) {
 	return os.Create(name)
 }

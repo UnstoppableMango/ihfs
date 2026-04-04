@@ -18,7 +18,7 @@ type MapFS = fstest.MapFS
 type Fs struct {
 	OpenFunc         func(string) (ihfs.File, error)
 	StatFunc         func(string) (ihfs.FileInfo, error)
-	CreateFunc       func(string) (ihfs.File, error)
+	CreateFunc       func(string) (ihfs.Writer, error)
 	CreateTempFunc   func(string, string) (ihfs.File, error)
 	WriteFileFunc    func(string, []byte, ihfs.FileMode) error
 	ReadFileFunc     func(string) ([]byte, error)
@@ -96,11 +96,11 @@ func defaultStatFunc(_ string) (ihfs.FileInfo, error) {
 }
 
 // Create implements [ihfs.CreateFS].
-func (fs Fs) Create(name string) (ihfs.File, error) {
+func (fs Fs) Create(name string) (ihfs.Writer, error) {
 	return fs.CreateFunc(name)
 }
 
-func defaultCreateFunc(_ string) (ihfs.File, error) {
+func defaultCreateFunc(_ string) (ihfs.Writer, error) {
 	return nil, fs.ErrPermission
 }
 
