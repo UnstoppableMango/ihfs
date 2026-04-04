@@ -66,9 +66,7 @@ var _ = Describe("CopyToLayer", func() {
 					return layerFile, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(name)
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithChtimes(func(name string, atime, mtime time.Time) error {
 					chtimeName = name
@@ -121,9 +119,6 @@ var _ = Describe("CopyToLayer", func() {
 					mkdirAllPath = path
 					return nil
 				}),
-				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return nil, fs.ErrNotExist
-				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
 				}),
@@ -172,9 +167,7 @@ var _ = Describe("CopyToLayer", func() {
 			var removedFile string
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -220,9 +213,7 @@ var _ = Describe("CopyToLayer", func() {
 			var removedFile string
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -269,9 +260,7 @@ var _ = Describe("CopyToLayer", func() {
 			expectedErr := errors.New("chtimes failed")
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -305,9 +294,7 @@ var _ = Describe("CopyToLayer", func() {
 			var removedFile string
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -320,15 +307,13 @@ var _ = Describe("CopyToLayer", func() {
 
 			err := union.CopyToLayer(base, layer, "test.txt")
 
-			Expect(err).To(HaveOccurred())
 			Expect(removedFile).To(Equal("test.txt"))
 
 			var pathErr *ihfs.PathError
-			if errors.As(err, &pathErr) {
-				Expect(pathErr.Op).To(Equal("copy"))
-				Expect(pathErr.Path).To(Equal("test.txt"))
-				Expect(pathErr.Err).To(Equal(syscall.ENOTSUP))
-			}
+			Expect(errors.As(err, &pathErr)).To(BeTrue())
+			Expect(pathErr.Op).To(Equal("copy"))
+			Expect(pathErr.Path).To(Equal("test.txt"))
+			Expect(pathErr.Err).To(Equal(syscall.ENOTSUP))
 		})
 
 		It("should clean up when file close fails", func() {
@@ -361,9 +346,7 @@ var _ = Describe("CopyToLayer", func() {
 			var removedFile string
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
@@ -381,14 +364,9 @@ var _ = Describe("CopyToLayer", func() {
 		})
 
 		It("should return error when checking directory existence fails", func() {
-			baseFile := &testfs.File{
-				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
-				CloseFunc: func() error { return nil },
-			}
-
 			base := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return baseFile, nil
+					return &testfs.File{}, nil
 				}),
 			)
 
@@ -401,14 +379,9 @@ var _ = Describe("CopyToLayer", func() {
 		})
 
 		It("should return error when creating parent directories fails", func() {
-			baseFile := &testfs.File{
-				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
-				CloseFunc: func() error { return nil },
-			}
-
 			base := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return baseFile, nil
+					return &testfs.File{}, nil
 				}),
 			)
 
@@ -428,23 +401,16 @@ var _ = Describe("CopyToLayer", func() {
 		})
 
 		It("should return error when creating layer file fails", func() {
-			baseFile := &testfs.File{
-				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
-				CloseFunc: func() error { return nil },
-			}
-
 			base := testfs.New(
 				testfs.WithOpen(func(name string) (ihfs.File, error) {
-					return baseFile, nil
+					return &testfs.File{}, nil
 				}),
 			)
 
 			expectedErr := errors.New("create failed")
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return nil, expectedErr
@@ -484,9 +450,7 @@ var _ = Describe("CopyToLayer", func() {
 			var removedFile string
 			layer := testfs.New(
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					fi := testfs.NewFileInfo(".")
-					fi.IsDirFunc = func() bool { return true }
-					return fi, nil
+					return testfs.NewFileInfo(name), nil
 				}),
 				testfs.WithCreate(func(name string) (ihfs.File, error) {
 					return layerFile, nil
