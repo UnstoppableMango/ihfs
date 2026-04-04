@@ -23,4 +23,4 @@ Core abstractions for layered (copy-on-write / cache-on-read) filesystems.
 
 ## Coverage
 
-100% coverage required.
+Aim for high coverage, but do not write messy or low-value tests just to hit 100%. If a branch requires complex setup with little benefit, skip it.
