@@ -19,7 +19,7 @@ type TarFile struct {
 	name   string
 	file   fs.File
 	closed atomic.Bool
-	fs     fs.FS
+	fs     ihfs.CloserFS
 }
 
 // Open opens a tar file as a read-only file system.
@@ -34,7 +34,7 @@ func OpenFS(fsys ihfs.FS, name string) (*TarFile, error) {
 		return nil, err
 	}
 	return &TarFile{
-		fs:   FromReader(f),
+		fs:   ihfs.NopCloser(FromReader(f)),
 		name: name,
 		file: f,
 	}, nil
@@ -92,7 +92,10 @@ func (t *TarFile) Close() error {
 	if t.closed.Swap(true) {
 		return nil
 	}
-	return t.file.Close()
+	return errors.Join(
+		t.fs.Close(),
+		t.file.Close(),
+	)
 }
 
 func (t *TarFile) Create(name string) (ihfs.File, error) {
