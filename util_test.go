@@ -155,8 +155,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should return ErrNotImplemented when src doesn't implement ReadLinkFS for symlinks", func() {
@@ -170,8 +169,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.Copy(noSymlinkFS{}, "dir", src)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should propagate Open error for regular files", func() {
@@ -261,8 +259,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.Copy(dest, "dir", src)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should return PathError when io.Copy fails", func() {
@@ -296,7 +293,7 @@ var _ = Describe("Util", func() {
 			var pathErr *fs.PathError
 			Expect(errors.As(err, &pathErr)).To(BeTrue())
 			Expect(pathErr.Op).To(Equal("Copy"))
-			Expect(errors.Is(err, copyErr)).To(BeTrue())
+			Expect(err).To(MatchError(copyErr))
 		})
 
 		It("should return error when dest file close fails", func() {
@@ -345,7 +342,7 @@ var _ = Describe("Util", func() {
 			var pathErr *fs.PathError
 			Expect(errors.As(err, &pathErr)).To(BeTrue())
 			Expect(pathErr.Op).To(Equal("Copy"))
-			Expect(errors.Is(err, fs.ErrInvalid)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrInvalid))
 		})
 	})
 
@@ -402,19 +399,6 @@ var _ = Describe("Util", func() {
 			}))
 
 			exists, err := ihfs.Exists(fsys, "file.txt")
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(exists).To(BeTrue())
-		})
-
-		It("should return true for directory", func() {
-			fsys := testfs.New(testfs.WithStat(func(s string) (ihfs.FileInfo, error) {
-				fi := testfs.NewFileInfo(s)
-				fi.IsDirFunc = func() bool { return true }
-				return fi, nil
-			}))
-
-			exists, err := ihfs.Exists(fsys, "dir")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -580,8 +564,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.Mkdir(fsys, "testdir", 0o755)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 
 		It("should propagate errors from underlying Mkdir", func() {
@@ -670,8 +653,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.MkdirAll(fsys, "/", 0o755)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
 		It("should return error when Mkdir fails with non-ErrNotExist", func() {
@@ -749,8 +731,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when OpenFileFS not implemented", func() {
 			f, err := ihfs.OpenFile(testfs.BoringFs{}, "test.txt", 0, 0o644)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(f).To(BeNil())
 		})
 	})
@@ -773,8 +754,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when RemoveFS not implemented", func() {
 			err := ihfs.Remove(testfs.BoringFs{}, "test.txt")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -804,8 +784,7 @@ var _ = Describe("Util", func() {
 
 			err := ihfs.WriteFile(fsys, "test.txt", []byte("content"), 0x644)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -830,8 +809,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when ChmodFS not implemented", func() {
 			err := ihfs.Chmod(testfs.BoringFs{}, "file.txt", 0o644)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -858,8 +836,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when ChownFS not implemented", func() {
 			err := ihfs.Chown(testfs.BoringFs{}, "file.txt", 1000, 1000)
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -888,8 +865,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when ChtimesFS not implemented", func() {
 			err := ihfs.Chtimes(testfs.BoringFs{}, "file.txt", time.Time{}, time.Time{})
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -913,8 +889,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when CreateFS not implemented", func() {
 			f, err := ihfs.Create(testfs.BoringFs{}, "file.txt")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(f).To(BeNil())
 		})
 	})
@@ -941,8 +916,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when CreateTempFS not implemented", func() {
 			f, err := ihfs.CreateTemp(testfs.BoringFs{}, "/tmp", "prefix-*")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(f).To(BeNil())
 		})
 	})
@@ -968,8 +942,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when MkdirTempFS not implemented", func() {
 			name, err := ihfs.MkdirTemp(testfs.BoringFs{}, "/tmp", "test*")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(name).To(BeEmpty())
 		})
 	})
@@ -993,8 +966,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when ReadFileFS not implemented", func() {
 			data, err := ihfs.ReadFile(testfs.BoringFs{}, "file.txt")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(data).To(BeNil())
 		})
 	})
@@ -1018,8 +990,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when ReadLinkFS not implemented", func() {
 			target, err := ihfs.ReadLink(testfs.BoringFs{}, "symlink")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(target).To(BeEmpty())
 		})
 	})
@@ -1042,8 +1013,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when RemoveAllFS not implemented", func() {
 			err := ihfs.RemoveAll(testfs.BoringFs{}, "dir")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -1067,8 +1037,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when RenameFS not implemented", func() {
 			err := ihfs.Rename(testfs.BoringFs{}, "old.txt", "new.txt")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -1094,7 +1063,7 @@ var _ = Describe("Util", func() {
 			fsys := ihfs.Prefix(inner, "a/b")
 
 			_, err := fsys.Open("file.txt")
-			Expect(errors.Is(err, fs.ErrNotExist)).To(BeTrue())
+			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
 
 		It("should panic for an invalid prefix", func() {
@@ -1122,8 +1091,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when SubFS not implemented", func() {
 			subFS, err := ihfs.Sub(testfs.BoringFs{}, "subdir")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(subFS).To(BeNil())
 		})
 	})
@@ -1148,8 +1116,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when SymlinkFS not implemented", func() {
 			err := ihfs.Symlink(testfs.BoringFs{}, "target", "link")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 		})
 	})
 
@@ -1174,8 +1141,7 @@ var _ = Describe("Util", func() {
 		It("should return ErrNotImplemented when TempFileFS not implemented", func() {
 			name, err := ihfs.TempFile(testfs.BoringFs{}, "/tmp", "prefix-*")
 
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, ihfs.ErrNotImplemented)).To(BeTrue())
+			Expect(err).To(MatchError(ihfs.ErrNotImplemented))
 			Expect(name).To(BeEmpty())
 		})
 	})

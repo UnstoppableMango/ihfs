@@ -377,7 +377,9 @@ var _ = Describe("Writer", func() {
 		It("should propagate Info errors", func() {
 			infoErr := errors.New("info error")
 			entry := testfs.NewDirEntry("file.txt", false)
-			entry.InfoFunc = func() (ihfs.FileInfo, error) { return nil, infoErr }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) {
+				return nil, infoErr
+			}
 			fsys := testfs.New(
 				testfs.WithStat(rootDirStat),
 				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {

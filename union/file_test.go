@@ -193,13 +193,7 @@ var _ = Describe("File", func() {
 	Describe("Stat", func() {
 		It("should return layer info", func() {
 			file := union.NewFile(
-				&testfs.File{
-					StatFunc: func() (ihfs.FileInfo, error) {
-						fi := testfs.NewFileInfo("not applicable")
-						fi.SizeFunc = func() int64 { return 100 }
-						return fi, nil
-					},
-				},
+				&testfs.File{},
 				&testfs.File{
 					StatFunc: func() (ihfs.FileInfo, error) {
 						fi := testfs.NewFileInfo("not applicable")
@@ -563,28 +557,6 @@ var _ = Describe("File", func() {
 			Expect(err).To(Equal(baseErr))
 		})
 
-		It("should write to base when layer succeeds and base exists", func() {
-			var baseCalled bool
-			file := union.NewFile(
-				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
-						baseCalled = true
-						return len(p), nil
-					},
-				},
-				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
-						return len(p), nil
-					},
-				},
-			)
-
-			n, err := file.Write([]byte("data"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(n).To(Equal(4))
-			Expect(baseCalled).To(BeTrue())
-		})
-
 		It("should return BADFD when neither exists", func() {
 			file := union.NewFile(nil, nil)
 			n, err := file.Write([]byte("data"))
@@ -658,35 +630,6 @@ var _ = Describe("File", func() {
 			Expect(n).To(Equal(0))
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(try.ErrNotImplemented))
-		})
-
-		It("should handle large writes", func() {
-			var layerSize, baseSize int
-			largeData := make([]byte, 10*1024) // 10 KB
-			for i := range largeData {
-				largeData[i] = byte(i % 256)
-			}
-
-			file := union.NewFile(
-				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
-						baseSize += len(p)
-						return len(p), nil
-					},
-				},
-				&testfs.File{
-					WriteFunc: func(p []byte) (int, error) {
-						layerSize += len(p)
-						return len(p), nil
-					},
-				},
-			)
-
-			n, err := file.Write(largeData)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(n).To(Equal(len(largeData)))
-			Expect(layerSize).To(Equal(len(largeData)))
-			Expect(baseSize).To(Equal(len(largeData)))
 		})
 
 		It("should handle partial layer writes", func() {

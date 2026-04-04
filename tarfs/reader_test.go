@@ -108,7 +108,7 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when FS does not support Create", func() {
-			fsys := testfs.New()
+			fsys := testfs.BoringFs{}
 
 			tfs, err := tarfs.CreateFS(fsys, "new.tar")
 
@@ -117,11 +117,8 @@ var _ = Describe("Fs", func() {
 		})
 
 		It("should return error when created file does not support writing", func() {
-			boringFile := testfs.BoringFile{
-				CloseFunc: func() error { return nil },
-			}
 			fsys := testfs.New(testfs.WithCreate(func(string) (ihfs.File, error) {
-				return boringFile, nil
+				return testfs.BoringFile{}, nil
 			}))
 
 			tfs, err := tarfs.CreateFS(fsys, "new.tar")
