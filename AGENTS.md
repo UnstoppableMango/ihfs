@@ -37,9 +37,9 @@ make format
 - Test files follow `*_test.go` convention
 - Suite tests use `*_suite_test.go` pattern
 - Run tests recursively with `ginkgo -r`
-- **Aim for 100% test coverage on all implementation packages** (check with `make cover`)
+- Aim for high test coverage on all implementation packages (check with `make cover`)
 - Test data goes in `testdata/` directory
-- Note: `codecov.yml` exists for CI purposes but the project standard is 100% coverage for implementation code
+- Do not write messy or low-value tests just to hit a coverage number — skip branches that require complex setup with little benefit
 
 ## Code Conventions
 
@@ -87,10 +87,10 @@ make format
 1. Make changes to Go source files
 2. Run `make test` to ensure tests pass
 3. Run `make fmt` to format code
-4. **Check coverage with `make cover` - aim for 100% on implementation packages**
+4. **Check coverage with `make cover` - aim for high coverage, but skip branches that require messy or low-value tests**
 5. Update `go.mod` if adding dependencies, then run `gomod2nix generate`
 
-**Note**: While `codecov.yml` sets a minimum threshold of 60% for CI purposes, the project standard is to maintain 100% coverage for all implementation code. The lower threshold in codecov.yml is only to prevent CI failures during development of new features.
+**Note**: `codecov.yml` sets a minimum threshold of 60% for CI purposes. The project standard is high coverage, but 100% is not required — do not write messy or low-value tests just to hit a number.
 
 ## Codebase Map
 
@@ -180,12 +180,11 @@ When working with this codebase, agents should self-correct and improve document
 
 This section contains repository-specific practices learned from user feedback:
 
-- **Test coverage must be 100% for all implementation packages**
+- Aim for high test coverage, but **do not write messy or low-value tests just to hit 100%** — skip branches that require complex setup with little benefit
 - Use mock implementations in tests rather than complex test fixtures
 - **Coverage targets by package type:**
-  - **All implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try, errfs, prefixfs, filter, ghfs, ctrfs/v1): 100% coverage required**
-  - Utility packages (op, osfs, testfs): Coverage not required - these are simple wrappers or test helpers that don't contain business logic
-  - Note: memfs aims for 100% but some defensive code for impossible cases (e.g., empty path parts after normalization) may not be reachable
+  - Implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try, errfs, prefixfs, filter, ghfs, ctrfs/v1): aim for high coverage; 100% is not required if the remaining branches need low-value tests
+  - Utility packages (op, osfs, testfs): coverage not required
 - When creating tests for filesystem implementations:
   - Use `testfs.New()` with `testfs.With*` options to create configurable mocks
   - Test both success paths and all error paths

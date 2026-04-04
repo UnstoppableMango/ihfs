@@ -20,4 +20,4 @@ Utilities for `ihfs.FilterFS` — predicate functions that gate filesystem opera
 
 ## Coverage
 
-100% coverage required.
+Aim for high coverage, but do not write messy or low-value tests just to hit 100%. If a branch requires complex setup with little benefit, skip it.

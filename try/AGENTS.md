@@ -10,4 +10,4 @@ Type-safe wrappers that attempt optional filesystem interface methods.
 
 ## Coverage
 
-100% coverage required. All branches (interface supported / not supported) must be tested.
+Aim for high coverage. Both branches (interface supported / not supported) should be tested when straightforward, but do not write messy or low-value tests just to hit 100%.

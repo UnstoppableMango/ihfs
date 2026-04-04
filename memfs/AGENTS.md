@@ -16,4 +16,4 @@ Full-featured in-memory filesystem with read/write support.
 
 ## Coverage
 
-100% coverage required. If a branch proves genuinely unreachable, remove it rather than leaving it untested.
+Aim for high coverage. If a branch proves genuinely unreachable, remove it rather than writing impossible tests. Do not write messy or low-value tests just to hit 100%.
