@@ -157,7 +157,9 @@ var _ = Describe("Fs", func() {
 					return &testfs.File{}, nil
 				}),
 				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
-					return testfs.NewFileInfo(name), nil
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
 				}),
 			)
 
