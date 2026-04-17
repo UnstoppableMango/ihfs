@@ -41,6 +41,8 @@ github.com/unstoppablemango/ihfs v0.0.5 h1:bL1jLqdp1RJqt3tFeWOx1d7+AQpFk6sIi1fIr
 github.com/unstoppablemango/ihfs v0.0.5/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
 github.com/unstoppablemango/ihfs v0.0.6 h1:pmbLsWbR0Q4+sk+Y2aVfMT2mSWGyc8p1S7+QyqpG5r0=
 github.com/unstoppablemango/ihfs v0.0.6/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
+github.com/unstoppablemango/ihfs v0.0.8 h1:VM6AeP1OaGwCK7x4M+6GJ2rZNFSPBlnT6rJrsrtBejE=
+github.com/unstoppablemango/ihfs v0.0.8/go.mod h1:r1ScccBG4ClKE3g8p8w+iTKiHUa9S2i6TaY7kJRcYzE=
 go.uber.org/mock v0.6.0 h1:hyF9dfmbgIX5EfOdasqLsWD6xqpNZlXblLB/Dbnwv3Y=
 go.uber.org/mock v0.6.0/go.mod h1:KiVJ4BqZJaMj4svdfmHM0AUx4NJYO8ZNpPnZn1Z+BBU=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
