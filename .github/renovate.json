@@ -4,6 +4,7 @@
     "github>UnstoppableMango/renovate-config",
     "schedule:weekly"
   ],
+  "automerge": true,
   "nix": {
     "enabled": true
   }
