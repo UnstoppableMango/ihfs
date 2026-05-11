@@ -3,7 +3,7 @@ package ghfs
 import (
 	"net/http"
 
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v86/github"
 )
 
 type Option func(*Fs)
