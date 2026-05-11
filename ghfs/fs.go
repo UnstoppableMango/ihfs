@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v86/github"
 	"github.com/unmango/go/fopt"
 	"github.com/unstoppablemango/ihfs"
 	"github.com/unstoppablemango/ihfs/op"
@@ -132,12 +132,12 @@ func open(ctx context.Context, c *github.Client, url string) (*File, error) {
 }
 
 func do(ctx context.Context, c *github.Client, url string) (io.ReadCloser, error) {
-	req, err := c.NewRequest("GET", url, nil)
+	req, err := c.NewRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.BareDo(ctx, req)
+	resp, err := c.BareDo(req)
 	if err != nil {
 		return nil, err
 	}
