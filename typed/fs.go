@@ -14,13 +14,11 @@ type DirEntry[T fs.FileInfo] interface {
 
 type File[T fs.FileInfo] interface {
 	io.ReadCloser
-
 	Stat() (T, error)
 }
 
 type Directory[T fs.FileInfo] interface {
 	io.Closer
-
 	ReadDir(n int) ([]DirEntry[T], error)
 }
 
