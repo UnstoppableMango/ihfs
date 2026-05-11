@@ -9,7 +9,7 @@ tool (
 
 require (
 	github.com/google/go-github/v84 v84.0.0
-	github.com/google/go-github/v85 v85.0.0
+	github.com/google/go-github/v86 v86.0.0
 	github.com/google/go-github/v86 v86.0.0
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.40.0
