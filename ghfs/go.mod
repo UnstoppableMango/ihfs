@@ -10,7 +10,7 @@ tool (
 require (
 	github.com/google/go-github/v86 v86.0.0
 	github.com/onsi/ginkgo/v2 v2.29.0
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/gomega v1.41.0
 	github.com/unmango/go v0.15.1
 	github.com/unstoppablemango/go-github-mock v1.5.2
 	github.com/unstoppablemango/ihfs v0.0.8
