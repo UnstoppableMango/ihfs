@@ -8,7 +8,7 @@ tool (
 )
 
 require (
-	github.com/google/go-github/v86 v86.0.0
+	github.com/google/go-github/v88 v88.0.0
 	github.com/google/go-github/v88 v88.0.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
