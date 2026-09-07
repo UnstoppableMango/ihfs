@@ -10,7 +10,7 @@ tool (
 require (
 	github.com/google/go-containerregistry v0.22.1
 	github.com/onsi/ginkgo/v2 v2.32.1
-	github.com/onsi/gomega v1.41.0
+	github.com/onsi/gomega v1.43.0
 	github.com/unstoppablemango/ihfs v0.0.8
 )
 
