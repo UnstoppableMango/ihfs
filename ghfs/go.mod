@@ -13,7 +13,7 @@ require (
 	github.com/google/go-github/v91 v91.0.0
 	github.com/onsi/ginkgo/v2 v2.32.2
 	github.com/onsi/gomega v1.43.0
-	github.com/unmango/go v0.15.1
+	github.com/unmango/go v0.16.6
 	github.com/unstoppablemango/go-github-mock v1.5.3
 	github.com/unstoppablemango/ihfs v0.0.8
 )

@@ -10,7 +10,7 @@ tool (
 require (
 	github.com/onsi/ginkgo/v2 v2.32.2
 	github.com/onsi/gomega v1.43.0
-	github.com/unmango/go v0.15.1
+	github.com/unmango/go v0.16.6
 )
 
 require (
