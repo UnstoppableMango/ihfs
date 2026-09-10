@@ -1,0 +1,230 @@
+# AI Agent Instructions for IHFS
+
+This document provides guidance for AI agents working with the IHFS (I ❤️ File Systems) codebase.
+
+## Project Overview
+
+IHFS is a Go library providing composable filesystem interfaces, similar to afero but more aligned with Go's `io/fs` package philosophy. The library focuses on small, composable interfaces that can be combined to build complex filesystem abstractions.
+
+## Technology Stack
+
+- **Language**: Go (see go.mod for version)
+- **Testing Framework**: Ginkgo v2 + Gomega
+- **Build System**: Nix + Make
+- **Package Manager**: Go modules with gomod2nix
+
+## Building and Testing
+
+### Build Commands
+
+```bash
+# Build with Nix
+nix build .#ihfs
+
+# Run tests
+make test
+
+# Generate coverage
+make cover
+
+# Format code
+make format
+```
+
+### Testing Guidelines
+
+- Use Ginkgo/Gomega for all tests
+- Test files follow `*_test.go` convention
+- Suite tests use `*_suite_test.go` pattern
+- Run tests recursively with `ginkgo -r`
+- Test data goes in `testdata/` directory
+
+## Code Conventions
+
+### Go Style
+
+- Follow standard Go formatting (gofmt)
+- Use tabs for indentation (Go default)
+- Insert final newlines in all files
+- Trim trailing whitespace
+- Keep interfaces small and composable
+- Use type aliases for standard library types when appropriate
+- Only comment code that needs clarification; avoid obvious comments
+
+### Package Structure
+
+- Type aliases and error constants in `fs.go` for standard interfaces
+- `Operation` interface defined in `fs.go`
+- Concrete operation types in `op/` package
+- Implementation packages in subdirectories (e.g., `osfs/`, `cowfs/`, `tarfs/`, `testfs/`, `errfs/`, `prefixfs/`, `ghfs/`, `ctrfs/v1/`)
+- Filter utilities in `filter.go` (root) and `filter/` package
+- Iterator utilities in `iter.go`
+
+### Interface Design
+
+- Prefer composable, single-purpose interfaces
+- Follow `io/fs` patterns and conventions
+- Type check with `ok` idiom before calling interface methods
+
+### Naming Conventions
+
+- Use standard Go naming conventions
+- FS-related types use abbreviated names (e.g., `FS`, not `FileSystem`)
+- Public APIs should be clear and concise
+- Avoid stuttering (e.g., `ihfs.FS` not `ihfs.IHFSFS`)
+
+## Dependencies
+
+- **Core**: Standard library `io/fs` package
+- **External**: `github.com/unmango/go/os` for OS filesystem
+- **Tools**: gomod2nix for Nix integration
+
+## Development Workflow
+
+1. Make changes to Go source files
+2. Run `make test` to ensure tests pass
+3. Run `make fmt` to format code
+4. Check coverage with `make cover`
+5. Update `go.mod` if adding dependencies, then run `gomod2nix generate`
+
+## Codebase Map
+
+See [docs/codebase-map.md](docs/codebase-map.md).
+
+## Package-Specific Instructions
+
+Each package has its own `AGENTS.md` with design constraints, coverage requirements, and gotchas. **Read the relevant file before modifying a package.**
+
+| Package | AGENTS.md | Purpose |
+|---|---|---|
+| `osfs/` | [osfs/AGENTS.md](osfs/AGENTS.md) | OS filesystem adapter |
+| `cowfs/` | [cowfs/AGENTS.md](cowfs/AGENTS.md) | Copy-on-write filesystem |
+| `corfs/` | [corfs/AGENTS.md](corfs/AGENTS.md) | Cache-on-read filesystem |
+| `union/` | [union/AGENTS.md](union/AGENTS.md) | Layered FS primitives (used by cowfs/corfs) |
+| `tarfs/` | [tarfs/AGENTS.md](tarfs/AGENTS.md) | Tar archive filesystem (read-only reader + write-only writer) |
+| `memfs/` | [memfs/AGENTS.md](memfs/AGENTS.md) | In-memory filesystem |
+| `errfs/` | [errfs/AGENTS.md](errfs/AGENTS.md) | Always-error filesystem (test helper) |
+| `prefixfs/` | [prefixfs/AGENTS.md](prefixfs/AGENTS.md) | Prefix-mount filesystem (inverse of fs.Sub) |
+| `filter/` | [filter/AGENTS.md](filter/AGENTS.md) | FilterFS predicate utilities |
+| `ghfs/` | [ghfs/AGENTS.md](ghfs/AGENTS.md) | GitHub API filesystem |
+| `ctrfs/v1/` | [ctrfs/v1/AGENTS.md](ctrfs/v1/AGENTS.md) | OCI v1 image/layer filesystem |
+| `try/` | [try/AGENTS.md](try/AGENTS.md) | Optional-interface wrappers |
+| `op/` | [op/AGENTS.md](op/AGENTS.md) | Operation type definitions |
+| `testfs/` | [testfs/AGENTS.md](testfs/AGENTS.md) | Configurable mock filesystem |
+| `mockfs/` | [mockfs/AGENTS.md](mockfs/AGENTS.md) | Generated mocks (do not edit by hand) |
+
+## Common Tasks
+
+### Adding a New Filesystem Type
+
+1. Create a new package directory (e.g., `newfs/`)
+2. Implement required `fs.FS` interface
+3. Add additional interfaces as needed (ReadDir, Stat, etc.)
+4. Write comprehensive tests using Ginkgo
+
+Example:
+```go
+type Fs struct {
+    // fields
+}
+
+func (fs *Fs) Open(name string) (ihfs.File, error) {
+    // implementation
+}
+```
+
+### Adding a New Operation
+
+1. Define operation interface/type in `op/` package
+2. Ensure it implements `Operation` interface (has `Subject()` method)
+3. Add tests for the operation
+4. Document the operation's purpose and usage
+
+### Modifying Core Interfaces
+
+1. Check for breaking changes to public API
+2. Update all implementations
+3. Update tests across all packages
+4. Verify with `make test` and `make cover`
+5. If adding a new interface, add it to the appropriate array in `mockfs/generate.sh` and run `make generate`
+
+### Writing Tests
+
+Use Ginkgo's BDD-style testing:
+
+```go
+var _ = Describe("MyFeature", func() {
+    It("should do something", func() {
+        result := MyFunction()
+        Expect(result).To(BeTrue())
+    })
+})
+```
+
+For mocking filesystems, use the `testfs` package or create simple mock implementations.
+
+## Self-Correction
+
+When working with this codebase, agents should self-correct and improve documentation:
+
+- **If the code map is discovered to be stale, update it.** The project structure section and other documentation should reflect the current state of the repository. When you discover inaccuracies, update [docs/codebase-map.md](docs/codebase-map.md).
+
+- **If the user gives a correction about how work should be done in this repo, add it to "Local Norms" (or another clearly labeled section) so future sessions inherit it.** User feedback about repository-specific practices should be captured for future reference.
+
+## Local Norms
+
+This section contains repository-specific practices learned from user feedback:
+
+- Aim for high test coverage, but **do not write messy or low-value tests just to hit 100%** — skip branches that require complex setup with little benefit
+- Use mock implementations in tests rather than complex test fixtures
+- **Coverage targets by package type:**
+  - Implementation packages (ihfs, union, cowfs, corfs, tarfs, memfs, try, errfs, prefixfs, filter, ghfs, ctrfs/v1): aim for high coverage; 100% is not required if the remaining branches need low-value tests
+  - Utility packages (op, osfs, testfs): coverage not required
+- When creating tests for filesystem implementations:
+  - Use `testfs.New()` with `testfs.With*` options to create configurable mocks
+  - Test both success paths and all error paths
+  - For interface type assertions (e.g., checking if file implements `io.Writer`), create custom types that don't implement the interface
+  - Always test cleanup on error (e.g., file removal when copy fails)
+- When fixing failing tests:
+  - First understand what the code actually does, not what the test expects
+  - Update test expectations to match actual behavior, not the other way around (unless it's a bug)
+  - Test the happy path first, then add error cases
+- **Working with testfs:**
+  - Use `testfs.NewFileInfo(name)` to create mock FileInfo objects
+  - There is no `testfs.BoringFileInfo` type - use `testfs.NewFileInfo()` or `testfs.FileInfo` instead
+
+## Important Notes
+
+- This project uses Nix for reproducible builds
+- EditorConfig settings should be respected
+- All public APIs should have clear documentation
+- Keep the library focused on composable filesystem abstractions
+- Maintain compatibility with Go's `io/fs` package philosophy
+- Minimize dependencies to keep the library lightweight
+
+## File Naming Conventions
+
+- Source files: `feature.go`
+- Test files: `feature_test.go`
+- Test suites: `package_suite_test.go`
+- Internal packages: `internal/package/`
+
+## Error Handling
+
+- Use standard `io/fs` errors when applicable (`fs.ErrNotExist`, `fs.ErrPermission`, etc.)
+- Wrap errors with context using `fmt.Errorf` with `%w` verb
+- Return clear, actionable error messages
+
+## Performance Considerations
+
+- Avoid unnecessary allocations
+- Use buffers and pools where appropriate
+- Consider lazy evaluation for expensive operations
+- Profile performance-critical code paths
+
+## Documentation
+
+- All exported types, functions, and methods must have documentation comments
+- Use Go's standard documentation format
+- Include examples in documentation where helpful
+- Keep documentation up-to-date with code changes

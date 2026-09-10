@@ -1,0 +1,333 @@
+package cowfs_test
+
+import (
+	"errors"
+	"io"
+	"io/fs"
+	"syscall"
+	"testing/fstest"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/unstoppablemango/ihfs"
+	"github.com/unstoppablemango/ihfs/cowfs"
+	"github.com/unstoppablemango/ihfs/errfs"
+	"github.com/unstoppablemango/ihfs/memfs"
+	"github.com/unstoppablemango/ihfs/testfs"
+)
+
+var _ = Describe("Fs", func() {
+	It("should return the base filesystem", func() {
+		fsys := memfs.New()
+
+		cfs := cowfs.New(fsys, memfs.New())
+
+		Expect(cfs.Base()).To(BeIdenticalTo(fsys))
+	})
+
+	It("should have a name", func() {
+		cfs := cowfs.New(memfs.New(), memfs.New())
+
+		Expect(cfs.Name()).To(Equal("cowfs"))
+	})
+
+	Describe("Open", func() {
+		It("should open file from base", func() {
+			baseFile := &testfs.File{
+				ReadFunc: func(p []byte) (int, error) {
+					return copy(p, []byte("base")), io.EOF
+				},
+			}
+			base := testfs.New(
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return baseFile, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return testfs.NewFileInfo(name), nil
+				}),
+			)
+			layer := memfs.New()
+
+			cfs := cowfs.New(base, layer)
+			file, err := cfs.Open("test.txt")
+			Expect(err).ToNot(HaveOccurred())
+
+			data, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("base"))
+		})
+
+		It("should open file from layer", func() {
+			layerFile := &testfs.File{
+				ReadFunc: func(p []byte) (int, error) {
+					return copy(p, []byte("layer")), io.EOF
+				},
+			}
+			base := memfs.New()
+			layer := testfs.New(
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return layerFile, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return testfs.NewFileInfo(name), nil
+				}),
+			)
+
+			cfs := cowfs.New(base, layer)
+			file, err := cfs.Open("test.txt")
+			Expect(err).ToNot(HaveOccurred())
+
+			data, err := io.ReadAll(file)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("layer"))
+		})
+
+		It("should merge directories from both layers", func() {
+			base := testfs.New(
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return &testfs.File{}, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+			layer := testfs.New(
+				testfs.WithOpen(func(string) (ihfs.File, error) {
+					return &testfs.File{}, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+
+			cfs := cowfs.New(base, layer)
+			file, err := cfs.Open("dir")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(file).ToNot(BeNil())
+		})
+
+		It("should return error when base stat fails", func() {
+			base := errfs.New(errors.New("stat error"))
+			layer := memfs.New()
+
+			cfs := cowfs.New(base, layer)
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when layer stat fails", func() {
+			base := memfs.New()
+			layer := errfs.New(errors.New("stat error"))
+
+			cfs := cowfs.New(base, layer)
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return joined error when base open fails", func() {
+			layerClosed := false
+			layerDir := &testfs.File{
+				CloseFunc: func() error { layerClosed = true; return nil },
+			}
+
+			base := testfs.New(
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return nil, errors.New("open error")
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+			layer := testfs.New(
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return layerDir, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+
+			cfs := cowfs.New(base, layer)
+			_, err := cfs.Open("dir")
+			Expect(err).To(HaveOccurred())
+			var pathErr *ihfs.PathError
+			Expect(errors.As(err, &pathErr)).To(BeTrue())
+			Expect(pathErr.Op).To(Equal("open"))
+			Expect(pathErr.Path).To(Equal("dir"))
+			Expect(layerClosed).To(BeTrue())
+		})
+
+		It("should return joined error when layer open fails", func() {
+			baseClosed := false
+			baseDir := &testfs.File{
+				CloseFunc: func() error { baseClosed = true; return nil },
+			}
+
+			base := testfs.New(
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return baseDir, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+			layer := testfs.New(
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return nil, errors.New("open error")
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+
+			cfs := cowfs.New(base, layer)
+			_, err := cfs.Open("dir")
+			Expect(err).To(HaveOccurred())
+			var pathErr *ihfs.PathError
+			Expect(errors.As(err, &pathErr)).To(BeTrue())
+			Expect(pathErr.Op).To(Equal("open"))
+			Expect(pathErr.Path).To(Equal("dir"))
+			Expect(baseClosed).To(BeTrue())
+		})
+
+		It("should return error when file doesn't exist", func() {
+			cfs := cowfs.New(memfs.New(), memfs.New())
+			_, err := cfs.Open("nonexistent.txt")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should open layer directory when base is not directory", func() {
+			base := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return testfs.NewFileInfo(name), nil
+				}),
+			)
+			layer := testfs.New(
+				testfs.WithOpen(func(name string) (ihfs.File, error) {
+					return &testfs.File{}, nil
+				}),
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo(name)
+					fi.IsDirFunc = func() bool { return true }
+					return fi, nil
+				}),
+			)
+
+			cfs := cowfs.New(base, layer)
+			_, err := cfs.Open("dir")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Describe("isInBase", func() {
+		It("should handle ErrNotExist", func() {
+			base := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return nil, fs.ErrNotExist
+				}),
+			)
+
+			cfs := cowfs.New(base, memfs.New())
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(MatchError(fs.ErrNotExist))
+		})
+
+		It("should handle ENOENT", func() {
+			base := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return nil, syscall.ENOENT
+				}),
+			)
+
+			cfs := cowfs.New(base, memfs.New())
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(MatchError(fs.ErrNotExist))
+		})
+
+		It("should handle ENOTDIR", func() {
+			base := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return nil, syscall.ENOTDIR
+				}),
+			)
+
+			cfs := cowfs.New(base, memfs.New())
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(MatchError(fs.ErrNotExist))
+		})
+
+		It("should return other errors", func() {
+			base := testfs.New(
+				testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+					return nil, errors.New("other error")
+				}),
+			)
+
+			cfs := cowfs.New(base, memfs.New())
+			_, err := cfs.Open("test.txt")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("WriteFile", func() {
+		It("should delegate to the layer", func() {
+			var written string
+			layer := testfs.New(
+				testfs.WithWriteFile(func(name string, _ []byte, _ ihfs.FileMode) error {
+					written = name
+					return nil
+				}),
+			)
+
+			cfs := cowfs.New(testfs.New(), layer)
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(written).To(Equal("test.txt"))
+		})
+
+		It("should return error when layer does not support WriteFile", func() {
+			cfs := cowfs.New(testfs.New(), &testfs.BoringFs{})
+			err := cfs.WriteFile("test.txt", []byte("data"), 0644)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("fstest", func() {
+		It("should pass fstest.TestFS", func() {
+			base := memfs.New()
+			layer := memfs.New()
+
+			Expect(layer.Mkdir("dir", 0755)).To(Succeed())
+
+			f, err := layer.Create("file.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f.(io.Writer).Write([]byte("content"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f.Close()).To(Succeed())
+
+			f2, err := layer.Create("dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = f2.(io.Writer).Write([]byte("nested"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(f2.Close()).To(Succeed())
+
+			cfs := cowfs.New(base, layer)
+
+			err = fstest.TestFS(cfs, "file.txt", "dir", "dir/nested.txt")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+})

@@ -1,0 +1,11 @@
+.direnv/
+.envrc
+/result*
+cover*
+*.out
+*.test
+go.work*
+*.local.*
+.vscode/*
+!.vscode/extensions.json
+dist/
