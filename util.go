@@ -44,6 +44,11 @@ var (
 // Symbolic links are reproduced only if dest implements [SymlinkFS]; otherwise
 // Copy returns an error wrapping ErrNotImplemented.
 //
+// If dest implements [ChmodFS], the full source mode (including setuid/setgid/sticky
+// bits) is applied to each entry after creation. If dest implements [ChtimesFS],
+// the source modification time is applied after creation. Both are best-effort:
+// if dest does not implement the interface, the step is skipped silently.
+//
 // Copy propagates errors from the underlying filesystem operations. For some
 // failures it returns an [fs.PathError] identifying the operation and path
 // that caused the error.
@@ -68,7 +73,10 @@ func Copy(dest FS, dir string, src FS) error {
 			if perm == 0 {
 				perm = 0755
 			}
-			return MkdirAll(dest, destPath, perm)
+			if err := MkdirAll(dest, destPath, perm); err != nil {
+				return err
+			}
+			return applyMeta(dest, destPath, info)
 		}
 
 		switch d.Type() {
@@ -113,11 +121,31 @@ func Copy(dest FS, dir string, src FS) error {
 				_ = w.Close()
 				return &fs.PathError{Op: "Copy", Path: destPath, Err: err}
 			}
-			return w.Close()
+			if err := w.Close(); err != nil {
+				return err
+			}
+			return applyMeta(dest, destPath, info)
 		default:
 			return &fs.PathError{Op: "Copy", Path: p, Err: fs.ErrInvalid}
 		}
 	})
+}
+
+// applyMeta applies the full mode and modification time from info to name in dest.
+// ChmodFS and ChtimesFS are used if implemented; otherwise the step is skipped.
+func applyMeta(dest FS, name string, info fs.FileInfo) error {
+	if chmod, ok := dest.(ChmodFS); ok {
+		if err := chmod.Chmod(name, info.Mode()); err != nil {
+			return err
+		}
+	}
+	if chtimes, ok := dest.(ChtimesFS); ok {
+		modTime := info.ModTime()
+		if err := chtimes.Chtimes(name, modTime, modTime); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DirExists reports if the given path exists and is a directory.
