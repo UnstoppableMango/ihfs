@@ -11,7 +11,7 @@ require (
 	github.com/google/go-github/v86 v86.0.0
 	github.com/google/go-github/v92 v92.0.0
 	github.com/google/go-github/v92 v92.0.0
-	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
 	github.com/unmango/go v0.15.1
 	github.com/unstoppablemango/go-github-mock v1.5.3
