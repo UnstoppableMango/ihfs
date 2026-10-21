@@ -344,6 +344,225 @@ var _ = Describe("Util", func() {
 			Expect(pathErr.Op).To(Equal("Copy"))
 			Expect(err).To(MatchError(fs.ErrInvalid))
 		})
+
+		It("should apply Chmod to directories when dest implements ChmodFS", func() {
+			var capturedName string
+			var capturedMode ihfs.FileMode
+			entry := testfs.NewDirEntry("subdir", true)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeDir }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo("subdir")
+				fi.IsDirFunc = func() bool { return true }
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeDir | fs.ModeSetuid | 0755 }
+				return fi, nil
+			}
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+			dest := &copyDestFS{chmodFunc: func(name string, mode ihfs.FileMode) error {
+				capturedName = name
+				capturedMode = mode
+				return nil
+			}}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(Succeed())
+			Expect(capturedName).To(Equal("out/subdir"))
+			Expect(capturedMode).To(Equal(fs.ModeDir | fs.ModeSetuid | 0755))
+		})
+
+		It("should apply Chtimes to directories when dest implements ChtimesFS", func() {
+			var capturedName string
+			var capturedMtime time.Time
+			modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			entry := testfs.NewDirEntry("subdir", true)
+			entry.TypeFunc = func() ihfs.FileMode { return fs.ModeDir }
+			entry.InfoFunc = func() (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo("subdir")
+				fi.IsDirFunc = func() bool { return true }
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeDir | 0755 }
+				fi.ModTimeFunc = func() time.Time { return modTime }
+				return fi, nil
+			}
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+			)
+			dest := &copyDestFS{chtimesFunc: func(name string, _, mtime time.Time) error {
+				capturedName = name
+				capturedMtime = mtime
+				return nil
+			}}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(Succeed())
+			Expect(capturedName).To(Equal("out/subdir"))
+			Expect(capturedMtime).To(Equal(modTime))
+		})
+
+		It("should propagate Chmod errors for directories", func() {
+			chmodErr := errors.New("chmod error")
+			src := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo(name)
+				fi.IsDirFunc = func() bool { return true }
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeDir | 0755 }
+				return fi, nil
+			}))
+			dest := &copyDestFS{chmodFunc: func(string, ihfs.FileMode) error {
+				return chmodErr
+			}}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(MatchError(chmodErr))
+		})
+
+		It("should propagate Chtimes errors for directories", func() {
+			chtimesErr := errors.New("chtimes error")
+			src := testfs.New(testfs.WithStat(func(name string) (ihfs.FileInfo, error) {
+				fi := testfs.NewFileInfo(name)
+				fi.IsDirFunc = func() bool { return true }
+				fi.ModeFunc = func() fs.FileMode { return fs.ModeDir | 0755 }
+				return fi, nil
+			}))
+			dest := &copyDestFS{chtimesFunc: func(string, time.Time, time.Time) error {
+				return chtimesErr
+			}}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(MatchError(chtimesErr))
+		})
+
+		It("should apply Chmod to regular files when dest implements ChmodFS", func() {
+			var capturedName string
+			var capturedMode ihfs.FileMode
+			srcFile := &testfs.File{
+				StatFunc: func() (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo("file.txt")
+					fi.ModeFunc = func() fs.FileMode { return fs.ModeSetuid | 0755 }
+					return fi, nil
+				},
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) { return srcFile, nil }),
+			)
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return nil },
+			}
+			dest := &copyDestFS{
+				openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) { return destFile, nil },
+				chmodFunc: func(name string, mode ihfs.FileMode) error {
+					capturedName = name
+					capturedMode = mode
+					return nil
+				},
+			}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(Succeed())
+			Expect(capturedName).To(Equal("out/file.txt"))
+			Expect(capturedMode).To(Equal(fs.ModeSetuid | 0755))
+		})
+
+		It("should apply Chtimes to regular files when dest implements ChtimesFS", func() {
+			var capturedName string
+			var capturedMtime time.Time
+			modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			srcFile := &testfs.File{
+				StatFunc: func() (ihfs.FileInfo, error) {
+					fi := testfs.NewFileInfo("file.txt")
+					fi.ModTimeFunc = func() time.Time { return modTime }
+					return fi, nil
+				},
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) { return srcFile, nil }),
+			)
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return nil },
+			}
+			dest := &copyDestFS{
+				openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) { return destFile, nil },
+				chtimesFunc: func(name string, _, mtime time.Time) error {
+					capturedName = name
+					capturedMtime = mtime
+					return nil
+				},
+			}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(Succeed())
+			Expect(capturedName).To(Equal("out/file.txt"))
+			Expect(capturedMtime).To(Equal(modTime))
+		})
+
+		It("should propagate Chmod errors for regular files", func() {
+			chmodErr := errors.New("chmod error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) { return srcFile, nil }),
+			)
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return nil },
+			}
+			dest := &copyDestFS{
+				openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) { return destFile, nil },
+				chmodFunc:    func(string, ihfs.FileMode) error { return chmodErr },
+			}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(MatchError(chmodErr))
+		})
+
+		It("should propagate Chtimes errors for regular files", func() {
+			chtimesErr := errors.New("chtimes error")
+			srcFile := &testfs.File{
+				StatFunc:  func() (ihfs.FileInfo, error) { return testfs.NewFileInfo("file.txt"), nil },
+				CloseFunc: func() error { return nil },
+				ReadFunc:  func([]byte) (int, error) { return 0, io.EOF },
+			}
+			entry := testfs.NewDirEntry("file.txt", false)
+			src := testfs.New(
+				withRootDirStat(),
+				testfs.WithReadDir(func(string) ([]ihfs.DirEntry, error) {
+					return []ihfs.DirEntry{entry}, nil
+				}),
+				testfs.WithOpen(func(string) (ihfs.File, error) { return srcFile, nil }),
+			)
+			destFile := &testfs.File{
+				WriteFunc: func(p []byte) (int, error) { return len(p), nil },
+				CloseFunc: func() error { return nil },
+			}
+			dest := &copyDestFS{
+				openFileFunc: func(string, int, ihfs.FileMode) (ihfs.File, error) { return destFile, nil },
+				chtimesFunc:  func(string, time.Time, time.Time) error { return chtimesErr },
+			}
+
+			Expect(ihfs.Copy(dest, "out", src)).To(MatchError(chtimesErr))
+		})
 	})
 
 	Describe("DirExists", func() {
@@ -1189,6 +1408,8 @@ type copyDestFS struct {
 	mkdirAllFunc func(string, ihfs.FileMode) error
 	openFileFunc func(string, int, ihfs.FileMode) (ihfs.File, error)
 	symlinkFunc  func(string, string) error
+	chmodFunc    func(string, ihfs.FileMode) error
+	chtimesFunc  func(string, time.Time, time.Time) error
 }
 
 func (*copyDestFS) Open(string) (ihfs.File, error) {
@@ -1212,6 +1433,20 @@ func (d *copyDestFS) OpenFile(name string, flag int, perm ihfs.FileMode) (ihfs.F
 func (d *copyDestFS) Symlink(old, new string) error {
 	if d.symlinkFunc != nil {
 		return d.symlinkFunc(old, new)
+	}
+	return nil
+}
+
+func (d *copyDestFS) Chmod(name string, mode ihfs.FileMode) error {
+	if d.chmodFunc != nil {
+		return d.chmodFunc(name, mode)
+	}
+	return nil
+}
+
+func (d *copyDestFS) Chtimes(name string, atime, mtime time.Time) error {
+	if d.chtimesFunc != nil {
+		return d.chtimesFunc(name, atime, mtime)
 	}
 	return nil
 }
